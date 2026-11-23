@@ -1,0 +1,206 @@
+/*
+ * App layout: shell, sidebar (script library), main area and top bar.
+ * Spacing follows shadcn's scale (gap-1 = 4px, gap-2 / p-2 = 8px). Buttons and menus
+ * inside the layout use the shadcn classes from css/shadcn.css.
+ */
+
+.app-shell {
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ---- Sidebar ----------------------------------------------------------- */
+
+.sidebar {
+  position: sticky;
+  top: 0;
+  align-self: flex-start;
+  display: flex;
+  flex: 0 0 var(--sidebar-width);
+  flex-direction: column;
+  box-sizing: border-box;
+  width: var(--sidebar-width);
+  height: 100vh;
+  padding: 0 8px;
+  border-right: 1px solid var(--sidebar-border);
+  background: var(--page-bg);
+  color: var(--sidebar-foreground);
+}
+
+.app-shell.sidebar-closed .sidebar {
+  display: none;
+}
+
+/* Brand row: same height as the top bar so the two line up. */
+.sidebar-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  box-sizing: border-box;
+  height: var(--header-height);
+  margin: 0 0 8px;
+  padding: 0 0 0 8px;
+}
+
+.sidebar-brand {
+  font-family: var(--font-heading);
+  font-size: 19px;
+  letter-spacing: -0.5px;
+}
+
+.sidebar-buttons {
+  display: flex;
+  gap: 2px;
+}
+
+/* Script library (a shadcn sidebar menu) */
+.sidebar-library {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+/* 2px between script rows (shadcn's SidebarMenu default is gap-0). */
+.sidebar-library .sidebar-menu {
+  gap: 2px;
+}
+
+.sidebar .script-menu {
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 15;
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 8px 0;
+}
+
+/* ---- Main area --------------------------------------------------------- */
+
+.app-main {
+  flex: 1;
+  box-sizing: border-box;
+  min-width: 0;
+  min-height: 100vh;
+  padding: 0 var(--main-gutter) 50px;
+  background: var(--page-bg);
+}
+
+/* Top bar: spans the main area edge to edge and stays visible while scrolling. */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 40;
+  isolation: isolate;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-sizing: border-box;
+  height: var(--header-height);
+  margin: 0 calc(-1 * var(--main-gutter));
+  padding: 0 var(--main-gutter);
+  background: var(--page-bg);
+}
+
+/* Script title with its options menu right beside it. */
+.header-title-group {
+  display: flex;
+  flex: 1 1 auto;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  /* Pull the group left by the button's 10px padding so the title text lines up with the content. */
+  margin-left: -10px;
+}
+
+.title-dropdown-wrap {
+  position: relative;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+/* Long titles truncate inside the title button. */
+.title-dropdown-wrap > .btn {
+  max-width: 100%;
+}
+
+.script-actions {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.header-title-group .script-menu {
+  top: calc(100% + 4px);
+  left: 0;
+}
+
+.header-right {
+  display: flex;
+  flex: 0 0 auto;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  margin-left: auto;
+}
+
+/* Microphone button and its settings dropdown */
+.mic-menu {
+  position: relative;
+}
+
+.mic-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+  width: 240px;
+}
+
+.editor {
+  max-width: 920px;
+  margin: 0 auto;
+}
+
+/* ---- Responsive -------------------------------------------------------- */
+
+@media (max-width: 900px) {
+  .title-dropdown-wrap {
+    max-width: 220px;
+  }
+}
+
+@media (max-width: 700px) {
+  .app-main {
+    padding-bottom: 30px;
+  }
+
+  .app-header {
+    align-items: flex-start;
+    height: auto;
+    min-height: var(--header-height);
+    padding-top: 12px;
+    padding-bottom: 12px;
+  }
+
+  .header-right {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 4px;
+    max-width: 48%;
+  }
+}
+
+@media (max-width: 650px) {
+  .app-shell:not(.sidebar-closed) .app-main {
+    min-width: 300px;
+  }
+}
+
+@media (max-width: 600px) {
+  .app-header {
+    flex-wrap: wrap;
+  }
+}

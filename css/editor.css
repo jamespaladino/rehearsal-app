@@ -1,0 +1,242 @@
+/*
+ * Screenplay editor: script blocks (scene headings, action, dialogue lines and
+ * beats) in standard screenplay layout, the margin tools
+ * on the left, record controls on the right, and the character picker.
+ */
+
+.record-panel {
+  position: relative;
+}
+
+.screenplay {
+  max-width: 760px;
+  min-height: 320px;
+  margin: 18px auto;
+  padding: 36px max(16px, calc((100% - 690px) / 2));
+  overflow-anchor: none;
+}
+
+.add-turn-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 25px auto 40px;
+}
+
+/* ---- Blocks ------------------------------------------------------------ */
+
+.screenplay .turn {
+  position: relative;
+  margin: 0 0 2px;
+  padding: 7px 0 17px;
+  color: var(--foreground);
+  font-family: var(--font-screenplay);
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+/* Transparent hit area that connects a block to its margin and record controls. */
+.screenplay .turn::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: -145px;
+  right: -95px;
+  z-index: 0;
+}
+
+/* Character name and dialogue read as plain screenplay text, not form fields. */
+.screenplay .character,
+.screenplay .dialogue,
+.screenplay .block-text,
+.screenplay .beat-text {
+  position: relative;
+  z-index: 1;
+}
+
+.screenplay .character,
+.screenplay .dialogue,
+.screenplay .block-text {
+  border: 0;
+  border-radius: 3px;
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  box-shadow: none;
+  appearance: none;
+  transition: none;
+}
+
+.screenplay :is(.character, .dialogue, .block-text):is(:hover, :focus, :focus-visible) {
+  outline: none;
+  border-color: transparent;
+  background: transparent;
+  box-shadow: none;
+}
+
+.screenplay .character-picker {
+  position: relative;
+  z-index: 3;
+  width: 75%;
+  margin: 0 auto;
+}
+
+.screenplay .character {
+  display: block;
+  width: 100%;
+  margin: 0 auto 2px;
+  padding: 0 5px;
+  font-weight: bold;
+  letter-spacing: 0.03em;
+  text-align: center;
+  text-transform: uppercase;
+  outline-offset: 2px;
+  cursor: text;
+}
+
+.screenplay .dialogue {
+  display: block;
+  width: 100%;
+  min-height: 46px;
+  padding: 0 4px;
+  overflow: hidden;
+  line-height: 1.35;
+  resize: none;
+}
+
+/* Dialogue wraps at 34 characters max (plus the 4px side padding), centered under the name. */
+.screenplay .dialogue {
+  max-width: calc(34ch + 8px);
+  margin-right: auto;
+  margin-left: auto;
+}
+
+.screenplay :is(.dialogue, .block-text)::placeholder {
+  color: var(--muted-foreground);
+}
+
+/* Scene headings, action and beats run the full page width from the left margin. */
+.screenplay .block-text,
+.screenplay .beat-text {
+  display: block;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 0 4px;
+}
+
+.screenplay .block-text {
+  min-height: 0;
+  overflow: hidden;
+  line-height: 1.35;
+  resize: none;
+}
+
+.screenplay .scene-heading {
+  font-weight: bold;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+/* ---- Character picker suggestions -------------------------------------- */
+
+.screenplay .character-choices {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  z-index: 30;
+  min-width: 190px;
+  max-height: 220px;
+  overflow: auto;
+  transform: translateX(-50%);
+  font-family: var(--font-sans);
+}
+
+.screenplay .character-choices .me-hint {
+  color: var(--muted-foreground);
+  font-weight: 400;
+  text-transform: none;
+}
+
+/* ---- Margin tools (left) and record controls (right) ------------------- */
+
+.screenplay .margin-tools,
+.screenplay .record-controls {
+  position: absolute;
+  top: 7px;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--muted-foreground);
+  font-family: var(--font-sans);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.15s ease;
+}
+
+.screenplay .margin-tools {
+  left: -126px;
+}
+
+.screenplay .record-controls {
+  right: -103px;
+}
+
+/* Controls appear for the active block, while its menu is open, and while recording. */
+.screenplay .turn:is(:hover, :focus-within, :has(.block-menu:not(.hidden))) :is(.margin-tools, .record-controls),
+.screenplay .record-controls:has(.recording) {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+/* Block menu opens under the margin tools (32px buttons at top 7px, plus a 4px offset). */
+.screenplay .block-menu {
+  position: absolute;
+  top: 43px;
+  left: -126px;
+  z-index: 3;
+  /* Let the beat-length submenu extend outside the menu. */
+  overflow: visible;
+  font-family: var(--font-sans);
+}
+
+/* ---- Responsive -------------------------------------------------------- */
+
+/* Touch screens have no hover, so keep the controls faintly visible. */
+@media (hover: none) {
+  .screenplay .margin-tools,
+  .screenplay .record-controls {
+    opacity: 0.65;
+    pointer-events: auto;
+  }
+}
+
+@media (max-width: 750px) {
+  .screenplay {
+    padding: 24px 16px 24px 65px;
+  }
+
+  .screenplay .margin-tools {
+    left: -58px;
+  }
+
+  .screenplay .block-menu {
+    left: -58px;
+  }
+
+  .screenplay .record-controls {
+    top: 4px;
+    right: -56px;
+    flex-direction: column;
+  }
+}
+
+@media (max-width: 600px) {
+  .screenplay .turn::before {
+    left: -65px;
+    right: -65px;
+  }
+}

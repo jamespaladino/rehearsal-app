@@ -1,0 +1,106 @@
+/*
+ * Base element styles and small utilities shared across the app.
+ * Buttons and menus are styled only through the shadcn classes in css/shadcn.css.
+ */
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--page-bg);
+  color: var(--foreground);
+  font: 16px var(--font-sans);
+}
+
+h1,
+h2,
+h3 {
+  font-family: var(--font-heading);
+}
+
+label {
+  display: block;
+  margin: 12px 0 5px;
+}
+
+small,
+.muted {
+  color: var(--muted-foreground);
+}
+
+nav {
+  margin: 20px 0;
+}
+
+/* Reset: buttons take their look from .btn, .dropdown-menu-item or .sidebar-menu-*. */
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+/* ---- Form fields (shadcn Input: h-8, px-2.5, text-sm, ring-3 on focus) -- */
+
+input,
+textarea {
+  box-sizing: border-box;
+  width: 100%;
+  padding: 4px 10px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  background: var(--input-surface);
+  color: var(--foreground);
+  font-size: 14px;
+  line-height: 22px;
+}
+
+textarea {
+  min-height: 70px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--muted-foreground);
+}
+
+input:focus-visible,
+textarea:focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+/* ---- Icons (Lucide) ---------------------------------------------------- */
+
+.lucide {
+  flex: none;
+  width: 16px;
+  height: 16px;
+}
+
+/* ---- Utilities --------------------------------------------------------- */
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 9px;
+}
+
+.row > * {
+  flex-shrink: 0;
+}
+
+.truncate {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Wins over component display values so toggling .hidden always hides. */
+.hidden {
+  display: none !important;
+}

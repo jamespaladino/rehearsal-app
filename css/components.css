@@ -1,0 +1,223 @@
+/*
+ * App-specific placement and layout for shadcn components (css/shadcn.css):
+ * where each menu/popover sits, the rename and help popovers' contents, the
+ * delete/rename dialog body, and the play-mode pane.
+ * Visual styles (colors, radius, shadows, sizes) come from css/shadcn.css only.
+ */
+
+/* ---- Menu and popover placement (shadcn sideOffset = 4px) --------------- */
+
+.script-menu {
+  position: absolute;
+  z-index: 5;
+}
+
+/* Rename popover under the script title */
+.title-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  z-index: 100;
+}
+
+.title-dropdown label {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.quick-rename-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ---- Dialog body ------------------------------------------------------- */
+
+.dialog-form {
+  display: contents;
+}
+
+.dialog-content label {
+  margin: 0 0 8px;
+}
+
+/* ---- Form errors ------------------------------------------------------- */
+
+.error {
+  color: var(--destructive);
+}
+
+.dialog-content .error {
+  margin-top: 8px;
+}
+
+.error:empty {
+  display: none;
+}
+
+.title-dropdown .error {
+  font-size: 12px;
+}
+
+/* ---- Play-mode pane ---------------------------------------------------- */
+
+.play-pane {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  /* Center cued lines in the space between the sticky header and the fixed bar. */
+  scroll-padding: var(--header-height) 0 var(--play-bar-height);
+  background: var(--page-bg);
+  color: var(--foreground);
+}
+
+.play-pane-header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  flex: none;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  box-sizing: border-box;
+  height: var(--header-height);
+  padding: 0 var(--main-gutter);
+  background: var(--page-bg);
+}
+
+.play-pane-header h2 {
+  min-width: 0;
+  margin: 0;
+  overflow: hidden;
+  font-size: 16px;
+  font-weight: 600;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.play-pane-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+/* Help button and its popover of rehearsal tips. */
+.help-menu {
+  position: relative;
+}
+
+.help-dropdown {
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
+  z-index: 5;
+}
+
+.help-dropdown p {
+  margin: 0;
+}
+
+.play-pane-body {
+  box-sizing: border-box;
+  flex: 1;
+  width: 100%;
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 var(--main-gutter);
+}
+
+/* ---- Teleprompter ------------------------------------------------------ */
+
+/* Extra space above and below lets the first and last lines scroll to the middle. */
+.prompter {
+  margin: 0;
+  padding: 35vh 0 calc(35vh + var(--play-bar-height));
+  list-style: none;
+}
+
+.prompter-line {
+  padding: 16px 0;
+  color: var(--muted-foreground);
+  opacity: 0.45;
+  transition: opacity 0.2s ease, color 0.2s ease;
+}
+
+.prompter-line[data-active] {
+  color: var(--foreground);
+  opacity: 1;
+}
+
+.prompter-character {
+  margin-bottom: 6px;
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.prompter-text {
+  font-size: clamp(22px, 3.2vw, 32px);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.prompter-character:empty {
+  display: none;
+}
+
+/* Scene headings and action are context, not spoken: smaller than the lines. */
+.prompter-line[data-who="heading"] .prompter-text {
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.prompter-line[data-who="action"] .prompter-text {
+  font-size: clamp(16px, 2vw, 20px);
+  font-weight: 400;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .prompter-line {
+    transition: none;
+  }
+}
+
+/* Fixed transport bar, centered at the bottom of the play pane. */
+.play-bar {
+  position: fixed;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  box-sizing: border-box;
+  height: var(--play-bar-height);
+  padding: 12px var(--main-gutter) 16px;
+  background: var(--page-bg);
+}
+
+.play-meta {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.play-bar-actions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+}
