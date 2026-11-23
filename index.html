@@ -1,0 +1,436 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Rehearsal V1</title><style>body{font:16px system-ui;background:#101216;color:#f5f5f5;max-width:780px;margin:35px auto;padding:0 18px}button,input,textarea{font:inherit}button{border:0;border-radius:9px;padding:10px 15px;cursor:pointer;background:#363c49;color:white}button.primary{background:#327d66}button:disabled{opacity:.45}input,textarea{box-sizing:border-box;width:100%;background:#20242b;border:1px solid #454b54;border-radius:8px;color:white;padding:10px}textarea{min-height:70px}section,.turn{background:#1b1e24;border:1px solid #363b44;border-radius:13px;padding:16px;margin:12px 0}.row{display:flex;align-items:center;gap:9px;flex-wrap:wrap}.row>*{flex-shrink:0}h1{margin-bottom:6px}small,.muted{color:#aeb5c1}label{display:block;margin:12px 0 5px}.turn{position:relative}.turn h3{margin:0 0 8px}nav{margin:20px 0}.active{outline:2px solid #63c69f}.hidden{display:none}.status{padding:12px;background:#27302e;border-radius:8px;margin:14px 0}#library button{margin:4px}#playLine{font-size:1.4em;line-height:1.5}button.danger{background:#60353a}.turn.beat{border-left:4px solid #c5a56a}.beat-duration{max-width:110px}.beat-note{margin-top:8px}.script-row{justify-content:space-between;padding:8px 0;border-bottom:1px solid #363b44}.script-row .script-open{flex:1;min-width:0;text-align:left;overflow-wrap:anywhere}.script-actions{position:relative;margin-left:auto}.script-row{cursor:pointer;border-radius:8px;padding:12px 8px}.script-row:hover{background:#292e36}.script-row:focus-visible{outline:2px solid #63c69f}.script-name{flex:1;min-width:0;overflow-wrap:anywhere;font-weight:600}.menu-toggle{padding:7px 12px;font-size:23px;line-height:1;background:transparent}.menu-toggle:hover,.menu-toggle[aria-expanded="true"]{background:#363c49}.script-menu{position:absolute;right:0;top:100%;z-index:5;background:#2a2f38;border:1px solid #535b68;border-radius:10px;padding:5px;min-width:145px;box-shadow:0 12px 30px #0009}.script-menu.hidden{display:none}.script-menu button{display:block;width:100%;text-align:left;margin:0!important;background:transparent}.script-menu button:hover{background:#414855}.script-menu button.delete-action{color:#ffb4b4}.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:18px;z-index:20}.modal-backdrop.hidden{display:none}.modal{width:min(100%,440px);background:#22262e;border:1px solid #555d69;border-radius:14px;padding:22px;box-shadow:0 20px 80px #0008}.modal h2{margin-top:0}.modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:20px}.modal .error{color:#ffb4b4;font-size:14px;min-height:18px;margin-top:8px}
+/* Screenplay-style editor */
+body{max-width:1040px;background:#17191d}
+#recordPanel{position:relative}
+#turns{background:#fdfcf9;color:#151515;border-radius:5px;padding:36px max(16px,calc((100% - 690px)/2));box-shadow:0 10px 35px #0004;margin:18px 0;min-height:320px}
+#turns .turn{position:relative;background:transparent;border:0;border-radius:0;padding:7px 0 17px;margin:0 0 2px;color:#171717;font-family:'Courier Prime','Courier New',Courier,monospace;font-size:19px;line-height:1.35}
+#turns .turn:hover{background:#f4f2ed}
+#turns .character{display:block;text-align:center;margin:0 auto 2px;width:75%;font:inherit;font-weight:bold;letter-spacing:.03em;border:0;border-radius:3px;background:transparent;color:#111;padding:0 5px;outline-offset:2px}
+#turns .dialogue{display:block;resize:none;min-height:46px;width:100%;border:0;border-radius:3px;background:transparent;color:#171717;font:inherit;line-height:1.35;padding:0 4px;overflow:hidden}
+#turns .dialogue:focus,#turns .character:focus{background:transparent;outline:none;box-shadow:none;border-color:transparent}
+#turns .dialogue::placeholder{color:#aaa}
+#turns .character,#turns .dialogue{appearance:none;-webkit-appearance:none;box-shadow:none;transition:none}
+#turns .character:hover,#turns .dialogue:hover{background:transparent;outline:none;border-color:transparent}
+#turns .character:focus-visible,#turns .dialogue:focus-visible{outline:none;background:transparent;box-shadow:none}
+#turns .beat{border:0}
+#turns .beat .beat-caption{font-size:14px;color:#666;margin:0 4px 4px}
+#turns .beat .dialogue{font-style:italic;min-height:34px}
+#turns .beat-duration-wrap{display:flex;align-items:center;gap:8px;margin:7px 4px;color:#555;font:13px system-ui}
+#turns .beat-duration{width:75px;background:#fff;border:1px solid #ccc;color:#222;padding:4px 6px;font:13px system-ui}
+#turns .margin-tools{position:absolute;left:-126px;top:7px;display:flex;gap:4px;align-items:center;opacity:.35;transition:opacity .15s;font:14px system-ui}
+#turns .turn:hover .margin-tools,#turns .turn:focus-within .margin-tools{opacity:1}
+#turns .margin-tools button{background:transparent;color:#777;padding:5px 8px;border-radius:5px;font-size:18px}
+#turns .margin-tools button:hover{background:#e6e3dc;color:#222}
+#turns .block-menu{position:absolute;top:35px;left:-110px;z-index:9;width:168px;background:white;border:1px solid #ddd;border-radius:8px;box-shadow:0 12px 28px #0003;padding:5px;font:13px system-ui}
+#turns .block-menu.hidden{display:none}
+#turns .block-menu button{display:block;text-align:left;width:100%;background:transparent;color:#222;border-radius:4px;padding:8px}
+#turns .block-menu button:hover{background:#f1f0ed}
+#turns .block-menu button:disabled{opacity:.35}
+#turns .block-menu .delete-block{color:#b42330}
+#turns .record-controls{position:absolute;right:-103px;top:7px;display:flex;gap:4px;align-items:center;opacity:.45;transition:opacity .15s;font:13px system-ui}
+#turns .turn:hover .record-controls,#turns .turn:focus-within .record-controls,#turns .record-controls:has(.recording){opacity:1}
+#turns .record-controls button{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:6px;background:transparent;color:#666;border-radius:6px}
+#turns .record-controls svg{width:19px;height:19px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+#turns .record-controls button:hover{background:#e6e3dc;color:#222}
+#turns .record-controls .recording{background:#9e3636;color:#fff;opacity:1}
+#turns .type-pill{font:11px system-ui;color:#777;margin:0 4px 5px}
+@media(max-width:750px){#turns{padding:24px 16px 24px 65px}#turns .margin-tools{left:-58px}#turns .block-menu{left:-55px}#turns .turn{font-size:16px}#turns .record-controls{right:-56px;flex-direction:column;top:4px}#turns .record-controls button{width:30px;height:30px}}
+
+/* Persistent script navigation */
+html,body{height:100%}body{max-width:none;margin:0;padding:0}.app-shell{display:flex;min-height:100vh}.sidebar{width:270px;flex:0 0 270px;background:var(--panel);border-right:1px solid var(--border);padding:16px 10px;box-sizing:border-box}.sidebar-top{display:flex;align-items:center;justify-content:space-between;padding:7px 8px 20px;gap:8px}.sidebar-top strong{font-size:19px;letter-spacing:-.5px}.sidebar-buttons{display:flex;gap:4px}.sidebar-buttons button,#openSidebar{border:0;background:transparent;color:var(--fg);font-size:20px;padding:6px 9px;border-radius:8px}.sidebar-buttons button:hover,#openSidebar:hover{background:var(--hover)}#libraryPanel{padding:0;margin:0;border:0;background:transparent}#library .script-row{border:0;margin:2px 0;padding:9px 7px;gap:3px;flex-wrap:nowrap}#library .script-name{font-size:14px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#library .script-actions{flex-shrink:0}#library .menu-toggle{font-size:20px;padding:3px 7px}#library .script-menu{z-index:15}.script-row.selected{background:var(--hover)}.app-main{flex:1;min-width:0;padding:20px 30px 50px;box-sizing:border-box}.app-header{min-height:40px}.header-title{font-size:14px;color:var(--muted)}#editor{max-width:920px;margin:12px auto}#editor #turns{max-width:760px;margin-left:auto;margin-right:auto}.app-shell.sidebar-closed .sidebar{display:none}.app-shell.sidebar-closed #openSidebar{display:inline-flex}#openSidebar.hidden{display:none}@media(max-width:650px){.sidebar{width:220px;flex-basis:220px}.app-main{padding:14px}.app-shell:not(.sidebar-closed) .app-main{min-width:300px}}
+/* App-wide light/dark appearance */
+:root{color-scheme:light;--bg:#f5f5f3;--fg:#202124;--muted:#626872;--panel:#fff;--border:#d9dce0;--button:#e9ebee;--button-text:#24262b;--hover:#eceef0;--menu:#fff;--shadow:#0002;--paper:#fff;--ink:#171717;--paper-hover:#f6f6f4;--tool:#777;--tool-hover:#e9e9e6;--beat-ink:#666;--status:#e8f0ec;--danger:#b42330;--danger-bg:#f8e8e8}
+:root[data-theme="dark"]{color-scheme:dark;--bg:#121417;--fg:#f0f0f0;--muted:#a9b0bc;--panel:#1c2026;--border:#373d46;--button:#343b45;--button-text:#f3f4f6;--hover:#2a3039;--menu:#262c35;--shadow:#0008;--paper:#202329;--ink:#e9e9e9;--paper-hover:#292d34;--tool:#a6aab1;--tool-hover:#373d46;--beat-ink:#b7bac0;--status:#26342e;--danger:#ffb0b0;--danger-bg:#60353a}
+body{background:var(--bg);color:var(--fg)}
+small,.muted{color:var(--muted)}
+section,.turn{background:var(--panel);border-color:var(--border)}
+button{background:var(--button);color:var(--button-text)}
+button.primary{background:#327d66;color:#fff}
+button.danger{background:var(--danger-bg);color:var(--danger)}
+input,textarea{background:var(--panel);border-color:var(--border);color:var(--fg)}
+.status{background:var(--status)}
+.script-row{border-color:var(--border)}
+.script-row:hover{background:var(--hover)}
+.menu-toggle:hover,.menu-toggle[aria-expanded="true"]{background:var(--hover)}
+.script-menu,.modal{background:var(--menu);border-color:var(--border);box-shadow:0 12px 30px var(--shadow)}
+.script-menu button:hover{background:var(--hover)}
+.script-menu button.delete-action,.modal .error{color:var(--danger)}
+#turns{background:var(--paper);color:var(--ink);box-shadow:0 10px 35px var(--shadow)}
+#turns .turn{color:var(--ink)}
+#turns .turn:hover{background:var(--paper-hover)}
+#turns .character,#turns .dialogue{color:var(--ink)}
+#turns .dialogue::placeholder{color:var(--tool)}
+#turns .beat .beat-caption,#turns .beat-duration-wrap{color:var(--beat-ink)}
+#turns .beat-duration{background:var(--paper);color:var(--ink);border-color:var(--border)}
+#turns .margin-tools button,#turns .record-controls button{color:var(--tool)}
+#turns .margin-tools button:hover,#turns .record-controls button:hover{background:var(--tool-hover);color:var(--ink)}
+#turns .block-menu{background:var(--menu);border-color:var(--border);box-shadow:0 12px 28px var(--shadow)}
+#turns .block-menu button{color:var(--fg)}
+#turns .block-menu button:hover{background:var(--hover)}
+#turns .block-menu .delete-block{color:var(--danger)}
+#turns .type-pill{color:var(--tool)}
+#turns .record-controls .recording{background:#9e3636;color:#fff}
+.app-header{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.app-header h1{margin:0 0 6px}
+.theme-toggle{display:inline-flex;align-items:center;gap:8px;background:var(--button);color:var(--button-text);border:1px solid var(--border);padding:8px 11px;border-radius:999px;white-space:nowrap}
+.theme-toggle:hover{background:var(--hover)}
+.theme-toggle svg{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sidebar-buttons button,#openSidebar{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border-radius:8px;transition:background .15s ease}.sidebar-buttons button:focus-visible,#openSidebar:focus-visible{outline:2px solid var(--fg);outline-offset:2px}.sidebar-buttons button svg,#openSidebar svg{flex:none}#library .script-row{min-height:36px} .app-header{display:flex;align-items:center;gap:12px} .app-header .theme-toggle{margin-left:auto}</style><style>
+.app-shell{height:100vh;min-height:0}.sidebar{display:flex;flex-direction:column;height:100vh;position:sticky;top:0}.sidebar #libraryPanel{flex:1;min-height:0;overflow-y:auto}.sidebar-footer{padding:12px 8px 6px;margin-top:auto}.sidebar-footer .theme-toggle{width:100%;justify-content:flex-start;border:0;border-radius:8px;background:transparent}.sidebar-footer .theme-toggle:hover{background:var(--hover)}.app-main{padding:0 30px 50px}.app-header{height:64px;min-height:64px;border:0;display:flex;align-items:center;gap:12px}.top-script-title{font-size:16px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.header-right{margin-left:auto;display:flex;align-items:center;gap:10px;min-width:0}.header-right small{font-size:12px;white-space:nowrap}.header-right #releaseMic{font-size:12px;padding:6px 8px}.icon-button{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;background:transparent;color:var(--fg);border-radius:8px}.icon-button:hover{background:var(--hover)}#topScriptActions .script-menu{top:calc(100% + 5px)}#editor{margin:0 auto}#workspace>nav{margin-top:4px}@media(max-width:700px){.app-main{padding:0 14px 30px}.header-right small{max-width:120px;overflow:hidden;text-overflow:ellipsis}}
+.title-dropdown-wrap{position:relative;min-width:0;max-width:45%;}.top-script-title{border:0;background:transparent;color:var(--fg);padding:7px 9px;margin-left:-9px;border-radius:7px;cursor:pointer;text-align:left;display:block;max-width:100%;}.top-script-title:hover,.top-script-title[aria-expanded="true"]{background:var(--hover)}.title-dropdown{position:absolute;top:calc(100% + 7px);left:0;z-index:100;width:min(310px,80vw);padding:14px;background:var(--panel);color:var(--fg);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 32px rgba(0,0,0,.18);display:flex;flex-direction:column;gap:9px}.title-dropdown.hidden{display:none}.title-dropdown label{font-size:12px;color:var(--muted)}.title-dropdown input{width:100%;box-sizing:border-box}.quick-rename-actions{display:flex;justify-content:flex-end;gap:8px}.title-dropdown .error{font-size:12px}
+</style><style>
+/* Seamless workspace and full-length script title */
+.app-main{background:var(--paper)}
+#turns,#editor #turns{background:transparent;box-shadow:none;border:0;border-radius:0}
+.title-dropdown-wrap{max-width:none;flex:1 1 auto;min-width:0}
+.top-script-title{max-width:100%;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;line-height:1.4}
+.header-right{flex:0 0 auto}
+@media(max-width:700px){.app-header{height:auto;min-height:64px;padding:12px 0;align-items:flex-start}.header-right{gap:4px;flex-wrap:wrap;justify-content:flex-end;max-width:48%}}
+
+/* Fix: the workspace must grow with the screenplay, not stop at 100vh. */
+html,body{min-height:100%;height:auto}
+.app-shell{height:auto;min-height:100vh;align-items:stretch}
+.app-main{min-height:100vh;background:var(--paper)}
+.sidebar{height:100vh;align-self:flex-start;position:sticky;top:0}
+/* Keep screenplay controls out of view until a block is active. */
+#turns .margin-tools,#turns .record-controls{opacity:0;pointer-events:none;transition:opacity .15s ease}
+#turns .turn:hover .margin-tools,#turns .turn:focus-within .margin-tools,
+#turns .turn:hover .record-controls,#turns .turn:focus-within .record-controls,
+#turns .record-controls:has(.recording){opacity:1;pointer-events:auto}
+/* Open block menus must remain usable even when the pointer leaves the row. */
+#turns .turn:has(.block-menu:not(.hidden)) .margin-tools{opacity:1;pointer-events:auto}
+@media(hover:none){#turns .margin-tools,#turns .record-controls{opacity:.65;pointer-events:auto}}
+
+/* Top bar: centered mode controls, actions on the right */
+.app-header{position:relative}
+.header-mode-tabs{position:absolute;left:50%;transform:translateX(-50%);display:flex;align-items:center;gap:4px}
+.header-mode-tabs.hidden{display:none}
+.header-mode-tabs button{display:inline-flex;align-items:center;gap:7px;padding:8px 12px;background:transparent;color:var(--muted);font-size:13px;border-radius:8px}
+.header-mode-tabs button.primary{background:var(--hover);color:var(--fg)}
+.header-mode-tabs button:hover{background:var(--hover);color:var(--fg)}
+.header-save{padding:7px 13px;font-size:13px}
+.add-turn-actions{display:flex;align-items:center;justify-content:center;gap:8px;flex-wrap:wrap;margin:25px auto 40px}
+/* Transparent hit area connects the block to its margin controls. */
+#turns .turn::before{content:"";position:absolute;top:0;bottom:0;left:-145px;right:-95px;z-index:0;pointer-events:auto;background:transparent}
+#turns .turn .margin-tools,#turns .turn .record-controls,#turns .turn .block-menu{z-index:3}
+#turns .turn .character,#turns .turn textarea,#turns .turn input,#turns .turn .dialogue{position:relative;z-index:1}
+#turns .turn:has(.block-menu:not(.hidden)) .margin-tools,#turns .turn:has(.block-menu:not(.hidden)) .record-controls{opacity:1;pointer-events:auto}
+@media(max-width:900px){.header-mode-tabs{position:static;transform:none;margin:auto}.top-script-title{max-width:220px}.header-right small{display:none}}
+@media(max-width:600px){.app-header{flex-wrap:wrap}.header-mode-tabs{order:3;width:100%;justify-content:center}.header-right{margin-left:auto}#turns .turn::before{left:-65px;right:-65px}}
+<style>
+/* ChatGPT-inspired sidebar proportions and dark palette */
+.sidebar{width:260px;flex:0 0 260px}
+:root[data-theme="dark"]{--bg:#0f0f0f;--fg:#ececec;--muted:#a2a2a2;--panel:#171717;--border:#303030;--button:#2a2a2a;--button-text:#ececec;--hover:#292929;--menu:#252525;--paper:#0f0f0f;--ink:#ececec;--paper-hover:#202020;--tool:#a1a1a1;--tool-hover:#303030;--status:#24312c;--danger:#ffaaaa;--danger-bg:#472727}
+:root[data-theme="dark"] .sidebar{border-right:1px solid #303030}
+:root[data-theme="dark"] #library .script-row.selected{background:#292929;border-radius:12px}
+:root[data-theme="dark"] .sidebar-footer .theme-toggle:hover{background:#292929}
+@media(max-width:650px){.sidebar{width:260px;flex-basis:260px}}
+/* Unified canvas and sidebar colors for both themes */
+.sidebar{background:var(--bg)}
+:root[data-theme="dark"] .sidebar{background:#0f0f0f}
+:root[data-theme="light"] .sidebar{background:var(--bg)}
+
+#turns .character-picker{position:relative;width:75%;margin:0 auto;z-index:3}
+#turns .character-picker .character{width:100%;cursor:text}
+#turns .character-choices{position:absolute;top:100%;left:50%;transform:translateX(-50%);min-width:190px;max-height:220px;overflow:auto;background:var(--panel, #242424);color:var(--ink);border:1px solid var(--border, #555);border-radius:9px;box-shadow:0 8px 24px #0003;padding:5px;z-index:30;font:13px system-ui,sans-serif}
+#turns .character-choices.hidden{display:none}
+#turns .character-choices button{display:block;width:100%;text-align:left;background:transparent;border:0;color:inherit;border-radius:5px;padding:9px 10px;cursor:pointer;font:inherit}
+#turns .character-choices button:hover,#turns .character-choices button.selected{background:var(--selected, #5553)}
+#turns .character-choices .me-hint{color:#999;font-weight:400;text-transform:none}
+#turns .character-picker .character{text-transform:uppercase}
+#turns{overflow-anchor:none} .character-picker{overflow:visible}
+</style></style><style>/* Keep screenplay blocks visually seamless on hover and focus. */
+#turns .turn:hover, #turns .turn:focus, #turns .turn:focus-within {background:transparent !important;}
+/* Keep script top bar visible while the document scrolls. */
+.app-header{position:sticky;top:0;z-index:40;background:var(--paper);isolation:isolate}
+</style></head><body><div class="app-shell"><aside id="sidebar" class="sidebar"><div class="sidebar-top"><strong>Rehearsal</strong><div class="sidebar-buttons"><button id="collapseSidebar" title="Close sidebar" aria-label="Close sidebar"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m16 15-3-3 3-3"/></svg></button><button id="newScript" title="New script" aria-label="New script"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 5v14"/><path d="M5 12h14"/></svg></button></div></div><section id="libraryPanel"><div id="library"></div></section><div class="sidebar-footer"><button id="themeToggle" class="theme-toggle" type="button" aria-label="Switch to dark mode" title="Toggle light/dark mode"></button></div></aside><div class="app-main"><header class="app-header"><button id="openSidebar" class="hidden" aria-label="Open sidebar" title="Open sidebar"><svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M9 3v18"/><path d="m14 9 3 3-3 3"/></svg></button><div id="titleDropdownWrap" class="title-dropdown-wrap hidden"><button id="topScriptTitle" class="top-script-title" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="titleDropdown"></button><form id="titleDropdown" class="title-dropdown hidden"><label for="quickRenameInput">Script name</label><input id="quickRenameInput" maxlength="200" autocomplete="off" required><div id="quickRenameError" class="error" aria-live="polite"></div><div class="quick-rename-actions"><button id="quickRenameCancel" type="button">Cancel</button><button class="primary" type="submit">Save</button></div></form></div><div id="headerModeTabs" class="header-mode-tabs hidden"><button id="recordTab" class="primary" type="button"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3m-4 0h8"/></svg>Record</button><button id="playTab" type="button"><svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="m8 5 11 7-11 7z"/></svg>Play</button></div><div class="header-right"><small id="micState" role="status">Microphone: not connected</small><button id="releaseMic" class="hidden" type="button">Release microphone</button><button id="save" class="primary header-save hidden" type="button">Save</button><div id="topScriptActions" class="script-actions hidden"><button id="topScriptMenuToggle" class="icon-button" type="button" aria-label="Script options" aria-expanded="false" title="Script options"><svg xmlns="http://www.w3.org/2000/svg" width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button><div id="topScriptMenu" class="script-menu hidden"><button type="button" id="topRename">Rename</button><button type="button" id="topDelete" class="delete-action">Delete</button></div></div></div></header><main id="editor" class="hidden"><nav class="row hidden"><button id="back">← Library</button><button id="home">Script overview</button></nav><div id="scriptHome"><h2 id="scriptHeading"></h2><p class="muted">Choose how you want to work with this scene.</p><div class="row"><button class="primary" id="enterRecord">Record mode</button><button class="primary" id="enterPlay">Play mode</button></div></div><div id="workspace" class="hidden"><input id="title" class="hidden" placeholder="Untitled script" aria-label="Script name"><div id="recordPanel"><div id="turns"></div><div class="add-turn-actions"><button id="addLine">+ Add line</button><button id="addBeat">+ Beat</button></div></div><div id="playPanel" class="hidden"><p class="muted">Use headphones to prevent the reader's audio from triggering the microphone. Allow microphone access once per script session. The microphone disconnects when you return to the library.</p><div class="row"><button class="primary" id="start">Start rehearsal</button><button id="stop" disabled>Stop</button></div><div class="status" id="status">Ready</div><div id="playLine"></div><p class="muted" id="progress"></p></div></div></main></div></div><div id="modalBackdrop" class="modal-backdrop hidden" role="presentation"><div class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle"><h2 id="modalTitle"></h2><p id="modalMessage" class="muted"></p><form id="modalForm"><div id="renameFields"><label for="renameInput">Script name</label><input id="renameInput" maxlength="200" autocomplete="off" required><div id="modalError" class="error" aria-live="polite"></div></div><div class="modal-actions"><button type="button" id="modalCancel">Cancel</button><button type="submit" id="modalConfirm" class="primary">Save</button></div></form></div></div><script>
+
+// Save appearance separately from scripts and recordings.
+const $=id=>document.getElementById(id);
+const shell=document.querySelector('.app-shell');
+$('collapseSidebar').onclick=()=>{shell.classList.add('sidebar-closed');$('openSidebar').classList.remove('hidden')};
+$('openSidebar').onclick=()=>{shell.classList.remove('sidebar-closed');$('openSidebar').classList.add('hidden')};
+const moonIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.8 14.1A9 9 0 0 1 9.9 3.2 9 9 0 1 0 20.8 14.1Z"/></svg>';
+const sunIcon='<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>';
+function applyTheme(theme){
+  const dark=theme==='dark';document.documentElement.dataset.theme=dark?'dark':'light';
+  const toggle=document.getElementById('themeToggle');
+  toggle.innerHTML=(dark?sunIcon:moonIcon)+'<span>'+(dark?'Light':'Dark')+'</span>';
+  toggle.setAttribute('aria-label','Switch to '+(dark?'light':'dark')+' mode');
+  toggle.title='Switch to '+(dark?'light':'dark')+' mode';
+}
+let savedTheme='light';try{savedTheme=localStorage.getItem('rehearsal-theme')||'light'}catch(e){}
+applyTheme(savedTheme);
+document.getElementById('themeToggle').addEventListener('click',()=>{
+  const next=document.documentElement.dataset.theme==='dark'?'light':'dark';
+  applyTheme(next);try{localStorage.setItem('rehearsal-theme',next)}catch(e){}
+});
+
+let db,script=null,recorder=null,stream=null,chunks=[],audioCtx=null,analyser=null,raf=null,playing=false,idx=0,heard=false,speechAt=0,lastVoice=0,noiseFloor=.015,activeAudio=null,beatTimer=null;
+// A single shared microphone stream is reused for recording and rehearsal.
+async function getMicrophone(){
+  if(stream && stream.getAudioTracks().some(t=>t.readyState==='live'))return stream;
+  stream=null;
+  stream=await navigator.mediaDevices.getUserMedia({audio:true});
+  stream.getTracks().forEach(t=>t.addEventListener('ended',()=>{
+    if(stream && !stream.getAudioTracks().some(track=>track.readyState==='live')){
+      stream=null;updateMicState();
+    }
+  }));
+  updateMicState();return stream;
+}
+function updateMicState(){
+  const live=!!(stream && stream.getAudioTracks().some(t=>t.readyState==='live'));
+  $('micState').textContent=live?'Microphone: connected (released on return to library)':'Microphone: not connected';
+  $('releaseMic').classList.toggle('hidden',!live);
+}
+function releaseMicrophone(){
+  stop();
+  if(recorder && recorder.state!=='inactive')recorder.stop();
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  updateMicState();
+}
+$('releaseMic').onclick=releaseMicrophone;
+window.addEventListener('pagehide',()=>{if(stream)stream.getTracks().forEach(t=>t.stop())});
+const req=indexedDB.open('rehearsal-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('scripts',{keyPath:'id'});req.onsuccess=async()=>{db=req.result;try{const scripts=await getAll();const lastId=localStorage.getItem("rehearsal-last-opened");const target=scripts.find(s=>s.id===lastId)||scripts[0];if(target)await openScript(target);else await library()}catch(e){console.error("Could not restore last script",e);await library()}};req.onerror=()=>alert('Local storage unavailable. Try a modern browser.');
+const store=(mode='readonly')=>db.transaction('scripts',mode).objectStore('scripts');const getAll=()=>new Promise((ok,no)=>{let r=store().getAll();r.onsuccess=()=>ok(r.result);r.onerror=no});const put=s=>new Promise((ok,no)=>{let r=store('readwrite').put(s);r.onsuccess=ok;r.onerror=no});const del=id=>new Promise((ok,no)=>{let r=store('readwrite').delete(id);r.onsuccess=ok;r.onerror=no});
+function el(tag,text){let x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x}
+let modalAction=null,modalPreviousFocus=null;let openBlockMenu=null;
+let saveTimer=null, saveChain=Promise.resolve();
+function queueSave(immediate=false){
+  if(!script)return;
+  clearTimeout(saveTimer);
+  const id=script.id;
+  saveTimer=setTimeout(()=>{
+    if(!script||script.id!==id)return;
+    const snapshot=structuredClone(script);
+    saveChain=saveChain.catch(()=>{}).then(()=>put(snapshot)).then(()=>library()).catch(e=>console.error('Autosave failed:',e));
+  },immediate?0:400);
+}
+async function flushSave(){
+  clearTimeout(saveTimer);
+  if(script){const snapshot=structuredClone(script);saveChain=saveChain.catch(()=>{}).then(()=>put(snapshot));}
+  await saveChain;
+}
+
+function closeModal(){modalAction=null;$('modalBackdrop').classList.add('hidden');$('modalError').textContent='';if(modalPreviousFocus?.isConnected)modalPreviousFocus.focus()}
+function openModal(type,s){modalPreviousFocus=document.activeElement;modalAction={type,id:s.id};$('modalTitle').textContent=type==='rename'?'Rename script':'Delete script?';$('modalMessage').textContent=type==='rename'?'Choose a new name for this script.':`Delete “${s.title||'Untitled'}” and all its recordings? This cannot be undone.`;$('renameFields').classList.toggle('hidden',type!=='rename');$('renameInput').required=type==='rename';$('renameInput').value=s.title||'';$('modalConfirm').textContent=type==='rename'?'Save':'Delete';$('modalConfirm').className=type==='rename'?'primary':'danger';$('modalError').textContent='';$('modalBackdrop').classList.remove('hidden');(type==='rename'?$('renameInput'):$('modalCancel')).focus()}
+$('modalCancel').onclick=closeModal;
+$('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modalAction){e.preventDefault();closeModal()}});
+$('modalForm').onsubmit=async e=>{e.preventDefault();if(!modalAction)return;const {type,id}=modalAction;const btn=$('modalConfirm');btn.disabled=true;try{if(type==='rename'){const title=$('renameInput').value.trim();if(!title){$('modalError').textContent='Enter a script name.';return}const r=store().get(id);const saved=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});if(!saved)throw new Error('Script no longer exists');saved.title=title;await put(saved);if(script?.id===id){script.title=title;$('title').value=title;$('scriptHeading').textContent=title;updateScriptHeader()}}else{if(script?.id===id){clearTimeout(saveTimer);script=null;}await saveChain;await del(id);try{if(localStorage.getItem("rehearsal-last-opened")===id)localStorage.removeItem("rehearsal-last-opened")}catch(e){}if(!script){stop();releaseMicrophone();script=null;$('headerModeTabs').classList.add('hidden');$('editor').classList.add('hidden');updateScriptHeader()}}closeModal();await library()}catch(err){$('modalError').textContent=err.message||'Could not save changes.';$('renameFields').classList.remove('hidden')}finally{btn.disabled=false}};
+let activeMenu=null;
+function closeMenu(){if(activeMenu){activeMenu.classList.add('hidden');activeMenu.previousElementSibling?.setAttribute('aria-expanded','false');activeMenu=null}}
+document.addEventListener('click',e=>{if(!e.target.closest('.script-actions'))closeMenu()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
+async function library(){closeMenu();let list=$('library');list.replaceChildren();for(let s of await getAll()){
+let row=el('div');row.className='row script-row'+(script?.id===s.id?' selected':'');row.tabIndex=0;row.setAttribute('role','button');row.setAttribute('aria-label','Open '+(s.title||'Untitled script'));row.onclick=()=>{closeMenu();openScript(s)};row.onkeydown=e=>{if(e.target===row&&(e.key==='Enter'||e.key===' ')){e.preventDefault();row.click()}};
+let name=el('span',s.title||'Untitled');name.className='script-name';
+let actions=el('div');actions.className='script-actions';let toggle=el('button','⋯');toggle.className='menu-toggle';toggle.type='button';toggle.setAttribute('aria-label','Options for '+(s.title||'Untitled script'));toggle.setAttribute('aria-haspopup','true');toggle.setAttribute('aria-expanded','false');
+let menu=el('div');menu.className='script-menu hidden';let rename=el('button','Rename');rename.type='button';rename.onclick=e=>{e.stopPropagation();closeMenu();openModal('rename',s)};let remove=el('button','Delete');remove.type='button';remove.className='delete-action';remove.onclick=e=>{e.stopPropagation();closeMenu();openModal('delete',s)};menu.append(rename,remove);
+toggle.onclick=e=>{e.stopPropagation();const wasOpen=!menu.classList.contains('hidden');closeMenu();if(!wasOpen){menu.classList.remove('hidden');toggle.setAttribute('aria-expanded','true');activeMenu=menu}};
+actions.onclick=e=>e.stopPropagation();actions.append(toggle,menu);row.append(name,actions);list.append(row)}}
+function updateScriptHeader(){
+  $('topScriptTitle').textContent=script?(script.title||'Untitled script'):'';
+  $('titleDropdownWrap').classList.toggle('hidden',!script);
+  closeTitleDropdown();
+  $('topScriptActions').classList.toggle('hidden',!script);
+  $('topScriptMenu').classList.add('hidden');
+  $('topScriptMenuToggle').setAttribute('aria-expanded','false');
+}
+function closeTitleDropdown(){
+  $('titleDropdown').classList.add('hidden');
+  $('topScriptTitle').setAttribute('aria-expanded','false');
+}
+$('topScriptTitle').onclick=e=>{
+  e.stopPropagation();if(!script)return;
+  const opening=$('titleDropdown').classList.contains('hidden');
+  closeTitleDropdown();
+  if(opening){
+    $('quickRenameInput').value=script.title||'';
+    $('quickRenameError').textContent='';
+    $('titleDropdown').classList.remove('hidden');
+    $('topScriptTitle').setAttribute('aria-expanded','true');
+    $('quickRenameInput').focus();$('quickRenameInput').select();
+  }
+};
+$('titleDropdown').onclick=e=>e.stopPropagation();
+$('quickRenameCancel').onclick=closeTitleDropdown;
+$('titleDropdown').onsubmit=async e=>{
+  e.preventDefault();if(!script)return;
+  const name=$('quickRenameInput').value.trim();
+  if(!name){$('quickRenameError').textContent='Enter a script name.';return}
+  const button=$('titleDropdown').querySelector('[type="submit"]');button.disabled=true;
+  try{
+    script.title=name;$('title').value=name;
+    await flushSave();updateScriptHeader();await library();
+  }catch(err){$('quickRenameError').textContent=err.message||'Could not rename script.'}
+  finally{button.disabled=false}
+};
+document.addEventListener('click',e=>{if(!e.target.closest('#titleDropdownWrap'))closeTitleDropdown()});
+document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTitleDropdown()});
+$('topScriptMenuToggle').onclick=e=>{e.stopPropagation();const menu=$('topScriptMenu');const opening=menu.classList.contains('hidden');menu.classList.toggle('hidden',!opening);$('topScriptMenuToggle').setAttribute('aria-expanded',String(opening))};
+$('topScriptActions').onclick=e=>e.stopPropagation();
+document.addEventListener('click',e=>{if(!e.target.closest('#topScriptActions'))$('topScriptMenu').classList.add('hidden')});
+$('topRename').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden');openModal('rename',script)}};
+$('topDelete').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden');openModal('delete',script)}};
+$('newScript').onclick=async()=>{await flushSave();const fresh={id:crypto.randomUUID(),title:'Untitled script',meCharacter:'ME',otherCharacters:[],turns:[]};await put(fresh);await openScript(fresh)};$('back').onclick=async()=>{await flushSave();stop();releaseMicrophone();script=null;$('headerModeTabs').classList.add('hidden');$('editor').classList.add('hidden');updateScriptHeader();library()};
+async function openScript(s){await flushSave();$('headerModeTabs').classList.remove('hidden');if(script?.id!==s.id){stop();releaseMicrophone()}script=s;try{localStorage.setItem("rehearsal-last-opened",s.id)}catch(e){}$('title').value=s.title;updateScriptHeader();$('editor').classList.remove('hidden');enterMode('record');render();library()}
+function showHome(){stop();$('scriptHeading').textContent=script.title||'Untitled script';$('scriptHome').classList.remove('hidden');$('workspace').classList.add('hidden')}
+function enterMode(m){$('scriptHome').classList.add('hidden');$('workspace').classList.remove('hidden');setMode(m)}
+$('home').onclick=()=>{script.title=$('title').value.trim()||'Untitled script';showHome()};$('enterRecord').onclick=()=>enterMode('record');$('enterPlay').onclick=()=>enterMode('play');
+function setMode(m){$('recordPanel').classList.toggle('hidden',m!=='record');$('playPanel').classList.toggle('hidden',m!=='play');$('recordTab').className=m==='record'?'primary':'';$('playTab').className=m==='play'?'primary':'';if(m==='play')stop()}
+$('recordTab').onclick=()=>{stop();setMode('record')};$('playTab').onclick=()=>{script.title=$('title').value;setMode('play')};$('addLine').onclick=()=>addDialogueLine();$('addBeat').onclick=()=>{script.turns.push({who:'beat',text:'',duration:2});render();queueSave(true)};
+function addDialogueLine(index=script.turns.length){
+  const item={who:'them',character:'',text:'',audio:null};
+  script.turns.splice(index,0,item);
+  render();queueSave(true);
+  const block=$('turns').children[index];
+  const input=block?.querySelector('.character-picker input');
+  if(input){input.focus({preventScroll:true});input.select()}
+}
+
+function normalizeCharacters(){
+  if(!script)return;
+  if(!script.meCharacter){
+    script.meCharacter=(script.turns.find(t=>t.who==='me'&&t.character?.trim())?.character.trim()||'ME').toUpperCase();
+  }
+  // Character suggestions are derived from characters currently used in blocks.
+  // Removing or renaming the last occurrence automatically removes the old name.
+  script.meCharacter=script.meCharacter.toUpperCase();
+  script.turns.filter(t=>t.who==='me').forEach(t=>t.character=script.meCharacter);
+  script.otherCharacters=[...new Set(script.turns.filter(t=>t.who==='them').map(t=>(t.character||'').trim().toUpperCase()).filter(Boolean))];
+}
+function render(){
+  normalizeCharacters();
+  const root=$('turns');const savedScroll=window.scrollY;root.replaceChildren();openBlockMenu=null;
+  script.turns.forEach((t,i)=>{
+    const div=el('div');div.className='turn'+(t.who==='beat'?' beat':'');
+    const tools=el('div');tools.className='margin-tools';
+    const add=el('button','+');add.title='Insert block below';add.setAttribute('aria-label','Insert block below');
+    const dots=el('button','⋮⋮');dots.title='Block options';dots.setAttribute('aria-label','Block options');dots.setAttribute('aria-expanded','false');
+    const menu=el('div');menu.className='block-menu hidden';
+    const menuItem=(name,fn,cls)=>{const b=el('button',name);if(cls)b.className=cls;b.onclick=e=>{e.stopPropagation();fn()};menu.append(b);return b};
+    const insert=(who)=>{if(who==='line'){addDialogueLine(i+1);return}script.turns.splice(i+1,0,{who:'beat',text:'',duration:2});render();queueSave(true)};
+    add.onclick=e=>{e.stopPropagation();const was=menu.classList.contains('hidden');document.querySelectorAll('.block-menu').forEach(m=>m.classList.add('hidden'));menu.replaceChildren();menuItem('Add line',()=>insert('line'));menuItem('Add Beat',()=>insert('beat'));menu.classList.toggle('hidden',!was);dots.setAttribute('aria-expanded',String(was))};
+    dots.onclick=e=>{e.stopPropagation();const was=menu.classList.contains('hidden');document.querySelectorAll('.block-menu').forEach(m=>m.classList.add('hidden'));menu.replaceChildren();
+      menuItem('Change to Me',()=>{t.who='me';render();queueSave(true)});menuItem('Change to Them',()=>{t.who='them';render();queueSave(true)});menuItem('Change to Beat',()=>{t.who='beat';t.duration??=2;render();queueSave(true)});
+      const up=menuItem('Move up',()=>{[script.turns[i-1],script.turns[i]]=[script.turns[i],script.turns[i-1]];render();queueSave(true)});up.disabled=i===0;
+      const down=menuItem('Move down',()=>{[script.turns[i+1],script.turns[i]]=[script.turns[i],script.turns[i+1]];render();queueSave(true)});down.disabled=i===script.turns.length-1;
+      menuItem('Delete block',()=>{script.turns.splice(i,1);render();queueSave(true)},'delete-block');
+      menu.classList.toggle('hidden',!was);dots.setAttribute('aria-expanded',String(was));
+    };
+    tools.append(add,dots);div.append(tools,menu);
+    if(t.who!=='beat'){
+      const picker=el('div');picker.className='character-picker';
+      const character=el('input');character.className='character';character.type='text';
+      character.placeholder=t.who==='me'?'ME':'Character name…';
+      character.value=t.who==='me'?script.meCharacter:(t.character||'');
+      character.setAttribute('aria-label',t.who==='me'?'Your character name (applies to all your lines)':'Select or create reader character');
+      const choices=el('div');choices.className='character-choices hidden';
+      const commit=(focusDialogue=false)=>{
+        const name=character.value.trim().toUpperCase();if(!name)return;
+        character.value=name;
+        if(t.who==='me'){
+          script.meCharacter=name;
+          script.turns.filter(x=>x.who==='me').forEach(x=>x.character=name);
+        }else if(name===script.meCharacter){
+          t.who='me';t.character=script.meCharacter;t.audio=null;
+        }else{
+          t.who='them';t.character=name;
+        }
+        queueSave(true);render();
+        if(focusDialogue){const next=$('turns').children[i]?.querySelector('textarea.dialogue');next?.focus({preventScroll:true});}
+      };
+      if(t.who==='them'){
+        let activeChoice=0;
+        const drawChoices=()=>{
+          choices.replaceChildren();activeChoice=0;
+          const typed=character.value.trim().toUpperCase();
+          const existing=[script.meCharacter,...script.otherCharacters.filter(name=>name!==script.meCharacter)].filter(name=>name.includes(typed));
+          existing.forEach((name,index)=>{
+            const option=el('button');option.type='button';
+            option.append(document.createTextNode(name));
+            if(name===script.meCharacter){const hint=el('span',' (me)');hint.className='me-hint';option.append(hint)}
+            option.classList.toggle('selected',index===activeChoice);
+            option.onmousedown=e=>e.preventDefault();
+            option.onclick=()=>{character.value=name;commit()};
+            choices.append(option);
+          });
+          choices.classList.toggle('hidden',!typed||!choices.childElementCount);
+        };
+        character.oninput=()=>{
+          const pos=character.selectionStart;
+          character.value=character.value.toUpperCase();
+          character.setSelectionRange(pos,pos);
+          if(character.value.trim())drawChoices();else choices.classList.add('hidden');
+        };
+        character.onkeydown=e=>{
+          const options=[...choices.querySelectorAll('button')];
+          if(!choices.classList.contains('hidden')&&options.length&&(e.key==='ArrowDown'||e.key==='ArrowUp')){
+            e.preventDefault();activeChoice=(activeChoice+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;
+            options.forEach((option,index)=>option.classList.toggle('selected',index===activeChoice));
+            options[activeChoice].scrollIntoView({block:'nearest'});return;
+          }
+          if(e.key==='Enter'){
+            e.preventDefault();
+            if(!choices.classList.contains('hidden')&&options.length)character.value=options[activeChoice].textContent.replace(/\s*\(me\)$/i,'');
+            commit(true);
+          }
+          if(e.key==='Escape'){choices.classList.add('hidden');character.blur()}
+        };
+        character.onblur=()=>{choices.classList.add('hidden');if(character.value.trim()&&character.value.trim()!==t.character){character.value=t.character||''}};
+      }else{
+        character.oninput=()=>{const pos=character.selectionStart;character.value=character.value.toUpperCase();character.setSelectionRange(pos,pos)};
+        character.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();commit(true)}};
+        character.onblur=()=>{if(character.value.trim()&&character.value.trim()!==script.meCharacter){script.meCharacter=character.value.trim();commit()}};
+      }
+      picker.append(character,choices);div.append(picker);
+    }else{
+      const tag=el('div','BEAT');tag.className='beat-caption';div.append(tag);
+    }
+    const field=el('textarea');field.className='dialogue';field.placeholder=t.who==='beat'?'(Action or beat description)':'Dialogue…';field.value=t.text||'';field.setAttribute('aria-label',t.who==='beat'?'Beat description':'Dialogue');field.oninput=()=>{t.text=field.value;field.style.height='auto';field.style.height=field.scrollHeight+'px';queueSave()};
+    if(t.who!=='beat')field.onkeydown=e=>{
+      if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
+        e.preventDefault();
+        t.text=field.value;
+        addDialogueLine(i+1);
+      }
+    };
+    div.append(field);
+    if(t.who==='beat'){
+      const wrap=el('div');wrap.className='beat-duration-wrap';wrap.append(el('span','Pause (seconds)'));
+      const duration=el('input');duration.type='number';duration.min='0';duration.max='120';duration.step='0.5';duration.className='beat-duration';duration.value=t.duration??2;duration.oninput=()=>{if(duration.value!=='')t.duration=Math.max(0,Math.min(120,Number(duration.value)||0));queueSave()};wrap.append(duration);div.append(wrap);
+    }
+    if(t.who==='them'){
+      const controls=el('div');controls.className='record-controls';
+      const record=el('button');record.type='button';record.title=t.audio?'Rerecord audio':'Record audio';record.setAttribute('aria-label',record.title);
+      record.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10a7 7 0 0 0 14 0M12 17v5m-4 0h8"/></svg>';
+      record.onclick=()=>recordLine(i,record);controls.append(record);
+      if(t.audio){const listen=el('button');listen.type='button';listen.title='Listen to recording';listen.setAttribute('aria-label','Listen to recording');listen.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m8 5 11 7-11 7z"/></svg>';listen.onclick=()=>{const url=URL.createObjectURL(t.audio);const a=new Audio(url);a.onended=()=>URL.revokeObjectURL(url);a.onerror=()=>URL.revokeObjectURL(url);a.play()};controls.append(listen)}div.append(controls);
+    }
+    root.append(div);field.style.height='auto';field.style.height=Math.max(46,field.scrollHeight)+'px';
+  });
+  if(Math.abs(window.scrollY-savedScroll)>2)window.scrollTo({top:savedScroll,behavior:'instant'});
+}
+document.addEventListener('click',e=>{if(!e.target.closest('.margin-tools')&&!e.target.closest('.block-menu'))document.querySelectorAll('.block-menu').forEach(m=>m.classList.add('hidden'))});
+async function recordLine(i,button){
+  if(recorder){if(recorder.state!=='inactive')recorder.stop();return}
+  try{
+    const mic=await getMicrophone();chunks=[];
+    const currentRecorder=new MediaRecorder(mic);recorder=currentRecorder;
+    currentRecorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
+    currentRecorder.onstop=()=>{
+      if(script?.turns?.[i])script.turns[i].audio=new Blob(chunks,{type:currentRecorder.mimeType});
+      recorder=null;render();queueSave(true);
+      // Do not stop the shared microphone here.
+    };
+    currentRecorder.start();button.classList.add('recording');button.title='Stop recording';button.setAttribute('aria-label','Stop recording');button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/></svg>'; 
+  }catch(e){alert('Microphone unavailable: '+e.message)}
+}
+function status(s){$('status').textContent=s}function display(){let t=script.turns[idx];$('playLine').textContent=t?(t.who==='beat'?(t.text||'Beat'):(t.text||'')):'';$('progress').textContent=t?`Line ${idx+1} of ${script.turns.length} · ${t.who==='me'?'You':t.who==='them'?'Reader':'Beat'}`:''}
+$('start').onclick=async()=>{if(!script.turns.length)return alert('Add some lines first');try{const mic=await getMicrophone();audioCtx=new AudioContext();await audioCtx.resume();let source=audioCtx.createMediaStreamSource(mic);analyser=audioCtx.createAnalyser();analyser.fftSize=2048;source.connect(analyser);playing=true;idx=0;$('start').disabled=true;$('stop').disabled=false;next()}catch(e){alert('Microphone unavailable: '+e.message);stop()}};$('stop').onclick=stop;
+function next(){if(!playing)return;cancelAnimationFrame(raf);if(idx>=script.turns.length){status('Scene complete');stop(true);return}display();let t=script.turns[idx];if(t.who==='beat'){let seconds=Math.max(0,Math.min(120,Number(t.duration)??2));status(`Beat — ${seconds} second${seconds===1?'':'s'}…`);beatTimer=setTimeout(()=>{beatTimer=null;idx++;next()},seconds*1000);return}if(t.who==='them'){status('Playing reader…');if(!t.audio){status('Reader recording missing — skipping');idx++;setTimeout(next,250);return}let url=URL.createObjectURL(t.audio);activeAudio=new Audio(url);activeAudio.onended=()=>{URL.revokeObjectURL(url);activeAudio=null,beatTimer=null;idx++;next()};activeAudio.onerror=()=>{URL.revokeObjectURL(url);activeAudio=null,beatTimer=null;idx++;next()};activeAudio.play().catch(e=>{status('Playback failed: '+e.message);stop()})}else{status('Listening for your line…');heard=false;speechAt=0;lastVoice=0;listen()}}
+function listen(){if(!playing)return;let a=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(a);let sum=0;for(let v of a)sum+=v*v;let rms=Math.sqrt(sum/a.length),now=performance.now();const threshold=Math.max(.022,noiseFloor*2.8);if(rms>threshold){if(!speechAt)speechAt=now;if(now-speechAt>120){heard=true;lastVoice=now;status('Speaking…')}}else{speechAt=0;if(!heard)noiseFloor=noiseFloor*.98+rms*.02;if(heard&&now-lastVoice>850){idx++;next();return}}raf=requestAnimationFrame(listen)}
+function stop(done=false){playing=false;cancelAnimationFrame(raf);if(beatTimer!==null){clearTimeout(beatTimer);beatTimer=null}if(activeAudio){activeAudio.pause();activeAudio=null}/* Keep microphone permission/stream alive until explicitly released. */if(audioCtx){audioCtx.close();audioCtx=null}if($('start'))$('start').disabled=false;if($('stop'))$('stop').disabled=true;if(!done&&$('status'))status('Stopped')}
+</script></body></html>
