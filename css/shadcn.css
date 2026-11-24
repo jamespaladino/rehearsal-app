@@ -14,6 +14,7 @@
  *   ToggleGroup       https://ui.shadcn.com/r/styles/base-nova/toggle-group.json
  *   Breadcrumb        https://ui.shadcn.com/r/styles/base-nova/breadcrumb.json
  *   Alert             https://ui.shadcn.com/r/styles/base-nova/alert.json
+ *   Switch            https://ui.shadcn.com/r/styles/base-nova/switch.json
  *
  * Tailwind's hover: variant only applies on devices that can hover, so hover rules
  * below are wrapped in @media (hover: hover) the same way.
@@ -398,6 +399,42 @@
     0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent),
     0 10px 15px -3px rgb(0 0 0 / 10%),
     0 4px 6px -4px rgb(0 0 0 / 10%);
+}
+
+/* Submenu placement: js/app.js flips the content to the left (data-side="left"), opens it above
+   the trigger when neither side fits (data-side="over", phones), or bottom-aligns it
+   (data-align) when it would leave the window, like Base UI's collision handling. */
+.dropdown-menu-sub-content[data-side="left"] {
+  right: 100%;
+  left: auto;
+}
+
+
+.dropdown-menu-sub-content[data-align="end"] {
+  top: auto;
+  bottom: -3px;
+}
+
+/* No room on either side (phones): open above the trigger row, over the rest of the menu,
+   so it never covers the row that opened it. */
+.dropdown-menu-sub-content[data-side="over"] {
+  top: auto;
+  right: 0;
+  bottom: calc(100% + 2px);
+  left: auto;
+}
+
+/* DropdownMenuShortcut: muted text at the end of a row, used here for a submenu trigger's current
+   value. shadcn's tracking-widest is for key combos (⌘K), so words keep normal spacing. */
+.dropdown-menu-shortcut {
+  margin-left: auto;
+  padding-left: 16px;
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.dropdown-menu-sub-trigger:has(> .dropdown-menu-shortcut) > svg:last-child {
+  margin-left: 4px;
 }
 
 /* Radio item: room on the right for the check indicator. */
@@ -865,6 +902,56 @@ button.sidebar-group-label:focus-visible {
 
 .toggle-group[data-spacing="0"] > .toggle-outline:not(:first-child) {
   border-left-width: 0;
+}
+
+/* ======================================================================== */
+/* Switch: <span class="switch" data-checked|data-unchecked><span class="switch-thumb"> */
+/*   Visual only here; the row that contains it (e.g. a menuitemcheckbox) owns the */
+/*   state and keyboard handling.                                             */
+/* ======================================================================== */
+
+.switch {
+  position: relative;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  box-sizing: border-box;
+  width: 32px;
+  height: 18.4px;
+  border: 1px solid transparent;
+  border-radius: 999px;
+  background: var(--input);
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.switch[data-checked] {
+  background: var(--primary);
+}
+
+.switch-thumb {
+  display: block;
+  width: 16px;
+  height: 16px;
+  border-radius: 999px;
+  background: var(--background);
+  pointer-events: none;
+  transition: transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.switch[data-checked] > .switch-thumb {
+  transform: translateX(calc(100% - 2px));
+}
+
+:root[data-theme="dark"] .switch:not([data-checked]) {
+  background: color-mix(in oklch, var(--input) 80%, transparent);
+}
+
+:root[data-theme="dark"] .switch:not([data-checked]) > .switch-thumb {
+  background: var(--foreground);
+}
+
+:root[data-theme="dark"] .switch[data-checked] > .switch-thumb {
+  background: var(--primary-foreground);
 }
 
 /* ======================================================================== */

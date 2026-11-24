@@ -26,15 +26,17 @@
           <button id="newScript" class="btn btn-ghost btn-icon" type="button" aria-label="New script" data-tooltip="New script"><i data-lucide="pen-line"></i></button>
         </div>
       </div>
+      <ul class="sidebar-menu sidebar-pages">
+        <li class="sidebar-menu-item">
+          <button id="openTests" class="sidebar-menu-button" type="button"><i data-lucide="flask-conical"></i><span>Tests</span></button>
+        </li>
+        <li class="sidebar-menu-item">
+          <button id="openSettings" class="sidebar-menu-button" type="button"><i data-lucide="settings"></i><span>Settings</span></button>
+        </li>
+      </ul>
       <nav id="libraryPanel" class="sidebar-library" aria-label="Scripts">
         <div id="library"></div>
       </nav>
-      <div class="sidebar-footer">
-        <div class="toggle-group" data-spacing="0" role="group" aria-label="Theme">
-          <button id="themeLight" class="toggle toggle-outline" type="button" aria-label="Light" aria-pressed="true" data-tooltip="Light"><i data-lucide="sun"></i></button>
-          <button id="themeDark" class="toggle toggle-outline" type="button" aria-label="Dark" aria-pressed="false" data-tooltip="Dark"><i data-lucide="moon"></i></button>
-        </div>
-      </div>
     </aside>
 
     <div id="sidebarBackdrop" class="sidebar-backdrop hidden"></div>
@@ -44,6 +46,7 @@
         <button id="openSidebar" class="btn btn-ghost btn-icon hidden" type="button" aria-label="Open sidebar" data-tooltip="Open sidebar"><i data-lucide="panel-left"></i></button>
 
         <div class="header-title-group">
+          <span id="topViewTitle" class="header-view-title truncate hidden">Tests</span>
           <div id="titleDropdownWrap" class="title-dropdown-wrap hidden">
             <button id="topScriptTitle" class="btn btn-ghost" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="titleDropdown"><span id="topScriptTitleText" class="truncate"></span></button>
             <form id="titleDropdown" class="popover title-dropdown hidden">
@@ -68,18 +71,49 @@
         </div>
 
         <div class="header-right">
-          <div class="mic-menu">
-            <button id="micState" class="btn btn-ghost btn-icon" type="button" aria-label="Microphone: not connected" aria-haspopup="true" aria-expanded="false" aria-controls="micMenu" data-tooltip="Microphone: not connected"><i data-lucide="mic-off"></i></button>
-            <div id="micMenu" class="dropdown-menu mic-dropdown hidden">
-              <div id="micStatusLabel" class="dropdown-menu-label">Microphone: not connected</div>
-              <div class="dropdown-menu-separator" role="separator"></div>
-              <button id="connectMic" class="dropdown-menu-item" type="button"><i data-lucide="mic"></i>Connect microphone</button>
-              <button id="releaseMic" class="dropdown-menu-item hidden" type="button"><i data-lucide="mic-off"></i>Release microphone</button>
-            </div>
-          </div>
           <button id="playButton" class="btn btn-default hidden" type="button" aria-label="Start" data-tooltip="Start"><i data-lucide="play" data-icon="inline-start"></i>Start</button>
         </div>
       </header>
+
+      <!-- Tests: the Speech Recognition Lab (speech-lab/), loaded on first open and kept alive. -->
+      <section id="testsView" class="tests-view hidden" aria-label="Tests">
+        <iframe id="testsFrame" title="Speech Recognition Lab" allow="microphone"></iframe>
+        <div id="testsNeedsServer" class="tests-needs-server hidden">
+          <h2>Tests need a local server</h2>
+          <p class="muted">The speech engines run in Web Workers and WebAssembly, which browsers won't load from a file opened on disk. From the repository root, run <code>python3 speech-lab/serve.py</code>, then open <code>http://localhost:8000/</code>.</p>
+        </div>
+      </section>
+
+      <!-- Settings: app-wide preferences, stored in this browser. -->
+      <section id="settingsView" class="settings-view hidden" aria-label="Settings">
+        <section class="card" aria-labelledby="audioSettingsTitle">
+          <div class="card-header">
+            <h2 id="audioSettingsTitle" class="card-title">Audio</h2>
+            <p class="muted">The microphone turns on when you press Start or Record, and off when you stop.</p>
+          </div>
+          <div class="card-content settings-rows">
+            <div class="settings-row">
+              <div class="settings-row-text"><span class="settings-row-label">Microphone</span><span id="micSettingsStatus" class="muted">Not connected</span></div>
+              <button id="connectMic" class="btn btn-outline btn-sm" type="button"><i data-lucide="mic" data-icon="inline-start"></i>Connect microphone</button>
+              <button id="releaseMic" class="btn btn-outline btn-sm hidden" type="button"><i data-lucide="mic-off" data-icon="inline-start"></i>Release microphone</button>
+            </div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="appearanceSettingsTitle">
+          <div class="card-header">
+            <h2 id="appearanceSettingsTitle" class="card-title">Appearance</h2>
+          </div>
+          <div class="card-content settings-rows">
+            <div class="settings-row">
+              <div class="settings-row-text"><span id="themeLabel" class="settings-row-label">Theme</span><span class="muted">System follows your device's light or dark setting.</span></div>
+              <div class="settings-select">
+                <button id="themeToggle" class="btn btn-outline btn-sm" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu" aria-labelledby="themeLabel themeValue"><span id="themeValue">Light</span><i data-lucide="chevron-down" data-icon="inline-end"></i></button>
+                <div id="themeMenu" class="dropdown-menu settings-select-menu hidden" role="menu" aria-labelledby="themeLabel"></div>
+              </div>
+            </div>
+          </div>
+        </section>
+      </section>
 
       <main id="editor" class="editor hidden">
         <nav class="row hidden">
@@ -116,12 +150,6 @@
         </ol>
       </nav>
       <div class="play-pane-actions">
-        <div class="help-menu">
-          <button id="playHelpToggle" class="btn btn-ghost btn-icon" type="button" aria-label="Rehearsal tips" aria-haspopup="true" aria-expanded="false" aria-controls="playHelp" data-tooltip="Help"><i data-lucide="circle-question-mark"></i></button>
-          <div id="playHelp" class="popover help-dropdown hidden">
-            <p>Use headphones to prevent the reader's audio from triggering the microphone. Allow microphone access once per script session. The microphone disconnects when you return to the library.</p>
-          </div>
-        </div>
         <button id="toggleScenes" class="btn btn-ghost btn-icon" type="button" aria-label="Scenes" aria-controls="playSidebar" aria-expanded="true" data-tooltip="Hide scenes"><i data-lucide="list"></i></button>
         <button id="closePlay" class="btn btn-ghost btn-icon" type="button" aria-label="Close play mode" data-tooltip="Close"><i data-lucide="x"></i></button>
       </div>
@@ -142,6 +170,10 @@
             <button id="start" class="btn btn-default" type="button"><i data-lucide="play" data-icon="inline-start"></i>Start</button>
             <button id="stop" class="btn btn-secondary hidden" type="button"><i data-lucide="square" data-icon="inline-start"></i>Stop</button>
             <p class="play-meta"><span id="progress"></span><span id="status" role="status">Ready</span></p>
+            <div class="play-detection">
+              <button id="playDetectionToggle" class="btn btn-ghost" type="button" aria-label="Line detection" aria-haspopup="true" aria-expanded="false" aria-controls="playDetectionMenu" data-tooltip="Line detection"><i data-lucide="audio-lines" data-icon="inline-start"></i><span id="playDetectionLabel" class="play-detection-label">Voice activity</span></button>
+              <div id="playDetectionMenu" class="dropdown-menu play-detection-menu hidden" role="menu"></div>
+            </div>
             <div class="play-settings">
               <button id="playSettingsToggle" class="btn btn-ghost btn-icon" type="button" aria-label="Rehearsal settings" aria-haspopup="true" aria-expanded="false" aria-controls="playSettingsMenu" data-tooltip="Settings"><i data-lucide="settings-2"></i></button>
               <div id="playSettingsMenu" class="dropdown-menu play-settings-menu hidden" role="menu"></div>

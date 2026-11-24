@@ -111,9 +111,10 @@ registerProcessor('lab-tap', Tap);
 `;
 
 // Opens the microphone. onSamples(Float32Array at 16 kHz) is called as audio arrives.
+// Pass `stream` to use a MediaStream you already have (it is left running on stop()).
 // Returns { stop(): Promise<{ raw16k: Float32Array }>, nativeRate }.
-export async function openMicrophone({ voiceProcessing = true, onSamples }) {
-  const stream = await navigator.mediaDevices.getUserMedia({
+export async function openMicrophone({ voiceProcessing = true, onSamples, stream: given = null, record = true }) {
+  const stream = given || await navigator.mediaDevices.getUserMedia({
     audio: {
       channelCount: 1,
       echoCancellation: voiceProcessing,
@@ -133,7 +134,7 @@ export async function openMicrophone({ voiceProcessing = true, onSamples }) {
   tap.port.onmessage = (e) => {
     const out = resampler.process(e.data);
     if (!out.length) return;
-    recorded.push(out);
+    if (record) recorded.push(out);
     onSamples(out);
   };
   source.connect(tap);
@@ -143,7 +144,7 @@ export async function openMicrophone({ voiceProcessing = true, onSamples }) {
     async stop() {
       tap.port.onmessage = null;
       source.disconnect();
-      stream.getTracks().forEach((t) => t.stop());
+      if (!given) stream.getTracks().forEach((t) => t.stop());
       await ctx.close();
       const tail = resampler.flush();
       if (tail.length) onSamples(tail);

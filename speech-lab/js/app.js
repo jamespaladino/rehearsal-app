@@ -7,6 +7,8 @@ import { Chunker, MODEL_RATE, openMicrophone, decodeAudioFile, resampleAll, enco
 import { autoCue, tokenize, findCue, TranscriptState } from './cue.js';
 import { replay, computeRun, summarise } from './bench.js';
 import { exportJson, exportCsv, download } from './export.js';
+import { listScripts, lineLabel } from './scripts.js';
+import { setupFullRun } from './fullrun.js';
 
 const $ = (id) => document.getElementById(id);
 const el = (tag, attrs = {}, ...children) => {
@@ -74,14 +76,23 @@ function restoreSettings() {
 
 // ---- Theme (shares the main app's saved preference) ------------------------------
 
-function applyTheme(dark) {
+// The saved choice is 'light', 'dark' or 'system' (follows the device), as set in the app's Settings.
+const systemDark = matchMedia('(prefers-color-scheme: dark)');
+let themeChoice = 'light';
+try { themeChoice = localStorage.getItem('rehearsal-theme') || 'light'; } catch (e) {}
+function applyTheme() {
+  const dark = themeChoice === 'dark' || (themeChoice === 'system' && systemDark.matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   $('themeLight').setAttribute('aria-pressed', String(!dark));
   $('themeDark').setAttribute('aria-pressed', String(dark));
 }
-$('themeLight').onclick = () => { applyTheme(false); try { localStorage.setItem('rehearsal-theme', 'light'); } catch (e) {} };
-$('themeDark').onclick = () => { applyTheme(true); try { localStorage.setItem('rehearsal-theme', 'dark'); } catch (e) {} };
-applyTheme(document.documentElement.dataset.theme === 'dark');
+function setTheme(choice) { themeChoice = choice; applyTheme(); try { localStorage.setItem('rehearsal-theme', choice); } catch (e) {} }
+$('themeLight').onclick = () => setTheme('light');
+$('themeDark').onclick = () => setTheme('dark');
+applyTheme();
+systemDark.addEventListener('change', () => { if (themeChoice === 'system') applyTheme(); });
+// Follow theme changes made in the main app (e.g. when embedded in its Tests view).
+window.addEventListener('storage', (e) => { if (e.key === 'rehearsal-theme') { themeChoice = e.newValue || 'light'; applyTheme(); } });
 
 // ---- Engine cards --------------------------------------------------------------
 
@@ -96,7 +107,7 @@ function renderEngineCards() {
     const stats = el('dl');
     const btn = el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: () => loadEngine(a.id).catch(() => {}) }, 'Load model');
     const card = el('div', { class: 'engine-card' },
-      el('div', { class: 'take-head' }, el('h3', {}, a.label), el('span', { class: 'grow' }), btn),
+      el('div', { class: 'take-head' }, el('h3', {}, a.label), el('span', { class: 'spacer' }), btn),
       el('dl', {},
         el('dt', {}, 'Runtime'), el('dd', {}, `${a.info.runtime} (${a.info.runtimeLicense})`),
         el('dt', {}, 'Model'), el('dd', {}, `${a.info.model} (${a.info.modelLicense})`)),
@@ -169,7 +180,7 @@ $('engineToggle').addEventListener('click', (e) => {
 function updateAutoCue() {
   if ($('cueAuto').checked) $('cue').value = autoCue($('expected').value, Number($('cueWords').value) || 5);
 }
-$('expected').addEventListener('input', () => { updateAutoCue(); onSettingsChanged(); });
+$('expected').addEventListener('input', () => { updateAutoCue(); syncLineState(); onSettingsChanged(); });
 $('cueWords').addEventListener('input', () => { updateAutoCue(); onSettingsChanged(); });
 $('cueAuto').addEventListener('change', () => { updateAutoCue(); onSettingsChanged(); });
 $('cue').addEventListener('input', () => { $('cueAuto').checked = false; onSettingsChanged(); });
@@ -183,6 +194,156 @@ function onSettingsChanged() {
   renderTakes();
   renderResults();
 }
+
+// ---- Script picker ---------------------------------------------------------------
+// Fills the expected dialogue (and the auto cue) from one of your lines in a Rehearsal script.
+// Scripts are read from the app's IndexedDB, read-only (js/scripts.js). state.line is the picked
+// line; takes recorded or loaded while it's current remember it. Editing the dialogue by hand
+// unlinks it.
+
+const PICK_KEY = 'speech-lab-picked-line';
+state.scripts = [];
+state.line = null;
+
+const currentScript = () => state.scripts.find((s) => s.id === $('scriptPicker').value) || null;
+
+let loadSeq = 0;
+async function loadScripts() {
+  const seq = ++loadSeq;
+  let scripts;
+  try {
+    scripts = await listScripts();
+  } catch (err) {
+    console.error('Could not read Rehearsal scripts', err);
+    scripts = [];
+  }
+  if (seq !== loadSeq) return; // a newer refresh started meanwhile
+  // Read the current selection only now: the user may have picked a line while we waited.
+  const keep = { script: $('scriptPicker').value, line: $('linePicker').value };
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem(PICK_KEY) || 'null'); } catch (e) { /* ignore */ }
+  const unchanged = JSON.stringify(scripts) === JSON.stringify(state.scripts);
+  state.scripts = scripts;
+  if (unchanged && keep.script) return; // nothing to redraw
+  const sp = $('scriptPicker');
+  sp.textContent = '';
+  if (!state.scripts.length) {
+    sp.append(el('option', { value: '' }, 'No scripts found in Rehearsal'));
+    sp.disabled = true;
+  } else {
+    sp.disabled = false;
+    sp.append(el('option', { value: '' }, 'None (type dialogue below)'));
+    for (const s of state.scripts) {
+      sp.append(el('option', { value: s.id }, `${s.title} (${s.lines.length} ${s.lines.length === 1 ? 'line' : 'lines'})`));
+    }
+  }
+  const wantScript = keep.script || (saved && saved.scriptId) || '';
+  sp.value = state.scripts.some((s) => s.id === wantScript) ? wantScript : '';
+  const wantLine = keep.line || (saved && saved.scriptId === sp.value && saved.turnIndex != null ? String(saved.turnIndex) : '');
+  renderLineOptions(wantLine);
+  syncLineState();
+}
+
+function renderLineOptions(selected = '') {
+  const lp = $('linePicker');
+  const s = currentScript();
+  lp.textContent = '';
+  if (!s || !s.lines.length) {
+    lp.append(el('option', { value: '' }, s ? 'No lines for your character in this script' : 'Choose a script first'));
+    lp.disabled = true;
+    return;
+  }
+  lp.disabled = false;
+  lp.append(el('option', { value: '' }, 'Choose a line…'));
+  let group = null;
+  let scene = null;
+  for (const line of s.lines) {
+    if (line.scene !== scene) {
+      scene = line.scene;
+      group = el('optgroup', { label: scene });
+      lp.append(group);
+    }
+    group.append(el('option', { value: String(line.turnIndex) }, lineLabel(line)));
+  }
+  lp.value = s.lines.some((l) => String(l.turnIndex) === selected) ? selected : '';
+}
+
+function pickLine(turnIndex) {
+  const s = currentScript();
+  const line = s && s.lines.find((l) => l.turnIndex === turnIndex);
+  $('linePicker').value = line ? String(turnIndex) : '';
+  if (line) {
+    $('expected').value = line.text;
+    $('cueAuto').checked = true;
+    updateAutoCue();
+  }
+  syncLineState();
+  onSettingsChanged();
+}
+
+// Works out which line (if any) the current dialogue belongs to, and updates the context note,
+// the Next line button and the remembered pick.
+function syncLineState() {
+  const s = currentScript();
+  const idx = $('linePicker').value;
+  const line = s && idx !== '' ? s.lines.find((l) => String(l.turnIndex) === idx) : null;
+  const matches = line && line.text === $('expected').value.trim();
+  state.line = matches
+    ? { scriptId: s.id, scriptTitle: s.title, turnIndex: line.turnIndex, scene: line.scene, lineInScene: line.lineInScene, character: line.character, text: line.text }
+    : null;
+  if (line && !matches) $('linePicker').value = ''; // dialogue was edited by hand: unlink
+  const ctx = $('lineContext');
+  if (state.line) {
+    ctx.textContent = line.previous ? `After ${line.previous.character}: “${line.previous.text}”` : 'First spoken line of the scene.';
+    ctx.classList.remove('hidden');
+  } else {
+    ctx.classList.add('hidden');
+  }
+  const pos = s && state.line ? s.lines.findIndex((l) => l.turnIndex === state.line.turnIndex) : -1;
+  $('nextLine').disabled = !s || !s.lines.length || pos === s.lines.length - 1;
+  $('fullRun').disabled = !s || !s.lines.length;
+  try {
+    localStorage.setItem(PICK_KEY, JSON.stringify({ scriptId: $('scriptPicker').value, turnIndex: state.line ? state.line.turnIndex : null }));
+  } catch (e) { /* private mode */ }
+}
+
+$('scriptPicker').addEventListener('change', () => { renderLineOptions(''); syncLineState(); });
+$('linePicker').addEventListener('change', () => {
+  const v = $('linePicker').value;
+  if (v === '') { syncLineState(); return; }
+  pickLine(Number(v));
+});
+$('nextLine').addEventListener('click', () => {
+  const s = currentScript();
+  if (!s || !s.lines.length) return;
+  const pos = state.line ? s.lines.findIndex((l) => l.turnIndex === state.line.turnIndex) : -1;
+  const next = s.lines[pos + 1];
+  if (next) pickLine(next.turnIndex);
+});
+$('refreshScripts').addEventListener('click', () => loadScripts());
+// Pick up edits made in the app's script editor when you come back to the lab.
+window.addEventListener('focus', () => { if (!state.live && !(typeof fullRun !== 'undefined' && fullRun.isRunning())) loadScripts(); });
+
+// ---- Test full script ------------------------------------------------------------------
+
+const fullRun = setupFullRun({
+  el,
+  settings,
+  adapters: () => state.adapters,
+  loadEngine,
+  liveEngine: () => state.liveEngine,
+  renderTranscript: (...a) => renderTranscript(...a),
+  addTake: (...a) => addTake(...a),
+  voiceProcessing: () => $('voiceProcessing').checked,
+  beforeOpen: async () => { if (state.live) await stopLive(); },
+});
+$('fullRun').addEventListener('click', () => {
+  if (state.benchAbort) { alert('Wait for the benchmark to finish, or stop it first.'); return; }
+  const s = currentScript();
+  if (s) fullRun.open(s.id, state.line ? state.line.turnIndex : null);
+});
+
+const lineText = (line) => `${line.scriptTitle} · ${line.scene} · line ${line.lineInScene} (${line.character})`;
 
 // ---- Transcript rendering with cue highlight --------------------------------------
 
@@ -252,7 +413,7 @@ async function startLive() {
     setBadge($('liveFuzzy'), 'Fuzzy', null);
     live.mic = await openMicrophone({ voiceProcessing: $('voiceProcessing').checked, onSamples: (x) => chunker.push(x) });
     live.t0 = performance.now();
-    live.snapshot = { expected: s.expected, cue: s.cue };
+    live.snapshot = { expected: s.expected, cue: s.cue, line: state.line };
     state.live = live;
     $('micStart').classList.add('hidden');
     $('micStop').classList.remove('hidden');
@@ -288,7 +449,7 @@ $('micStop').onclick = stopLive;
 
 // ---- Takes -------------------------------------------------------------------------
 
-function addTake({ samples, source, name, expected, cue }) {
+function addTake({ samples, source, name, expected, cue, line }) {
   const s = settings();
   const take = {
     id: state.nextTake++,
@@ -297,6 +458,7 @@ function addTake({ samples, source, name, expected, cue }) {
     source,
     expected: expected ?? s.expected,
     cue: cue ?? s.cue,
+    line: line === undefined ? state.line : line,
     cueEnd: Number(suggestSpeechEnd(samples).toFixed(2)),
     cueEndSource: 'suggested: end of speech',
   };
@@ -400,7 +562,7 @@ function renderTakes() {
       el('div', { class: 'take-head' },
         el('span', { class: 'name' }, take.name),
         el('span', { class: 'muted' }, `${dur.toFixed(2)} s · ${take.source}`),
-        el('span', { class: 'grow' }),
+        el('span', { class: 'spacer' }),
         el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => play(take, canvas, 0) }, ic('play'), 'Play'),
         el('button', { class: 'btn btn-ghost btn-sm', type: 'button', title: 'Play the 2 s before the cue end, then 0.5 s after', onclick: () => take.cueEnd != null && play(take, canvas, Math.max(0, take.cueEnd - 2), Math.min(dur, take.cueEnd + 0.5)) }, ic('scan-search'), 'Audition cue end'),
         el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => state.playing && state.playing.stop() }, ic('square'), 'Stop'),
@@ -417,12 +579,14 @@ function renderTakes() {
         el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: () => setCueEnd(suggestSpeechEnd(take.samples), 'suggested: end of speech') }, 'Suggest end of speech'),
         sourceNote),
       el('div', { class: 'take-meta' },
+        take.line ? el('div', {}, el('span', { class: 'muted' }, 'Line: '), lineText(take.line)) : null,
         el('div', {}, el('span', { class: 'muted' }, 'Cue: '), `“${take.cue}”`),
         el('div', {}, el('span', { class: 'muted' }, 'Expected: '), take.expected),
         stale ? el('button', { class: 'btn btn-link btn-xs', type: 'button', onclick: () => {
           const cur = settings();
           take.cue = cur.cue;
           take.expected = cur.expected;
+          take.line = state.line;
           renderTakes();
           renderResults();
         } }, 'Use current dialogue and cue for this take') : null));
@@ -494,6 +658,7 @@ function buildReport() {
       return {
         engine: r.engine,
         take: take.name,
+        line: take.line,
         cue: take.cue,
         expected: take.expected,
         cueEnd: take.cueEnd,
@@ -520,7 +685,7 @@ function buildReport() {
       sampleRate: MODEL_RATE,
     },
     engines: Object.fromEntries(engineIds.map((id) => [id, { label: state.adapters[id].label, ...state.adapters[id].info, loadStats: state.adapters[id].loadStats }])),
-    takes: state.takes.map((t) => ({ name: t.name, source: t.source, duration: t.samples.length / MODEL_RATE, cueEnd: t.cueEnd, cueEndSource: t.cueEndSource, cue: t.cue, expected: t.expected })),
+    takes: state.takes.map((t) => ({ name: t.name, source: t.source, duration: t.samples.length / MODEL_RATE, cueEnd: t.cueEnd, cueEndSource: t.cueEndSource, cue: t.cue, expected: t.expected, line: t.line })),
     summary,
     runs,
   };
@@ -585,7 +750,7 @@ function renderResults() {
   for (const r of report.runs) {
     tb.append(el('tr', {},
       el('td', {}, label(r.engine)),
-      el('td', {}, r.take),
+      el('td', {}, r.take, r.line ? el('div', { class: 'muted' }, `${r.line.scene} · line ${r.line.lineInScene}`) : null),
       el('td', {}, fmtS(r.cueEnd)),
       el('td', {}, status(r.metrics.exact)),
       el('td', {}, status(r.metrics.fuzzy)),
@@ -634,6 +799,7 @@ async function init() {
   state.pins = await (await fetch(new URL('../pins.json', import.meta.url))).json();
   state.adapters = { sherpa: new SherpaAdapter(state.pins), vosk: new VoskAdapter(state.pins) };
   renderEngineCards();
+  await loadScripts();
   onSettingsChanged();
   if (window.renderIcons) window.renderIcons();
   checkSetup(state.pins);
@@ -647,4 +813,4 @@ init().catch((err) => {
 });
 
 // Test hook for automated checks (not used by the UI).
-window.__lab = { state, addTake, runBenchmark, buildReport, loadEngine, settings };
+window.__lab = { state, addTake, runBenchmark, buildReport, loadEngine, settings, loadScripts, pickLine, fullRun };

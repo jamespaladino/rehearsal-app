@@ -10,6 +10,29 @@ Open `index.html` in a modern browser (Chrome, Edge, Safari or Firefox). Opening
 
 The microphone only works on `file://` or `http://localhost`. If you host the app anywhere else, serve it over HTTPS.
 
+## Line detection in play mode
+
+The **line detection** menu in the play bar (next to the settings button; it shows the current mode, and is icon-only on phones) chooses how the app decides you've finished a line. These choices are saved for this device, not per script. The settings button keeps Reader spacing.
+
+- **Voice activity (pause)** is the default and needs no setup. Your line ends after a short pause; `(then)` or `(beat)` inside a line marks a pause with more to come.
+- **Vosk** or **Sherpa-ONNX speech recognition** listens to the words instead and moves on as soon as it hears the last words of your line (the **cue**). **Cue** sets how many words that is (default 5). These engines need the one-time `python3 speech-lab/setup.py` and the app served by `python3 speech-lab/serve.py`. If an engine can't load, play mode says so and uses voice activity.
+- **Shorter lines: use voice activity** is an experiment, off by default. Lines with fewer words than the cue finish on a pause instead of speech recognition.
+
+The engines are loaded on demand from `speech-lab/js/rehearsal-engine.js`, the same code the Tests lab benchmarks.
+
+## Tests
+
+**Tests**, at the top of the sidebar, opens the Speech Recognition Lab (`speech-lab/`) in the main area, the way a script opens. It benchmarks offline speech engines for cue detection. It needs a one-time `python3 speech-lab/setup.py` and a local server (`python3 speech-lab/serve.py`, then open `http://localhost:8000/`). It doesn't work from `file://`. Use `serve.py` rather than `python3 -m http.server`: the plain server sends no cache headers, so browsers can keep running old JavaScript after an update. See `speech-lab/README.md`.
+
+## Settings
+
+**Settings** sits under Tests at the top of the sidebar. Choices are saved in this browser (`localStorage`).
+
+- **Audio:** the microphone's status with **Connect microphone** / **Release microphone**. The microphone uses the browser's default processing (echo cancellation, noise suppression and automatic gain control all on).
+- **Appearance:** a Theme dropdown with System, Light or Dark. System follows the device and updates when it changes.
+
+The microphone is released when you stop a reader recording, and in play mode when a scene ends or you press Stop.
+
 ## Project structure
 
 ```
@@ -61,4 +84,4 @@ Sizes: default (32px), `btn-xs`, `btn-sm`, `btn-lg`, `btn-icon`, `btn-icon-xs`, 
 
 ## Theme
 
-Colours follow the shadcn preset in `css/tokens.css`. To switch presets, replace the two preset blocks at the top of that file with the values from `https://ui.shadcn.com/init?preset=<code>`. Light and dark mode are chosen with `data-theme` on `<html>`, and the choice is saved in `localStorage`.
+Colours follow the shadcn preset in `css/tokens.css`. To switch presets, replace the two preset blocks at the top of that file with the values from `https://ui.shadcn.com/init?preset=<code>`. Light and dark mode are applied with `data-theme` on `<html>`. The saved choice (`system`, `light` or `dark`) is in `localStorage` under `rehearsal-theme`.

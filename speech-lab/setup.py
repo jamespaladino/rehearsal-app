@@ -223,8 +223,8 @@ def main():
         ok = setup_samples(pins, args.verify) and ok
     if not ok:
         sys.exit("Some files are missing or do not match pins.json. Run without --verify to install.")
-    print("\nDone. Serve the repository root, e.g.  python3 -m http.server 8000")
-    print("and open http://localhost:8000/speech-lab/")
+    print("\nDone. Start the local server:  python3 speech-lab/serve.py")
+    print("then open http://localhost:8000/ and choose Tests in the sidebar.")
 
 
 if __name__ == "__main__":

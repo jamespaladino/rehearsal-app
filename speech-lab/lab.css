@@ -12,6 +12,10 @@
   background: var(--background);
 }
 
+:root[data-embed] .lab-header {
+  display: none;
+}
+
 .lab-title {
   display: flex;
   align-items: baseline;
@@ -89,6 +93,58 @@ input[type="range"] {
 
 .grow {
   flex: 1 1 260px;
+}
+
+/* Pushes following items to the end of a flex row without forcing a wrap. */
+.spacer {
+  flex: 1 1 0;
+}
+
+/* Native select styled like the design system's inputs (shadcn NativeSelect: h-8, text-sm). */
+select {
+  box-sizing: border-box;
+  width: 100%;
+  height: 32px;
+  padding: 0 28px 0 10px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  background: var(--input-surface) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' fill='none' stroke='%23888' stroke-width='2' stroke-linecap='round' stroke-linejoin='round' viewBox='0 0 24 24'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 14px;
+  appearance: none;
+}
+
+select:focus-visible {
+  outline: none;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px var(--focus-ring);
+}
+
+select:disabled {
+  opacity: 0.5;
+}
+
+select option,
+select optgroup {
+  background: var(--popover);
+  color: var(--popover-foreground);
+}
+
+.picker-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 12px;
+}
+
+.picker-field {
+  flex: 1 1 200px;
+  min-width: 0;
+}
+
+.picker-line {
+  flex: 3 1 320px;
 }
 
 .cue-row {
@@ -327,4 +383,160 @@ table.results td.best {
 details summary {
   cursor: pointer;
   font-size: 14px;
+}
+
+/* ---- Test full script (modal) ---- */
+
+.run-dialog {
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  width: min(960px, calc(100vw - 32px));
+  height: min(860px, calc(100vh - 32px));
+  overflow: hidden;
+  border-radius: var(--radius-xl);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  font-size: 14px;
+  line-height: 20px;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent), 0 10px 30px rgb(0 0 0 / 15%);
+}
+
+.run-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.run-heading {
+  display: grid;
+  flex: 1 1 320px;
+  gap: 8px;
+}
+
+.run-options {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+label.run-field {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+label.run-field select {
+  width: auto;
+}
+
+.run-script {
+  flex: 1;
+  min-height: 0;
+  margin: 0;
+  padding: 16px max(16px, calc((100% - 640px) / 2)) 40vh;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.run-turn {
+  margin: 0 0 4px;
+  padding: 8px 12px;
+  border-left: 3px solid transparent;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  transition: opacity 150ms, background-color 150ms;
+}
+
+@media (hover: hover) {
+  .run-turn:hover {
+    background: color-mix(in oklch, var(--muted) 60%, transparent);
+  }
+}
+
+.run-turn[data-who="me"] {
+  border-left-color: var(--ring);
+}
+
+.run-turn[data-start] {
+  box-shadow: inset 0 0 0 1px var(--ring);
+}
+
+.run-turn[data-done] {
+  opacity: 0.5;
+}
+
+.run-turn[data-current] {
+  background: var(--muted);
+  opacity: 1;
+}
+
+.run-turn[data-current] .run-text {
+  font-weight: 500;
+}
+
+.run-scene {
+  margin-top: 12px;
+  font-family: var(--font-screenplay);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.run-action {
+  color: var(--muted-foreground);
+  font-style: italic;
+}
+
+.run-beat {
+  color: var(--muted-foreground);
+  font-size: 13px;
+}
+
+.run-char {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.run-text {
+  font-size: 17px;
+  line-height: 26px;
+}
+
+.run-result:not(:empty) {
+  margin-top: 6px;
+}
+
+.run-footer {
+  display: grid;
+  gap: 10px;
+  padding: 12px 16px 16px;
+  border-top: 1px solid var(--border);
+  background: color-mix(in oklch, var(--muted) 40%, transparent);
+}
+
+.run-heard {
+  min-height: 54px;
+  max-height: 96px;
+  overflow-y: auto;
+}
+
+.run-summary {
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--background);
+  font-size: 13px;
 }

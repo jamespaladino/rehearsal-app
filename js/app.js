@@ -38,17 +38,18 @@ $('collapseSidebar').onclick=()=>setSidebar(false);
 $('openSidebar').onclick=()=>setSidebar(true);
 $('sidebarBackdrop').onclick=()=>setSidebar(false);
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&shell.classList.contains('sidebar-mobile-open')&&!modalAction)setSidebar(false)});
-// Theme: a shadcn ToggleGroup (sun = light, moon = dark); the active theme shows as pressed.
-function applyTheme(theme){
-  const dark=theme==='dark';document.documentElement.dataset.theme=dark?'dark':'light';
-  $('themeLight').setAttribute('aria-pressed',String(!dark));
-  $('themeDark').setAttribute('aria-pressed',String(dark));
+// Theme: 'system' (follows the device), 'light' or 'dark', chosen in Settings.
+const systemDark=window.matchMedia('(prefers-color-scheme: dark)');
+const THEMES=[{value:'system',label:'System',icon:'monitor'},{value:'light',label:'Light',icon:'sun'},{value:'dark',label:'Dark',icon:'moon'}];
+let themeChoice='light';try{themeChoice=localStorage.getItem('rehearsal-theme')||'light'}catch(e){}
+function applyTheme(){
+  const dark=themeChoice==='dark'||(themeChoice==='system'&&systemDark.matches);
+  document.documentElement.dataset.theme=dark?'dark':'light';
+  $('themeValue').textContent=(THEMES.find(t=>t.value===themeChoice)||THEMES[1]).label;
 }
-let savedTheme='light';try{savedTheme=localStorage.getItem('rehearsal-theme')||'light'}catch(e){}
-applyTheme(savedTheme);
-for(const [id,theme] of [['themeLight','light'],['themeDark','dark']]){
-  $(id).addEventListener('click',()=>{applyTheme(theme);try{localStorage.setItem('rehearsal-theme',theme)}catch(e){}});
-}
+function setTheme(choice){themeChoice=choice;applyTheme();try{localStorage.setItem('rehearsal-theme',choice)}catch(e){}}
+applyTheme();
+systemDark.addEventListener('change',()=>{if(themeChoice==='system')applyTheme()});
 
 let db,script=null,recorder=null,stream=null,chunks=[],audioCtx=null,analyser=null,raf=null,playing=false,idx=0,heard=false,speechAt=0,lastVoice=0,noiseFloor=.015,activeAudio=null,beatTimer=null,partsNeeded=1,partsHeard=0,gapTimer=null;
 // Every reader recording currently sounding (more than one while lines overlap).
@@ -67,14 +68,9 @@ async function getMicrophone(){
 }
 function updateMicState(){
   const live=!!(stream && stream.getAudioTracks().some(t=>t.readyState==='live'));
-  const label=live?'Microphone: connected (released on return to library)':'Microphone: not connected';
-  const micButton=$('micState');
-  micButton.replaceChildren(icon(live?'mic':'mic-off'));
-  micButton.setAttribute('aria-label',label);
-  setTip(micButton,label);
-  $('micStatusLabel').textContent=label;
   $('connectMic').classList.toggle('hidden',live);
   $('releaseMic').classList.toggle('hidden',!live);
+  $('micSettingsStatus').textContent=live?'Connected':'Not connected';
 }
 function releaseMicrophone(){
   stop();
@@ -82,19 +78,31 @@ function releaseMicrophone(){
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
   updateMicState();
 }
-// Microphone dropdown: status label plus Connect / Release.
-function setMicMenu(open){
-  $('micMenu').classList.toggle('hidden',!open);
-  $('micState').setAttribute('aria-expanded',String(open));
+// Gives the microphone back when a run ends (scene finished or Stop in play mode, or Stop on a
+// reader recording), so the browser's mic indicator goes off in between. The next Start or Record
+// asks for it again (no prompt once allowed). Unlike releaseMicrophone() it doesn't call stop()
+// again, and it leaves the mic alone while a recording or a run is still going.
+function releaseMicIfIdle(){
+  if(playing||(recorder&&recorder.state!=='inactive'))return;
+  if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
+  updateMicState();
 }
-$('micState').onclick=e=>{e.stopPropagation();setMicMenu($('micMenu').classList.contains('hidden'))};
-$('micMenu').onclick=e=>e.stopPropagation();
-document.addEventListener('click',()=>setMicMenu(false));
-document.addEventListener('keydown',e=>{if(e.key==='Escape')setMicMenu(false)});
-$('connectMic').onclick=async()=>{setMicMenu(false);try{await getMicrophone()}catch(e){alert('Microphone unavailable: '+e.message)}};
-$('releaseMic').onclick=()=>{setMicMenu(false);releaseMicrophone()};
+// Microphone dropdown: status label plus Connect / Release.
+// Settings > Appearance: theme dropdown (radio items, right-aligned under its button).
+function setThemeMenu(open){
+  if(open)$('themeMenu').replaceChildren(...THEMES.map(t=>dropdownRadioItem({label:t.label,icon:t.icon,checked:t.value===themeChoice,onSelect:()=>{setTheme(t.value);setThemeMenu(false);$('themeToggle').focus()}})));
+  $('themeMenu').classList.toggle('hidden',!open);
+  $('themeToggle').setAttribute('aria-expanded',String(open));
+  if(open)$('themeMenu').querySelector('[aria-checked="true"]')?.focus({preventScroll:true});
+}
+$('themeToggle').onclick=e=>{e.stopPropagation();setThemeMenu($('themeMenu').classList.contains('hidden'))};
+$('themeMenu').onclick=e=>e.stopPropagation();
+document.addEventListener('click',()=>setThemeMenu(false));
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('themeMenu').classList.contains('hidden')){setThemeMenu(false);$('themeToggle').focus()}});
+$('connectMic').onclick=async()=>{try{await getMicrophone()}catch(e){alert('Microphone unavailable: '+e.message)}};
+$('releaseMic').onclick=()=>releaseMicrophone();
 window.addEventListener('pagehide',()=>{if(stream)stream.getTracks().forEach(t=>t.stop())});
-const req=indexedDB.open('rehearsal-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('scripts',{keyPath:'id'});req.onsuccess=async()=>{db=req.result;try{const scripts=await getAll();const lastId=localStorage.getItem("rehearsal-last-opened");const target=scripts.find(s=>s.id===lastId)||scripts[0];if(target)await openScript(target);else await library()}catch(e){console.error("Could not restore last script",e);await library()}};req.onerror=()=>alert('Local storage unavailable. Try a modern browser.');
+const req=indexedDB.open('rehearsal-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('scripts',{keyPath:'id'});req.onsuccess=async()=>{db=req.result;try{const scripts=await getAll();const lastId=localStorage.getItem("rehearsal-last-opened");if(lastId==='tests'){await openTests();return}if(lastId==='settings'){await openSettings();return}const target=scripts.find(s=>s.id===lastId)||scripts[0];if(target)await openScript(target);else await library()}catch(e){console.error("Could not restore last script",e);await library()}};req.onerror=()=>alert('Local storage unavailable. Try a modern browser.');
 const store=(mode='readonly')=>db.transaction('scripts',mode).objectStore('scripts');const getAll=()=>new Promise((ok,no)=>{let r=store().getAll();r.onsuccess=()=>ok(r.result);r.onerror=no});const put=s=>new Promise((ok,no)=>{let r=store('readwrite').put(s);r.onsuccess=ok;r.onerror=no});const del=id=>new Promise((ok,no)=>{let r=store('readwrite').delete(id);r.onsuccess=ok;r.onerror=no});
 function el(tag,text){let x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x}
 // shadcn DropdownMenuItem. variant: undefined (default) or 'destructive'; iconName: optional Lucide icon.
@@ -125,16 +133,32 @@ function dropdownRadioItem(opt){
 }
 // shadcn DropdownMenuSub with RadioItems: a trigger row that opens a list to its right.
 // options: [{label, icon?, checked, onSelect}] — the checked option shows a check mark.
-function dropdownSubmenu(triggerIcon,triggerLabel,options){
+// extra: {value?, note?} — value shows muted at the end of the trigger (DropdownMenuShortcut),
+// note is a short explanation at the top of the submenu. triggerIcon may be null.
+// The submenu flips left / bottom-aligns when it would leave the window.
+function dropdownSubmenu(triggerIcon,triggerLabel,options,extra={}){
   const sub=el('div');sub.className='dropdown-menu-sub';
   const trigger=el('button');trigger.type='button';trigger.className='dropdown-menu-sub-trigger';
   trigger.setAttribute('aria-haspopup','menu');trigger.setAttribute('aria-expanded','false');
-  trigger.append(icon(triggerIcon),el('span',triggerLabel),icon('chevron-right'));
+  if(triggerIcon)trigger.append(icon(triggerIcon));
+  trigger.append(el('span',triggerLabel));
+  if(extra.value!=null){const value=el('span',extra.value);value.className='dropdown-menu-shortcut';trigger.append(value)}
+  trigger.append(icon('chevron-right'));
   const content=el('div');content.className='dropdown-menu dropdown-menu-sub-content hidden';content.setAttribute('role','menu');
+  if(extra.note){const note=el('div',extra.note);note.className='dropdown-menu-note';content.append(note)}
   for(const opt of options)content.append(dropdownRadioItem(opt));
-  const setOpen=open=>{content.classList.toggle('hidden',!open);trigger.toggleAttribute('data-open',open);trigger.setAttribute('aria-expanded',String(open))};
-  trigger.onclick=e=>{e.stopPropagation();setOpen(content.classList.contains('hidden'))};
-  if(matchMedia('(hover: hover)').matches){sub.onmouseenter=()=>setOpen(true);sub.onmouseleave=()=>setOpen(false)}
+  const place=()=>{
+    delete content.dataset.side;delete content.dataset.align;
+    const r=content.getBoundingClientRect();
+    if(r.right>innerWidth-8){content.dataset.side='left';if(content.getBoundingClientRect().left<8)content.dataset.side='over'}
+    if(content.dataset.side!=='over'&&r.bottom>innerHeight-8)content.dataset.align='end';
+  };
+  const setOpen=open=>{content.classList.toggle('hidden',!open);trigger.toggleAttribute('data-open',open);trigger.setAttribute('aria-expanded',String(open));if(open)place()};
+  // With a mouse, hovering opens and leaving closes, so a click only ever opens (a toggle would
+  // close the submenu hover just opened). Touch screens toggle on tap.
+  const hover=matchMedia('(hover: hover)').matches;
+  trigger.onclick=e=>{e.stopPropagation();setOpen(hover||content.classList.contains('hidden'))};
+  if(hover){sub.onmouseenter=()=>setOpen(true);sub.onmouseleave=()=>setOpen(false)}
   trigger.onkeydown=e=>{if(e.key==='ArrowRight'){e.preventDefault();setOpen(true);content.querySelector('[aria-checked="true"]')?.focus()||content.querySelector('button')?.focus()}};
   content.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='Escape'){e.preventDefault();e.stopPropagation();setOpen(false);trigger.focus()}};
   sub.append(trigger,content);
@@ -152,17 +176,71 @@ const READER_SPACING=[
   {value:0.5,label:'½ second'},{value:1,label:'1 second'},{value:2,label:'2 seconds'},
 ];
 function readerSpacing(){const v=Number(script?.readerSpacing);return Number.isFinite(v)?Math.max(-5,Math.min(10,v)):0}
-// Play pane settings menu: a "Reader spacing" label with a radio list of spacings.
+// Line detection (saved for this device, not per script): how play mode decides you've finished
+// your line. Voice activity waits for a pause; the speech engines (from speech-lab/, see
+// speech-lab/js/rehearsal-engine.js) move on as soon as they hear the line's last N words (the cue).
+const LINE_DETECTION=[
+  {value:'vad',label:'Voice activity (pause)'},{value:'vosk',label:'Vosk speech recognition'},{value:'sherpa',label:'Sherpa-ONNX speech recognition'},
+];
+const CUE_WORDS=[2,3,4,5,6,8];
+function pref(key,fallback){try{return localStorage.getItem(key)??fallback}catch(e){return fallback}}
+function setPref(key,value){try{localStorage.setItem(key,String(value))}catch(e){}}
+function lineDetection(){const v=pref('rehearsal-line-detection','vad');return LINE_DETECTION.some(o=>o.value===v)?v:'vad'}
+function cueWords(){const n=Number(pref('rehearsal-cue-words',5));return CUE_WORDS.includes(n)?n:5}
+// Lines with fewer words than the cue length use voice activity instead (an experiment; off by default).
+function shortLinesUseVad(){return pref('rehearsal-short-lines-vad','false')==='true'}
+function menuLabel(text){const label=el('div',text);label.className='dropdown-menu-label';return label}
+// Menu row with a switch at its end (shadcn Switch inside a menuitemcheckbox).
+function dropdownSwitchItem(label,checked,onToggle){
+  const item=el('button');item.type='button';item.className='dropdown-menu-item';
+  item.setAttribute('role','menuitemcheckbox');item.setAttribute('aria-checked',String(checked));
+  const sw=el('span');sw.className='switch';sw.toggleAttribute('data-checked',checked);
+  const thumb=el('span');thumb.className='switch-thumb';sw.append(thumb);
+  item.append(el('span',label),sw);
+  item.onclick=e=>{e.stopPropagation();onToggle()};
+  return item;
+}
+// Line detection menu (play bar, left of settings): mode, cue length and the short-line switch.
+// The button shows the current mode.
+function renderPlayDetection(){
+  const pick=(apply,key)=>()=>{apply();renderPlayDetection();$('playDetectionMenu').querySelector(`[data-key="${key}"]`)?.focus({preventScroll:true})};
+  const detection=lineDetection();
+  const item=(b,key)=>{b.dataset.key=key;return b};
+  const items=[menuLabel('Line detection'),...LINE_DETECTION.map(o=>item(dropdownRadioItem({label:o.label,checked:o.value===detection,onSelect:pick(()=>{setPref('rehearsal-line-detection',o.value);if(playing)status('Line detection changes next time you press Start')},'detect-'+o.value)}),'detect-'+o.value))];
+  if(detection!=='vad'){
+    const words=cueWords();
+    const cue=dropdownSubmenu(null,'Cue',CUE_WORDS.map(n=>({label:`${n} words`,checked:n===words,onSelect:pick(()=>setPref('rehearsal-cue-words',n),'cue')})),
+      {value:`${words} words`,note:'Your line ends when the last words of it are heard.'});
+    cue.querySelector('.dropdown-menu-sub-trigger').dataset.key='cue';
+    const short=item(dropdownSwitchItem('Shorter lines use voice activity',shortLinesUseVad(),pick(()=>setPref('rehearsal-short-lines-vad',!shortLinesUseVad()),'short')),'short');
+    short.title=`Lines with fewer than ${words} words finish on a pause instead of speech recognition`;
+    items.push(dropdownSeparator(),cue,short);
+  }
+  $('playDetectionMenu').replaceChildren(...items);
+  updateDetectionButton();
+}
+function updateDetectionButton(){
+  const name={vad:'Voice activity',vosk:'Vosk',sherpa:'Sherpa-ONNX'}[lineDetection()];
+  $('playDetectionLabel').textContent=name;
+  $('playDetectionToggle').setAttribute('aria-label',`Line detection: ${name}`);
+  $('playDetectionToggle').dataset.tooltip=`Line detection: ${name}`;
+}
+function setPlayDetection(open){
+  if(open){setPlaySettings(false);renderPlayDetection()}
+  $('playDetectionMenu').classList.toggle('hidden',!open);
+  $('playDetectionToggle').setAttribute('aria-expanded',String(open));
+}
+// Play pane settings menu: reader spacing.
 function renderPlaySettings(){
   const current=readerSpacing();
-  const label=el('div','Reader spacing');label.className='dropdown-menu-label';
+  const label=menuLabel('Reader spacing');
   $('playSettingsMenu').replaceChildren(label,...READER_SPACING.map(o=>dropdownRadioItem({label:o.label,checked:o.value===current,onSelect:()=>{
     script.readerSpacing=o.value;queueSave(true);renderPlaySettings();
     $('playSettingsMenu').querySelector('[aria-checked="true"]')?.focus({preventScroll:true});
   }})));
 }
 function setPlaySettings(open){
-  if(open)renderPlaySettings();
+  if(open){setPlayDetection(false);renderPlaySettings()}
   $('playSettingsMenu').classList.toggle('hidden',!open);
   $('playSettingsToggle').setAttribute('aria-expanded',String(open));
 }
@@ -365,8 +443,36 @@ $('topRename').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden'
 $('topDelete').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden');openModal('delete',script)}};
 // New scripts start with just a scene heading (cursor in it). Enter adds the action, then Enter
 // again starts the first dialogue line.
-$('newScript').onclick=async()=>{closeMobileSidebar();await flushSave();const fresh={id:crypto.randomUUID(),title:'Untitled script',meCharacter:'ME',otherCharacters:[],turns:[{who:'heading',text:''}]};await put(fresh);await openScript(fresh);focusBlockText(0)};$('back').onclick=async()=>{await flushSave();stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader();library()};
-async function openScript(s){await flushSave();$('playButton').classList.remove('hidden');if(script?.id!==s.id){stop();releaseMicrophone()}script=s;script.lastUsed=Date.now();queueSave(true);try{localStorage.setItem("rehearsal-last-opened",s.id)}catch(e){}$('title').value=s.title;updateScriptHeader();$('editor').classList.remove('hidden');enterMode('record');render();library()}
+$('newScript').onclick=async()=>{closeMobileSidebar();await flushSave();const fresh={id:crypto.randomUUID(),title:'Untitled script',meCharacter:'ME',otherCharacters:[],turns:[{who:'heading',text:''}]};await put(fresh);await openScript(fresh);focusBlockText(0)};$('back').onclick=async()=>{await flushSave();stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');showView(null);updateScriptHeader();library()};
+async function openScript(s){showView(null);await flushSave();$('playButton').classList.remove('hidden');if(script?.id!==s.id){stop();releaseMicrophone()}script=s;script.lastUsed=Date.now();queueSave(true);try{localStorage.setItem("rehearsal-last-opened",s.id)}catch(e){}$('title').value=s.title;updateScriptHeader();$('editor').classList.remove('hidden');enterMode('record');render();library()}
+// Pages above the library (Tests, Settings) open in the main area the same way a script opens:
+// the current script closes, the sidebar row is selected, and it's remembered as last opened.
+// Tests is the Speech Recognition Lab (speech-lab/); it loads on first open and stays alive
+// (models, takes) while you switch to scripts and back.
+const PAGES={tests:{view:'testsView',row:'openTests',title:'Tests'},settings:{view:'settingsView',row:'openSettings',title:'Settings'}};
+function showView(name){
+  for(const [id,page] of Object.entries(PAGES)){
+    const on=id===name;
+    $(page.view).classList.toggle('hidden',!on);
+    const row=$(page.row);row.toggleAttribute('data-active',on);
+    if(on)row.setAttribute('aria-current','true');else row.removeAttribute('aria-current');
+  }
+  $('topViewTitle').classList.toggle('hidden',!name);
+  if(name)$('topViewTitle').textContent=PAGES[name].title;
+  if(name==='tests'){const f=$('testsFrame');const fromDisk=location.protocol==='file:';f.classList.toggle('hidden',fromDisk);$('testsNeedsServer').classList.toggle('hidden',!fromDisk);if(!fromDisk&&!f.getAttribute('src'))f.src='speech-lab/?embed'}
+}
+async function openPage(name){
+  // Tests uses its own microphone, so the app's is released. Settings leaves a connected
+  // microphone on, so its status and Release button show it (a recording in progress still ends).
+  closeMenu();closeMobileSidebar();await flushSave();stop();
+  if(name==='settings'){if(recorder&&recorder.state!=='inactive')recorder.stop()}else releaseMicrophone();
+  script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');
+  updateScriptHeader();showView(name);
+  try{localStorage.setItem('rehearsal-last-opened',name)}catch(e){}
+  await library();
+}
+const openTests=()=>openPage('tests'),openSettings=()=>openPage('settings');
+$('openTests').onclick=openTests;$('openSettings').onclick=openSettings;
 function showHome(){stop();$('scriptHeading').textContent=script.title||'Untitled script';$('scriptHome').classList.remove('hidden');$('workspace').classList.add('hidden')}
 function enterMode(m){$('scriptHome').classList.add('hidden');$('workspace').classList.remove('hidden');setMode(m)}
 $('home').onclick=()=>{script.title=$('title').value.trim()||'Untitled script';showHome()};$('enterRecord').onclick=()=>enterMode('record');$('enterPlay').onclick=()=>enterMode('play');
@@ -379,7 +485,7 @@ function openPlayPane(){
   const all=scenes();
   const kept=sceneRange.scriptId===script.id&&all.find(scene=>scene.start===sceneRange.start);
   selectScene(kept||all[0]);
-  setPlayHelp(false);setPlaySettings(false);
+  setPlaySettings(false);setPlayDetection(false);updateDetectionButton();
   setScenesOpen(mobileQuery.matches?false:scenesPreferred);
   $('playPane').classList.remove('hidden');document.body.style.overflow='hidden';
   display(true); // center the cued line now that the pane is visible
@@ -387,32 +493,28 @@ function openPlayPane(){
 }
 function closePlayPane(){
   const wasOpen=!$('playPane').classList.contains('hidden');
-  stop();setPlayHelp(false);setPlaySettings(false);$('playPane').classList.add('hidden');document.body.style.overflow='';
+  stop();setPlaySettings(false);setPlayDetection(false);$('playPane').classList.add('hidden');document.body.style.overflow='';
   if(wasOpen&&!$('playButton').classList.contains('hidden'))$('playButton').focus();
 }
 $('playButton').onclick=()=>setMode('play');$('closePlay').onclick=()=>setMode('record');
-// Escape closes the help or settings menu first, then the play pane.
+// Escape closes an open play-bar menu first, then the play pane.
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape'||modalAction||$('playPane').classList.contains('hidden'))return;
   e.preventDefault();
-  if(!$('playHelp').classList.contains('hidden')){setPlayHelp(false);$('playHelpToggle').focus();return}
   if(!$('playSettingsMenu').classList.contains('hidden')){setPlaySettings(false);$('playSettingsToggle').focus({preventScroll:true});return}
+  if(!$('playDetectionMenu').classList.contains('hidden')){setPlayDetection(false);$('playDetectionToggle').focus({preventScroll:true});return}
   if(mobileQuery.matches&&scenesVisible()){setScenesOpen(false);$('toggleScenes').focus({preventScroll:true});return}
   setMode('record');
 });
 // Play-mode help dropdown (rehearsal tips).
-function setPlayHelp(open){
-  $('playHelp').classList.toggle('hidden',!open);
-  $('playHelpToggle').setAttribute('aria-expanded',String(open));
-}
-$('playHelpToggle').onclick=e=>{e.stopPropagation();setPlayHelp($('playHelp').classList.contains('hidden'))};
-$('playHelp').onclick=e=>e.stopPropagation();
-document.addEventListener('click',()=>setPlayHelp(false));
 $('toggleScenes').onclick=()=>setScenesOpen(!scenesVisible());
 $('playScenesBackdrop').onclick=()=>setScenesOpen(false);
 $('playSettingsToggle').onclick=e=>{e.stopPropagation();setPlaySettings($('playSettingsMenu').classList.contains('hidden'))};
 $('playSettingsMenu').onclick=e=>e.stopPropagation();
 document.addEventListener('click',()=>setPlaySettings(false));
+$('playDetectionToggle').onclick=e=>{e.stopPropagation();setPlayDetection($('playDetectionMenu').classList.contains('hidden'))};
+$('playDetectionMenu').onclick=e=>e.stopPropagation();
+document.addEventListener('click',()=>setPlayDetection(false));
 function newDialogueLine(){return {who:'them',character:'',text:'',audio:null}}
 function addDialogueLine(index=script.turns.length){
   script.turns.splice(index,0,newDialogueLine());
@@ -685,12 +787,53 @@ async function recordLine(i,button){
     currentRecorder.onstop=()=>{
       if(turn&&turn.who==='them'&&script?.turns?.includes(turn))turn.audio=new Blob(chunks,{type:currentRecorder.mimeType});
       recorder=null;render();queueSave(true);
-      // Do not stop the shared microphone here.
+      releaseMicIfIdle();
     };
     currentRecorder.start();button.classList.add('recording');button.classList.replace('btn-ghost','btn-destructive');setTip(button,'Stop recording');button.setAttribute('aria-label','Stop recording');button.replaceChildren(icon('square')); 
   }catch(e){alert('Microphone unavailable: '+e.message)}
 }
 function status(s){$('status').textContent=s}
+// Speech-engine line detection for the current play session (null = voice activity).
+let engineSession=null,engineModule=null,engineListen=null;
+const PAUSE_MARKERS=/\(\s*(?:then|beat)\s*\)/gi;
+const spokenText=text=>(text||'').replace(PAUSE_MARKERS,' ');
+const lastWords=(text,n=8)=>{const w=text.trim().split(/\s+/);return (w.length>n?'… ':'')+w.slice(-n).join(' ')};
+const detectionLabel=id=>({vosk:'Vosk',sherpa:'Sherpa-ONNX'}[id]||id);
+// Loads the chosen engine and attaches it to the microphone. Falls back to voice activity on failure.
+async function startEngineSession(mic){
+  const id=lineDetection();
+  if(id==='vad')return;
+  const name=detectionLabel(id);
+  try{
+    status(`Loading ${name}…`);
+    // import() resolves against this script (js/), so build the URL from the page instead.
+    engineModule=await import(new URL('speech-lab/js/rehearsal-engine.js',document.baseURI).href);
+    await engineModule.loadEngine(id,({stage,fraction})=>status(`${name}: ${stage}${fraction==null?'…':` ${Math.round(fraction*100)}%`}`));
+    engineSession=await engineModule.startSession(id,mic);
+  }catch(e){
+    console.error('Speech engine unavailable',e);
+    engineSession=null;
+    const hint=location.protocol==='file:'?'Open the app through python3 speech-lab/serve.py.':'Run python3 speech-lab/setup.py.';
+    status(`${name} unavailable — using voice activity. ${hint}`);
+    await new Promise(r=>setTimeout(r,2500));
+  }
+}
+function stopEngineSession(){
+  if(engineListen){engineListen.cancel();engineListen=null}
+  if(engineSession){const s=engineSession;engineSession=null;s.close()}
+}
+// Listens for your line with the speech engine; moves on when its cue (last N words) is heard.
+function listenWithEngine(t){
+  const h=engineSession.listenFor(spokenText(t.text),{cueWords:cueWords(),onHeard:heard=>{if(engineListen===h&&heard)status('Heard: '+lastWords(heard))}});
+  engineListen=h;
+  status(`Listening for your line… (${engineSession.label})`);
+  h.done.then(r=>{if(engineListen!==h||!r||!playing)return;engineListen=null;idx++;next()});
+}
+function useEngineFor(t){
+  if(!engineSession)return false;
+  if(shortLinesUseVad()&&engineModule.wordCount(spokenText(t.text))<cueWords())return false;
+  return true;
+}
 const isPlayable=t=>!!t&&(t.who==='me'||t.who==='them'||t.who==='beat');
 // "(then)" or "(beat)" inside your line marks a pause with more to come: the line is only
 // done after every part has been spoken. A marker with nothing after it doesn't add a part.
@@ -784,8 +927,8 @@ function setTransport(isPlaying){
   $('start').classList.toggle('hidden',isPlaying);$('stop').classList.toggle('hidden',!isPlaying);
   if(hadFocus)$(isPlaying?'stop':'start').focus({preventScroll:true});
 }
-$('start').onclick=async()=>{if(!script.turns.slice(sceneRange.start,sceneRange.end).some(isPlayable))return alert('This scene has no lines yet');try{const mic=await getMicrophone();audioCtx=new AudioContext();await audioCtx.resume();let source=audioCtx.createMediaStreamSource(mic);analyser=audioCtx.createAnalyser();analyser.fftSize=2048;source.connect(analyser);playing=true;idx=firstPlayable(sceneRange.start);setTransport(true);next()}catch(e){alert('Microphone unavailable: '+e.message);stop()}};$('stop').onclick=()=>stop();
-function next(){if(!playing)return;cancelAnimationFrame(raf);idx=firstPlayable(idx);if(idx>=sceneRange.end){status('Scene complete');stop(true);return}display();let t=script.turns[idx];if(t.who==='beat'){let seconds=beatSeconds(t);status(`Beat — ${seconds} second${seconds===1?'':'s'}…`);beatTimer=setTimeout(()=>{beatTimer=null;idx++;next()},seconds*1000);return}if(t.who==='them'){status('Playing reader…');if(!t.audio){status('Reader recording missing — skipping');idx++;setTimeout(next,250);return}playReaderLine(t);return}else{partsNeeded=lineParts(t.text);partsHeard=0;status(partsNeeded>1?`Listening for your line… (part 1 of ${partsNeeded})`:'Listening for your line…');heard=false;speechAt=0;lastVoice=0;listen()}}
+$('start').onclick=async()=>{if(!script.turns.slice(sceneRange.start,sceneRange.end).some(isPlayable))return alert('This scene has no lines yet');try{const mic=await getMicrophone();audioCtx=new AudioContext();await audioCtx.resume();let source=audioCtx.createMediaStreamSource(mic);analyser=audioCtx.createAnalyser();analyser.fftSize=2048;source.connect(analyser);await startEngineSession(mic);if(!audioCtx){stopEngineSession();return}playing=true;idx=firstPlayable(sceneRange.start);setTransport(true);next()}catch(e){alert('Microphone unavailable: '+e.message);stop()}};$('stop').onclick=()=>{stop();releaseMicIfIdle()};
+function next(){if(!playing)return;cancelAnimationFrame(raf);if(engineListen){engineListen.cancel();engineListen=null}idx=firstPlayable(idx);if(idx>=sceneRange.end){status('Scene complete');stop(true);releaseMicIfIdle();return}display();let t=script.turns[idx];if(t.who==='beat'){let seconds=beatSeconds(t);status(`Beat — ${seconds} second${seconds===1?'':'s'}…`);beatTimer=setTimeout(()=>{beatTimer=null;idx++;next()},seconds*1000);return}if(t.who==='them'){status('Playing reader…');if(!t.audio){status('Reader recording missing — skipping');idx++;setTimeout(next,250);return}playReaderLine(t);return}else if(useEngineFor(t)){listenWithEngine(t)}else{partsNeeded=lineParts(t.text);partsHeard=0;status(partsNeeded>1?`Listening for your line… (part 1 of ${partsNeeded})`:'Listening for your line…');heard=false;speechAt=0;lastVoice=0;listen()}}
 // Plays one reader line. Back-to-back reader lines use the script's Reader spacing:
 // a pause after this line ends, or (negative) starting the next line before this one ends.
 function playReaderLine(t){
@@ -809,4 +952,4 @@ function listen(){if(!playing)return;let a=new Float32Array(analyser.fftSize);an
   if(partsHeard<partsNeeded){heard=false;status(`Keep going… (part ${partsHeard+1} of ${partsNeeded})`)}
   else{idx++;next();return}
 }}raf=requestAnimationFrame(listen)}
-function stop(done=false){playing=false;cancelAnimationFrame(raf);if(beatTimer!==null){clearTimeout(beatTimer);beatTimer=null}if(gapTimer!==null){clearTimeout(gapTimer);gapTimer=null}playingAudios.forEach(a=>a.pause());playingAudios.clear();activeAudio=null;/* Keep microphone permission/stream alive until explicitly released. */if(audioCtx){audioCtx.close();audioCtx=null}setTransport(false);if(!done&&$('status'))status('Stopped')}
+function stop(done=false){playing=false;cancelAnimationFrame(raf);stopEngineSession();if(beatTimer!==null){clearTimeout(beatTimer);beatTimer=null}if(gapTimer!==null){clearTimeout(gapTimer);gapTimer=null}playingAudios.forEach(a=>a.pause());playingAudios.clear();activeAudio=null;/* Keep microphone permission/stream alive until explicitly released. */if(audioCtx){audioCtx.close();audioCtx=null}setTransport(false);if(!done&&$('status'))status('Stopped')}

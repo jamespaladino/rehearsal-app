@@ -158,22 +158,6 @@
   gap: 4px;
 }
 
-/* Help button and its popover of rehearsal tips. */
-.help-menu {
-  position: relative;
-}
-
-.help-dropdown {
-  position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 5;
-}
-
-.help-dropdown p {
-  margin: 0;
-}
-
 .play-pane-body {
   box-sizing: border-box;
   flex: 1;
@@ -313,6 +297,57 @@
 /* Settings button at the right end; its menu opens upward from the bar. */
 .play-settings {
   position: relative;
+  margin-left: auto;
+}
+
+/* Line detection menu: sits just left of the settings button, so it takes the auto margin. */
+.play-detection {
+  position: relative;
+  margin-left: auto;
+}
+
+.play-detection + .play-settings {
+  margin-left: 0;
+}
+
+/* Phones: icon only, so the status line keeps its room (the label is in the tooltip and aria-label). */
+@media (max-width: 700px) {
+  .play-detection-label {
+    display: none;
+  }
+
+  .play-detection .btn {
+    width: 32px;
+    padding: 0;
+  }
+}
+
+.play-detection-menu {
+  position: absolute;
+  right: 0;
+  bottom: calc(100% + 4px);
+  z-index: 5;
+  min-width: 260px;
+  /* Let the cue submenu extend outside the menu. */
+  overflow: visible;
+}
+
+/* Muted explanation at the top of a submenu (normal weight, wraps). A submenu with a note is
+   wide enough for it to read in a couple of lines. */
+.dropdown-menu-sub-content:has(> .dropdown-menu-note) {
+  min-width: 210px;
+}
+
+.dropdown-menu-note {
+  max-width: 210px;
+  padding: 4px 6px 6px;
+  color: var(--muted-foreground);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+/* Menu row with a switch at its end (role="menuitemcheckbox"). */
+.dropdown-menu-item .switch {
   margin-left: auto;
 }
 

@@ -11,21 +11,22 @@ Needs Python 3.8+ (no packages) and a recent Chromium, Firefox or Safari (see [B
 ```sh
 # from the repository root
 python3 speech-lab/setup.py        # downloads ~280 MB once, installs ~100 MB, verifies SHA-256
-python3 -m http.server 8000        # serve the repository root
+python3 speech-lab/serve.py       # serves the repository root on :8000 with caching off
 ```
 
-Then open <http://localhost:8000/speech-lab/>.
+Then open <http://localhost:8000/> and choose **Tests** at the top of the sidebar. The lab opens in the main area, like a script, and keeps its state while you switch to scripts and back. You can also open it on its own at <http://localhost:8000/speech-lab/>. Inside the app it loads with `?embed`, which hides its own header and follows the app's light/dark setting.
 
 - `setup.py` reads every URL and hash from `pins.json`. A download that doesn't match its pinned SHA-256 is rejected. Downloads are cached in `speech-lab/.cache/`, so re-running is cheap. `python3 speech-lab/setup.py --verify` checks an existing install without downloading.
 - Installed files go to `speech-lab/vendor/`, `speech-lab/models/` and `speech-lab/samples/`. These folders and `.cache/` are git-ignored (`speech-lab/.gitignore`), so no model or runtime binaries are committed.
 - The Sherpa runtime only ships inside a 175 MB release archive that also bundles a large model. `setup.py` keeps just the three runtime files (13 MB) and discards the rest.
 - Opening the page from `file://` does not work, because Web Workers and WASM need HTTP. Any static server works. `localhost` counts as a secure context, so the microphone is allowed.
-- **Port 8000 already in use?** Run `python3 -m http.server 8010` and open `http://localhost:8010/speech-lab/`. No COOP/COEP headers are needed: neither runtime uses threads or `SharedArrayBuffer`.
+- **Port 8000 already in use?** Run `python3 speech-lab/serve.py 8010` and open `http://localhost:8010/`. No COOP/COEP headers are needed: neither runtime uses threads or `SharedArrayBuffer`.
 
 ## Using it
 
 1. **Engines.** Choose the live engine and load the models. Load time and model and runtime sizes appear on each card.
-2. **Expected dialogue and cue.** Edit the line the actor will say. The cue phrase is filled in automatically from the last *N* words (5 by default). Typing in the cue field switches to manual. You can also adjust the fuzzy threshold, the premature/missed windows and the chunk size.
+2. **Expected dialogue and cue.** Pick one of your scripts and one of **your lines** (the lines for the character you play, grouped by scene). This fills in the expected dialogue, and the note underneath shows the line you'll hear just before it. **Next line** steps through the script in order. Takes recorded while a line is selected remember it, and the results, JSON and CSV show the script, scene and line number. Scripts are read from the app's local database without ever being changed. The list refreshes when you come back to the lab, or with the reload button. You can also skip the picker and edit the line the actor will say directly; changing the dialogue unlinks the picked line. The cue phrase is filled in automatically from the last *N* words (5 by default). Typing in the cue field switches to manual. You can also adjust the fuzzy threshold, the premature/missed windows and the chunk size.
+   **Test full script** opens the picked script in a window and runs through it the way rehearsal would. Reader lines play their recordings (a reader line with no recording is skipped, as in the app), and beats wait their length. On your lines it listens with the chosen engine and moves on as soon as it hears the cue (the last *N* words of your line, with exact or fuzzy matching). Each of your lines then shows how long after you stopped speaking the script moved on. **Skip** (or the → key) moves on by hand. Click any line before starting to begin there; by default the run starts at the scene of the picked line. Your lines are saved as takes, already linked to their lines, so you can benchmark them afterwards. Use headphones: the microphone only feeds the engine while it's listening for your line, but reader audio from speakers can still bleed into your take.
 3. **Live microphone.** Start, speak, Stop. Partials (in italics) and finals stream in, and recognised cue words are highlighted: green for an exact match, amber for a fuzzy-only match. With **Save as take** on, the recording becomes a take.
 4. **Takes and cue annotation.** Click the waveform, or type a time, to mark where the cue actually ends. A suggestion based on the end of speech is pre-filled (marked "suggested"); check it with **Audition cue end**. You can also load WAV or other audio files. `samples/librispeech-0.wav` is a ready-made test clip; its transcript is in `pins.json`.
 5. **Benchmark.** Replays every take into each selected engine at real-time speed, then shows a side-by-side summary and per-take results. Export as JSON (including every raw recognition event) or CSV.
@@ -56,7 +57,7 @@ Takes are held in memory only. Download a take's WAV to keep it; loading it agai
 
 Normalisation for both matching and WER: lowercase, apostrophes removed (*don't* becomes *dont*), other punctuation replaced by spaces, and numbers 0–12 spelled out.
 
-**Caching caveat:** after the first load, Vosk keeps the unpacked model in IndexedDB (IDBFS, database `/vosk`), and the browser HTTP cache also serves repeat Sherpa downloads. Cold and warm load times can differ a lot. For a cold measurement, use a fresh private window, or clear site data for localhost.
+**Caching caveat:** after the first load, Vosk keeps the unpacked model in IndexedDB (IDBFS, database `/vosk`), so its later loads skip most of the work. `serve.py` turns off HTTP caching, so Sherpa re-downloads its files from the local server on every load; with another server, the browser cache may serve them instead. Cold and warm load times can differ a lot. For a cold measurement, use a fresh private window, or clear site data for localhost.
 
 ## Architecture
 
@@ -69,6 +70,8 @@ speech-lab/
     app.js                UI wiring only
     audio.js              Shared preprocessing: mic capture (AudioWorklet), Resampler, Chunker, WAV I/O
     cue.js                Cue matching, transcript state, classification, WER (no engine knowledge)
+    scripts.js            Read-only access to the app's scripts (IndexedDB) for the line picker
+    fullrun.js            "Test full script": walks a whole script with one engine, like rehearsal
     bench.js              Real-time replay runner + metric aggregation
     export.js             JSON / CSV export
     engines/

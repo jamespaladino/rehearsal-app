@@ -25,7 +25,7 @@ const cell = (v) => {
 // One row per (engine, take) run, plus per-engine summary rows, in a single CSV.
 export function exportCsv(report) {
   const header = [
-    'row_type', 'engine', 'take', 'cue', 'cue_end_s', 'duration_s',
+    'row_type', 'engine', 'take', 'script', 'scene', 'line_no', 'cue', 'cue_end_s', 'duration_s',
     'exact_status', 'exact_detect_s', 'exact_latency_s',
     'fuzzy_status', 'fuzzy_detect_s', 'fuzzy_latency_s', 'fuzzy_score',
     'wer', 'transcript',
@@ -37,15 +37,15 @@ export function exportCsv(report) {
   for (const r of report.runs) {
     const m = r.metrics;
     lines.push([
-      'run', r.engine, r.take, r.cue, r.cueEnd, r.duration,
+      'run', r.engine, r.take, r.line && r.line.scriptTitle, r.line && r.line.scene, r.line && r.line.lineInScene, r.cue, r.cueEnd, r.duration,
       m.exact.status, m.exact.t, m.exact.latency,
       m.fuzzy.status, m.fuzzy.t, m.fuzzy.latency, m.fuzzy.match && m.fuzzy.match.score,
       m.wer, m.transcript,
-    ].map(cell).concat(Array(header.length - 15).fill('')).join(','));
+    ].map(cell).concat(Array(header.length - 18).fill('')).join(','));
   }
   for (const s of report.summary) {
     lines.push([
-      'summary', s.engine, '', '', '', '',
+      'summary', s.engine, '', '', '', '', '', '', '',
       '', '', '', '', '', '', '', '', '',
       s.runs, s.exact.hits, s.exact.missed, s.exact.premature, s.exact.latencyMedian, s.exact.latencyMean, s.exact.latencyP90,
       s.fuzzy.hits, s.fuzzy.missed, s.fuzzy.premature, s.fuzzy.latencyMedian, s.fuzzy.latencyMean, s.fuzzy.latencyP90,
