@@ -6,13 +6,16 @@
 
 .record-panel {
   position: relative;
+  /* The script's margins follow the space the editor actually has (the sidebar takes some). */
+  container: script-page / inline-size;
 }
 
+/* The page margins always leave room for the margin tools (left) and record controls (right),
+   so they never spill out of the editor; the text column narrows when space is short. */
 .screenplay {
-  max-width: 760px;
   min-height: 320px;
-  margin: 18px auto;
-  padding: 36px max(16px, calc((100% - 690px) / 2));
+  margin: 18px 0;
+  padding: 36px max(78px, calc((100% - 690px) / 2));
   overflow-anchor: none;
 }
 
@@ -34,8 +37,8 @@
   position: absolute;
   top: 0;
   bottom: 0;
-  left: -145px;
-  right: -95px;
+  left: -78px;
+  right: -78px;
   z-index: 0;
 }
 
@@ -175,7 +178,7 @@
   z-index: 3;
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
   color: var(--muted-foreground);
   font-family: var(--font-sans);
   opacity: 0;
@@ -183,12 +186,13 @@
   transition: opacity 0.15s ease;
 }
 
+/* Two 32px buttons and a 2px gap (66px) on each side, 12px from the text. */
 .screenplay .margin-tools {
-  left: -126px;
+  left: -78px;
 }
 
 .screenplay .record-controls {
-  right: -103px;
+  right: -78px;
 }
 
 /* Controls appear for the active block, while its menu is open, and while recording. */
@@ -202,7 +206,7 @@
 .screenplay .block-menu {
   position: absolute;
   top: calc(var(--block-tools-top) + 32px + 4px);
-  left: -126px;
+  left: -78px;
   /* Above every block's margin and record buttons (z-index 3), which come later in the
      page and would otherwise paint over an open menu; below character suggestions (30). */
   z-index: 20;
@@ -222,18 +226,36 @@
   }
 }
 
-@media (max-width: 750px) {
-  /* Room on both sides for the margin tools and record controls, inside the screen. */
+/* Narrow editor (e.g. a small window with the sidebar open): the record controls stack
+   so the right margin can be tighter. */
+@container script-page (max-width: 639px) {
+  .screenplay {
+    padding: 24px 52px 24px 78px;
+  }
+
+  .screenplay .record-controls {
+    right: -48px;
+    flex-direction: column;
+  }
+
+  .screenplay .turn::before {
+    right: -52px;
+  }
+}
+
+/* Mobile: no "+" menu (Enter adds the next block); the grip sits just left of the text. */
+@media (max-width: 767px) {
   .screenplay {
     padding: 24px 52px 24px 65px;
   }
 
-  .screenplay .margin-tools {
-    left: -58px;
+  .screenplay .block-add {
+    display: none;
   }
 
+  .screenplay .margin-tools,
   .screenplay .block-menu {
-    left: -58px;
+    left: -40px;
   }
 
   .screenplay .record-controls {

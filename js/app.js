@@ -520,7 +520,7 @@ function render(){
   script.turns.forEach((t,i)=>{
     const div=el('div');div.className='turn'+(t.who==='beat'?' beat':'');div.dataset.who=t.who;
     const tools=el('div');tools.className='margin-tools';
-    const add=el('button');add.type='button';add.className='btn btn-ghost btn-icon';add.setAttribute('aria-haspopup','true');add.setAttribute('aria-expanded','false');add.append(icon('plus'));setTip(add,'Insert');add.setAttribute('aria-label','Insert');
+    const add=el('button');add.type='button';add.className='btn btn-ghost btn-icon block-add';add.setAttribute('aria-haspopup','true');add.setAttribute('aria-expanded','false');add.append(icon('plus'));setTip(add,'Insert');add.setAttribute('aria-label','Insert');
     const dots=el('button');dots.type='button';dots.className='btn btn-ghost btn-icon';dots.setAttribute('aria-haspopup','true');dots.append(icon('grip-vertical'));setTip(dots,'Options');dots.setAttribute('aria-label','Options');dots.setAttribute('aria-expanded','false');
     const menu=el('div');menu.className='dropdown-menu block-menu hidden';
     const menuItem=(name,fn,variant,iconName)=>{const b=dropdownItem(name,fn,variant,iconName);menu.append(b);return b};
@@ -737,10 +737,13 @@ new ResizeObserver(()=>{
 // Scene sidebar: the header's sidebar button opens and closes it. On desktop it starts open
 // (and remembers your choice while in play mode); on mobile it starts closed and opens over
 // the teleprompter, closing again once you pick a scene.
+// With only one scene there's nothing to pick: the sidebar stays closed and its button is
+// disabled (without changing the remembered desktop choice).
 let scenesPreferred=true;
 function setScenesOpen(open){
-  const mobile=mobileQuery.matches;
-  if(!mobile)scenesPreferred=open;
+  const mobile=mobileQuery.matches,single=scenes().length<2;
+  $('toggleScenes').disabled=single;
+  if(single)open=false;else if(!mobile)scenesPreferred=open;
   $('playPane').classList.toggle('scenes-visible',open);
   $('playScenesBackdrop').classList.toggle('hidden',!(open&&mobile));
   $('toggleScenes').setAttribute('aria-expanded',String(open));
