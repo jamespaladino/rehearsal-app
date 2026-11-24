@@ -11,22 +11,48 @@ renderIcons();
 // Save appearance separately from scripts and recordings.
 const $=id=>document.getElementById(id);
 const shell=document.querySelector('.app-shell');
-$('collapseSidebar').onclick=()=>{shell.classList.add('sidebar-closed');$('openSidebar').classList.remove('hidden')};
-$('openSidebar').onclick=()=>{shell.classList.remove('sidebar-closed');$('openSidebar').classList.add('hidden')};
+// Sidebar: docked beside the page on wider screens; on mobile (under 768px, shadcn's
+// breakpoint) it starts hidden and opens over the page with a backdrop.
+const mobileQuery=matchMedia('(max-width: 767px)');
+function setSidebar(open){
+  if(mobileQuery.matches){
+    shell.classList.toggle('sidebar-mobile-open',open);
+    $('sidebarBackdrop').classList.toggle('hidden',!open);
+    document.body.style.overflow=open||!$('playPane').classList.contains('hidden')?'hidden':'';
+    $('openSidebar').classList.remove('hidden');
+    (open?$('collapseSidebar'):$('openSidebar')).focus({preventScroll:true});
+  }else{
+    shell.classList.toggle('sidebar-closed',!open);
+    $('openSidebar').classList.toggle('hidden',open);
+  }
+}
+function closeMobileSidebar(){if(shell.classList.contains('sidebar-mobile-open'))setSidebar(false)}
+// Crossing the breakpoint resets to that size's default.
+function syncSidebarToViewport(){
+  shell.classList.remove('sidebar-mobile-open');$('sidebarBackdrop').classList.add('hidden');
+  if(!$('playPane').classList.contains('hidden'))document.body.style.overflow='hidden';else document.body.style.overflow='';
+  $('openSidebar').classList.toggle('hidden',!mobileQuery.matches&&!shell.classList.contains('sidebar-closed'));
+}
+mobileQuery.addEventListener('change',syncSidebarToViewport);syncSidebarToViewport();
+$('collapseSidebar').onclick=()=>setSidebar(false);
+$('openSidebar').onclick=()=>setSidebar(true);
+$('sidebarBackdrop').onclick=()=>setSidebar(false);
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&shell.classList.contains('sidebar-mobile-open')&&!modalAction)setSidebar(false)});
+// Theme: a shadcn ToggleGroup (sun = light, moon = dark); the active theme shows as pressed.
 function applyTheme(theme){
   const dark=theme==='dark';document.documentElement.dataset.theme=dark?'dark':'light';
-  const toggle=document.getElementById('themeToggle');
-  toggle.replaceChildren(icon(dark?'sun':'moon'),el('span',dark?'Light':'Dark'));
-  toggle.setAttribute('aria-label','Switch to '+(dark?'light':'dark')+' mode');
+  $('themeLight').setAttribute('aria-pressed',String(!dark));
+  $('themeDark').setAttribute('aria-pressed',String(dark));
 }
 let savedTheme='light';try{savedTheme=localStorage.getItem('rehearsal-theme')||'light'}catch(e){}
 applyTheme(savedTheme);
-document.getElementById('themeToggle').addEventListener('click',()=>{
-  const next=document.documentElement.dataset.theme==='dark'?'light':'dark';
-  applyTheme(next);try{localStorage.setItem('rehearsal-theme',next)}catch(e){}
-});
+for(const [id,theme] of [['themeLight','light'],['themeDark','dark']]){
+  $(id).addEventListener('click',()=>{applyTheme(theme);try{localStorage.setItem('rehearsal-theme',theme)}catch(e){}});
+}
 
-let db,script=null,recorder=null,stream=null,chunks=[],audioCtx=null,analyser=null,raf=null,playing=false,idx=0,heard=false,speechAt=0,lastVoice=0,noiseFloor=.015,activeAudio=null,beatTimer=null;
+let db,script=null,recorder=null,stream=null,chunks=[],audioCtx=null,analyser=null,raf=null,playing=false,idx=0,heard=false,speechAt=0,lastVoice=0,noiseFloor=.015,activeAudio=null,beatTimer=null,partsNeeded=1,partsHeard=0,gapTimer=null;
+// Every reader recording currently sounding (more than one while lines overlap).
+const playingAudios=new Set();
 // A single shared microphone stream is reused for recording and rehearsal.
 async function getMicrophone(){
   if(stream && stream.getAudioTracks().some(t=>t.readyState==='live'))return stream;
@@ -86,22 +112,26 @@ function dropdownSeparator(){const line=el('div');line.className='dropdown-menu-
 const BEAT_DURATIONS=[1,2,3,5,10];
 function beatSeconds(t){const d=Number(t.duration??2);return Math.max(0,Math.min(120,Number.isFinite(d)?d:2))}
 function secondsLabel(n){return n+' second'+(n===1?'':'s')}
-// shadcn DropdownMenuSub: a trigger showing the beat's length, opening a radio list of lengths.
-function beatDurationSubmenu(t,onChange){
-  const current=beatSeconds(t);
+// shadcn DropdownMenuRadioItem: {label, icon?, checked, onSelect}; the checked item shows a check mark.
+function dropdownRadioItem(opt){
+  const option=el('button');option.type='button';option.className='dropdown-menu-radio-item';
+  option.setAttribute('role','menuitemradio');option.setAttribute('aria-checked',String(!!opt.checked));
+  const indicator=el('span');indicator.className='dropdown-menu-radio-item-indicator';if(opt.checked)indicator.append(icon('check'));
+  option.append(indicator);
+  if(opt.icon)option.append(icon(opt.icon));
+  option.append(document.createTextNode(opt.label));
+  option.onclick=e=>{e.stopPropagation();opt.onSelect()};
+  return option;
+}
+// shadcn DropdownMenuSub with RadioItems: a trigger row that opens a list to its right.
+// options: [{label, icon?, checked, onSelect}] — the checked option shows a check mark.
+function dropdownSubmenu(triggerIcon,triggerLabel,options){
   const sub=el('div');sub.className='dropdown-menu-sub';
   const trigger=el('button');trigger.type='button';trigger.className='dropdown-menu-sub-trigger';
   trigger.setAttribute('aria-haspopup','menu');trigger.setAttribute('aria-expanded','false');
-  trigger.append(icon('timer'),el('span',secondsLabel(current)),icon('chevron-right'));
+  trigger.append(icon(triggerIcon),el('span',triggerLabel),icon('chevron-right'));
   const content=el('div');content.className='dropdown-menu dropdown-menu-sub-content hidden';content.setAttribute('role','menu');
-  for(const n of BEAT_DURATIONS){
-    const option=el('button');option.type='button';option.className='dropdown-menu-radio-item';
-    option.setAttribute('role','menuitemradio');option.setAttribute('aria-checked',String(n===current));
-    const indicator=el('span');indicator.className='dropdown-menu-radio-item-indicator';if(n===current)indicator.append(icon('check'));
-    option.append(indicator,document.createTextNode(secondsLabel(n)));
-    option.onclick=e=>{e.stopPropagation();onChange(n)};
-    content.append(option);
-  }
+  for(const opt of options)content.append(dropdownRadioItem(opt));
   const setOpen=open=>{content.classList.toggle('hidden',!open);trigger.toggleAttribute('data-open',open);trigger.setAttribute('aria-expanded',String(open))};
   trigger.onclick=e=>{e.stopPropagation();setOpen(content.classList.contains('hidden'))};
   if(matchMedia('(hover: hover)').matches){sub.onmouseenter=()=>setOpen(true);sub.onmouseleave=()=>setOpen(false)}
@@ -109,6 +139,49 @@ function beatDurationSubmenu(t,onChange){
   content.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='Escape'){e.preventDefault();e.stopPropagation();setOpen(false);trigger.focus()}};
   sub.append(trigger,content);
   return sub;
+}
+// Beat length: the trigger shows the current length.
+function beatDurationSubmenu(t,onChange){
+  const current=beatSeconds(t);
+  return dropdownSubmenu('timer',secondsLabel(current),BEAT_DURATIONS.map(n=>({label:secondsLabel(n),checked:n===current,onSelect:()=>onChange(n)})));
+}
+// Reader spacing (per script): seconds between back-to-back reader lines. Negative values
+// overlap them: the next line starts that long before the current one ends.
+const READER_SPACING=[
+  {value:-1,label:'Overlap 1 second'},{value:-0.5,label:'Overlap ½ second'},{value:0,label:'No gap'},
+  {value:0.5,label:'½ second'},{value:1,label:'1 second'},{value:2,label:'2 seconds'},
+];
+function readerSpacing(){const v=Number(script?.readerSpacing);return Number.isFinite(v)?Math.max(-5,Math.min(10,v)):0}
+// Play pane settings menu: a "Reader spacing" label with a radio list of spacings.
+function renderPlaySettings(){
+  const current=readerSpacing();
+  const label=el('div','Reader spacing');label.className='dropdown-menu-label';
+  $('playSettingsMenu').replaceChildren(label,...READER_SPACING.map(o=>dropdownRadioItem({label:o.label,checked:o.value===current,onSelect:()=>{
+    script.readerSpacing=o.value;queueSave(true);renderPlaySettings();
+    $('playSettingsMenu').querySelector('[aria-checked="true"]')?.focus({preventScroll:true});
+  }})));
+}
+function setPlaySettings(open){
+  if(open)renderPlaySettings();
+  $('playSettingsMenu').classList.toggle('hidden',!open);
+  $('playSettingsToggle').setAttribute('aria-expanded',String(open));
+}
+// Length of a recording in seconds. Browser recordings often don't report it, so decode the audio once.
+const audioDurations=new WeakMap();
+function audioDuration(blob){
+  if(!audioDurations.has(blob))audioDurations.set(blob,blob.arrayBuffer().then(data=>audioCtx.decodeAudioData(data)).then(buffer=>buffer.duration));
+  return audioDurations.get(blob);
+}
+// Block types a block can be turned into, in menu order.
+const BLOCK_TYPES=[
+  {who:'me',label:'Me',icon:'arrow-left',apply:t=>{t.who='me'}},
+  {who:'them',label:'Them',icon:'arrow-right',apply:t=>{t.who='them'}},
+  {who:'beat',label:'Beat',icon:'gap-vertical',apply:t=>{t.who='beat';t.duration??=2}},
+  {who:'heading',label:'Scene heading',icon:'clapperboard',apply:t=>{t.who='heading';t.text=(t.text||'').toUpperCase()}},
+  {who:'action',label:'Action',icon:'pilcrow',apply:t=>{t.who='action'}},
+];
+function turnIntoSubmenu(t,onChange){
+  return dropdownSubmenu('repeat','Turn into',BLOCK_TYPES.map(type=>({label:type.label,icon:type.icon,checked:t.who===type.who,onSelect:()=>{type.apply(t);onChange()}})));
 }
 // Tooltips: any element with data-tooltip shows one on mouse hover or keyboard focus.
 const tooltip=el('div');tooltip.className='tooltip';tooltip.setAttribute('aria-hidden','true');document.body.append(tooltip);
@@ -169,8 +242,8 @@ async function library(){
     open.setAttribute('aria-label','Open '+name);
     if(script?.id===s.id){open.dataset.active='';open.setAttribute('aria-current','true')}
     open.append(el('span',s.title||'Untitled'));
-    open.onclick=()=>{closeMenu();openScript(s)};
-    const toggle=el('button');toggle.type='button';toggle.className='sidebar-menu-action';toggle.append(icon('ellipsis'));
+    open.onclick=()=>{closeMenu();closeMobileSidebar();openScript(s)};
+    const toggle=el('button');toggle.type='button';toggle.className='sidebar-menu-action';toggle.dataset.showOnHover='';toggle.append(icon('ellipsis'));
     toggle.setAttribute('aria-label','Options for '+name);toggle.setAttribute('aria-haspopup','true');toggle.setAttribute('aria-expanded','false');
     const menu=el('div');menu.className='dropdown-menu script-menu hidden';
     menu.append(
@@ -226,7 +299,7 @@ document.addEventListener('click',e=>{if(!e.target.closest('#topScriptActions'))
 $('topRename').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden');openModal('rename',script)}};
 $('topDelete').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden');openModal('delete',script)}};
 // New scripts start with one blank dialogue line, ready for the first character name.
-$('newScript').onclick=async()=>{await flushSave();const fresh={id:crypto.randomUUID(),title:'Untitled script',meCharacter:'ME',otherCharacters:[],turns:[{who:'heading',text:''},{who:'action',text:''},newDialogueLine()]};await put(fresh);await openScript(fresh);focusBlockText(0)};$('back').onclick=async()=>{await flushSave();stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader();library()};
+$('newScript').onclick=async()=>{closeMobileSidebar();await flushSave();const fresh={id:crypto.randomUUID(),title:'Untitled script',meCharacter:'ME',otherCharacters:[],turns:[{who:'heading',text:''},{who:'action',text:''},newDialogueLine()]};await put(fresh);await openScript(fresh);focusBlockText(0)};$('back').onclick=async()=>{await flushSave();stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader();library()};
 async function openScript(s){await flushSave();$('playButton').classList.remove('hidden');if(script?.id!==s.id){stop();releaseMicrophone()}script=s;try{localStorage.setItem("rehearsal-last-opened",s.id)}catch(e){}$('title').value=s.title;updateScriptHeader();$('editor').classList.remove('hidden');enterMode('record');render();library()}
 function showHome(){stop();$('scriptHeading').textContent=script.title||'Untitled script';$('scriptHome').classList.remove('hidden');$('workspace').classList.add('hidden')}
 function enterMode(m){$('scriptHome').classList.add('hidden');$('workspace').classList.remove('hidden');setMode(m)}
@@ -237,22 +310,28 @@ function openPlayPane(){
   if(!script)return;
   stop();hideTip();
   $('playPaneTitle').textContent=script.title||'Untitled script';
-  renderPrompter();idx=firstPlayable(0);display();status('Ready');
-  setPlayHelp(false);
+  const all=scenes();
+  const kept=sceneRange.scriptId===script.id&&all.find(scene=>scene.start===sceneRange.start);
+  selectScene(kept||all[0]);
+  setPlayHelp(false);setPlaySettings(false);
+  setScenesOpen(mobileQuery.matches?false:scenesPreferred);
   $('playPane').classList.remove('hidden');document.body.style.overflow='hidden';
-  $('start').focus();
+  display(true); // center the cued line now that the pane is visible
+  $('start').focus({preventScroll:true});
 }
 function closePlayPane(){
   const wasOpen=!$('playPane').classList.contains('hidden');
-  stop();setPlayHelp(false);$('playPane').classList.add('hidden');document.body.style.overflow='';
+  stop();setPlayHelp(false);setPlaySettings(false);$('playPane').classList.add('hidden');document.body.style.overflow='';
   if(wasOpen&&!$('playButton').classList.contains('hidden'))$('playButton').focus();
 }
 $('playButton').onclick=()=>setMode('play');$('closePlay').onclick=()=>setMode('record');
-// Escape closes the help dropdown first, then the play pane.
+// Escape closes the help or settings menu first, then the play pane.
 document.addEventListener('keydown',e=>{
   if(e.key!=='Escape'||modalAction||$('playPane').classList.contains('hidden'))return;
   e.preventDefault();
   if(!$('playHelp').classList.contains('hidden')){setPlayHelp(false);$('playHelpToggle').focus();return}
+  if(!$('playSettingsMenu').classList.contains('hidden')){setPlaySettings(false);$('playSettingsToggle').focus({preventScroll:true});return}
+  if(mobileQuery.matches&&scenesVisible()){setScenesOpen(false);$('toggleScenes').focus({preventScroll:true});return}
   setMode('record');
 });
 // Play-mode help dropdown (rehearsal tips).
@@ -263,6 +342,11 @@ function setPlayHelp(open){
 $('playHelpToggle').onclick=e=>{e.stopPropagation();setPlayHelp($('playHelp').classList.contains('hidden'))};
 $('playHelp').onclick=e=>e.stopPropagation();
 document.addEventListener('click',()=>setPlayHelp(false));
+$('toggleScenes').onclick=()=>setScenesOpen(!scenesVisible());
+$('playScenesBackdrop').onclick=()=>setScenesOpen(false);
+$('playSettingsToggle').onclick=e=>{e.stopPropagation();setPlaySettings($('playSettingsMenu').classList.contains('hidden'))};
+$('playSettingsMenu').onclick=e=>e.stopPropagation();
+document.addEventListener('click',()=>setPlaySettings(false));
 $('addLine').onclick=()=>addDialogueLine();$('addBeat').onclick=()=>{script.turns.push({who:'beat',text:'',duration:2});render();queueSave(true)};
 function newDialogueLine(){return {who:'them',character:'',text:'',audio:null}}
 function addDialogueLine(index=script.turns.length){
@@ -281,6 +365,55 @@ function addTextBlock(index,who){
   render();queueSave(true);
   focusBlockText(index);
 }
+// Script typing: Tab / Shift+Tab move between text fields (character, dialogue, scene
+// heading, action) and skip the block buttons. Outside the script, the usual tab order applies.
+const SCRIPT_FIELDS='.character, .dialogue, .block-text';
+function tabbableElements(){
+  return [...document.querySelectorAll('button, input, textarea, select, a[href], [tabindex]')].filter(el=>
+    el.tabIndex>=0&&!el.disabled&&el.getClientRects().length&&!(el.closest('#turns')&&!el.matches(SCRIPT_FIELDS)));
+}
+function moveFocus(from,backward,{withinScript=false,caret='end'}={}){
+  const list=withinScript?[...$('turns').querySelectorAll(SCRIPT_FIELDS)].filter(el=>el.getClientRects().length):tabbableElements();
+  const target=list[list.indexOf(from)+(backward?-1:1)];
+  if(!target)return false;
+  target.focus();
+  if(target.matches('#turns input, #turns textarea')){const at=caret==='start'?0:target.value.length;target.setSelectionRange(at,at)}
+  return true;
+}
+// Up/Down arrows: in a multi-line field, only leave it from the first (Up) or last (Down)
+// visual line. Measured with a hidden copy of the field, since lines can wrap.
+let caretMirror=null;
+function caretOnEdgeLine(field,edge){
+  if(field.tagName!=='TEXTAREA')return true;
+  const cs=getComputedStyle(field);
+  if(!caretMirror){caretMirror=el('div');caretMirror.setAttribute('aria-hidden','true');Object.assign(caretMirror.style,{position:'absolute',top:'-9999px',left:'-9999px',visibility:'hidden',whiteSpace:'pre-wrap',overflowWrap:'break-word'});document.body.append(caretMirror)}
+  for(const p of ['boxSizing','width','paddingTop','paddingRight','paddingBottom','paddingLeft','borderTopWidth','borderRightWidth','borderBottomWidth','borderLeftWidth','borderStyle','fontFamily','fontSize','fontWeight','fontStyle','letterSpacing','lineHeight','textTransform','tabSize'])caretMirror.style[p]=cs[p];
+  const pos=edge==='first'?field.selectionStart:field.selectionEnd;
+  const marker=el('span','\u200b');
+  caretMirror.replaceChildren(document.createTextNode(field.value.slice(0,pos)),marker,document.createTextNode(field.value.slice(pos)||'\u200b'));
+  const lineHeight=parseFloat(cs.lineHeight)||parseFloat(cs.fontSize)*1.35;
+  const top=marker.offsetTop-parseFloat(cs.paddingTop);
+  const textHeight=caretMirror.scrollHeight-parseFloat(cs.paddingTop)-parseFloat(cs.paddingBottom);
+  return edge==='first'?top<lineHeight/2:top+lineHeight>textHeight-lineHeight/2;
+}
+// Character names save on Tab (like Enter); saving redraws the script, so continue from the new field.
+function tabFromCharacter(field,blockIndex,backward,changed,commit,options){
+  if(field.value.trim()&&changed()){commit();moveFocus($('turns').children[blockIndex].querySelector('.character'),backward,options)}
+  else moveFocus(field,backward,options);
+}
+// Whether there is a script field above (up) or below the given one.
+function moveTarget(field,up){const list=[...$('turns').querySelectorAll(SCRIPT_FIELDS)].filter(el=>el.getClientRects().length);return !!list[list.indexOf(field)+(up?-1:1)]}
+const plainArrow=e=>(e.key==='ArrowUp'||e.key==='ArrowDown')&&!e.shiftKey&&!e.altKey&&!e.metaKey&&!e.ctrlKey;
+const arrowOptions=up=>({withinScript:true,caret:up?'end':'start'});
+$('turns').addEventListener('keydown',e=>{
+  if(e.defaultPrevented||!e.target.matches(SCRIPT_FIELDS))return;
+  if(e.key==='Tab'){e.preventDefault();moveFocus(e.target,e.shiftKey);return}
+  if(plainArrow(e)){
+    const field=e.target,up=e.key==='ArrowUp';
+    if(field.selectionStart!==field.selectionEnd||!caretOnEdgeLine(field,up?'first':'last'))return;
+    if(moveFocus(field,up,arrowOptions(up)))e.preventDefault();
+  }
+});
 function focusBlockText(index){$('turns').children[index]?.querySelector('.block-text')?.focus({preventScroll:true})}
 
 function normalizeCharacters(){
@@ -308,12 +441,7 @@ function render(){
     add.onclick=e=>{e.stopPropagation();const was=menu.classList.contains('hidden');document.querySelectorAll('.block-menu').forEach(m=>m.classList.add('hidden'));menu.replaceChildren();menuItem('Add line',()=>insert('line'),undefined,'text-align-start');menuItem('Add beat',()=>insert('beat'),undefined,'gap-vertical');menuItem('Add scene heading',()=>insert('heading'),undefined,'clapperboard');menuItem('Add action',()=>insert('action'),undefined,'pilcrow');menu.classList.toggle('hidden',!was);resetBlockMenuButtons();add.setAttribute('aria-expanded',String(was))};
     dots.onclick=e=>{e.stopPropagation();const was=menu.classList.contains('hidden');document.querySelectorAll('.block-menu').forEach(m=>m.classList.add('hidden'));menu.replaceChildren();
       if(t.who==='beat'){menu.append(beatDurationSubmenu(t,n=>{t.duration=n;render();queueSave(true)}),dropdownSeparator())}
-      menuItem('Change to Me',()=>{t.who='me';render();queueSave(true)},undefined,'arrow-left');
-      menuItem('Change to Them',()=>{t.who='them';render();queueSave(true)},undefined,'arrow-right');
-      menuItem('Change to Beat',()=>{t.who='beat';t.duration??=2;render();queueSave(true)},undefined,'gap-vertical');
-      menuItem('Change to Scene heading',()=>{t.who='heading';t.text=(t.text||'').toUpperCase();render();queueSave(true)},undefined,'clapperboard');
-      menuItem('Change to Action',()=>{t.who='action';render();queueSave(true)},undefined,'pilcrow');
-      menu.append(dropdownSeparator());
+      menu.append(turnIntoSubmenu(t,()=>{render();queueSave(true)}),dropdownSeparator());
       const up=menuItem('Move up',()=>{[script.turns[i-1],script.turns[i]]=[script.turns[i],script.turns[i-1]];render();queueSave(true)},undefined,'arrow-up');up.disabled=i===0;
       const down=menuItem('Move down',()=>{[script.turns[i+1],script.turns[i]]=[script.turns[i],script.turns[i+1]];render();queueSave(true)},undefined,'arrow-down');down.disabled=i===script.turns.length-1;
       menu.append(dropdownSeparator());
@@ -378,11 +506,27 @@ function render(){
             commit(true);
           }
           if(e.key==='Escape'){choices.classList.add('hidden');character.blur()}
+          if(e.key==='Tab'){
+            e.preventDefault();
+            if(!choices.classList.contains('hidden')&&options.length)character.value=options[activeChoice].textContent.replace(/\s*\(me\)$/i,'');
+            choices.classList.add('hidden');
+            tabFromCharacter(character,i,e.shiftKey,()=>character.value.trim().toUpperCase()!==(t.character||''),commit);
+          }
+          if(plainArrow(e)&&!e.defaultPrevented){
+            const up=e.key==='ArrowUp';
+            if(!moveTarget(character,up))return;
+            e.preventDefault();choices.classList.add('hidden');
+            tabFromCharacter(character,i,up,()=>character.value.trim().toUpperCase()!==(t.character||''),commit,arrowOptions(up));
+          }
         };
         character.onblur=()=>{choices.classList.add('hidden');if(character.value.trim()&&character.value.trim()!==t.character){character.value=t.character||''}};
       }else{
         character.oninput=()=>{const pos=character.selectionStart;character.value=character.value.toUpperCase();character.setSelectionRange(pos,pos)};
-        character.onkeydown=e=>{if(e.key==='Enter'){e.preventDefault();commit(true)}};
+        character.onkeydown=e=>{
+          if(e.key==='Enter'){e.preventDefault();commit(true)}
+          if(e.key==='Tab'){e.preventDefault();tabFromCharacter(character,i,e.shiftKey,()=>character.value.trim().toUpperCase()!==script.meCharacter,commit)}
+          if(plainArrow(e)){const up=e.key==='ArrowUp';if(!moveTarget(character,up))return;e.preventDefault();tabFromCharacter(character,i,up,()=>character.value.trim().toUpperCase()!==script.meCharacter,commit,arrowOptions(up))}
+        };
         character.onblur=()=>{if(character.value.trim()&&character.value.trim()!==script.meCharacter){script.meCharacter=character.value.trim();commit()}};
       }
       picker.append(character,choices);div.append(picker);
@@ -450,34 +594,103 @@ async function recordLine(i,button){
 }
 function status(s){$('status').textContent=s}
 const isPlayable=t=>!!t&&(t.who==='me'||t.who==='them'||t.who==='beat');
-function firstPlayable(from){let i=from;while(i<script.turns.length&&!isPlayable(script.turns[i]))i++;return i}
+// "(then)" or "(beat)" inside your line marks a pause with more to come: the line is only
+// done after every part has been spoken. A marker with nothing after it doesn't add a part.
+const PAUSE_MARKER=/\(\s*(?:then|beat)\s*\)/i;
+function lineParts(text){return Math.max(1,(text||'').split(PAUSE_MARKER).filter(part=>part.trim()).length)}
+// Play mode plays one scene at a time: a scene starts at each scene heading beginning
+// with INT. or EXT. (including INT./EXT.) and runs until the next one.
+let sceneRange={start:0,end:0,scriptId:null};
+const SCENE_HEADING=/^\s*(INT|EXT)[.\s\/]/i;
+function scenes(){
+  const turns=script.turns,list=[];
+  turns.forEach((t,i)=>{if(t.who==='heading'&&SCENE_HEADING.test(t.text||''))list.push({start:i,name:t.text.trim()})});
+  if(!list.length)return [{start:0,end:turns.length,name:'Untitled scene'}];
+  if(list[0].start>0&&turns.slice(0,list[0].start).some(isPlayable))list.unshift({start:0,name:'Opening'});
+  list.forEach((scene,k)=>{scene.end=k+1<list.length?list[k+1].start:turns.length});
+  return list;
+}
+function renderSceneList(){
+  $('sceneList').replaceChildren(...scenes().map(scene=>{
+    const item=el('li');item.className='sidebar-menu-item';
+    const button=el('button');button.type='button';button.className='sidebar-menu-button';
+    button.append(el('span',scene.name));
+    if(scene.start===sceneRange.start){button.dataset.active='';button.setAttribute('aria-current','true')}
+    button.onclick=()=>selectScene(scene);
+    item.append(button);return item;
+  }));
+}
+function selectScene(scene){
+  stop();
+  sceneRange={start:scene.start,end:scene.end,scriptId:script.id};
+  renderSceneList();renderPrompter();idx=firstPlayable(scene.start);display(true);status('Ready');
+  if(mobileQuery.matches&&scenesVisible())setScenesOpen(false);
+}
+// Scene sidebar: the header's sidebar button opens and closes it. On desktop it starts open
+// (and remembers your choice while in play mode); on mobile it starts closed and opens over
+// the teleprompter, closing again once you pick a scene.
+let scenesPreferred=true;
+function setScenesOpen(open){
+  const mobile=mobileQuery.matches;
+  if(!mobile)scenesPreferred=open;
+  $('playPane').classList.toggle('scenes-visible',open);
+  $('playScenesBackdrop').classList.toggle('hidden',!(open&&mobile));
+  $('toggleScenes').setAttribute('aria-expanded',String(open));
+  setTip($('toggleScenes'),open?'Hide scenes':'Show scenes');
+}
+const scenesVisible=()=>$('playPane').classList.contains('scenes-visible');
+mobileQuery.addEventListener('change',()=>{if(!$('playPane').classList.contains('hidden'))setScenesOpen(mobileQuery.matches?false:scenesPreferred)});
+function firstPlayable(from){let i=from;while(i<sceneRange.end&&!isPlayable(script.turns[i]))i++;return i}
 // Teleprompter: every block of the scene, with the current one cued in the middle of the screen.
 function renderPrompter(){
   const list=$('prompter');list.replaceChildren();
-  script.turns.forEach(t=>{
-    const line=el('li');line.className='prompter-line';line.dataset.who=t.who;
+  script.turns.slice(sceneRange.start,sceneRange.end).forEach((t,k)=>{
+    const line=el('li');line.className='prompter-line';line.dataset.who=t.who;line.dataset.index=sceneRange.start+k;
     const who=t.who==='me'?script.meCharacter:t.who==='them'?(t.character||'Reader'):'';
     const name=el('div',who);name.className='prompter-character';
     const text=el('div',t.who==='beat'?'Beat.':(t.text||''));text.className='prompter-text';
     line.append(name,text);list.append(line);
   });
 }
-function display(){
+// instant: jump to the cued line (opening the pane, switching scenes) instead of scrolling smoothly.
+function display(instant=false){
   const lines=[...$('prompter').children];
-  lines.forEach((line,i)=>{line.toggleAttribute('data-active',i===idx);line.toggleAttribute('data-past',i<idx)});
-  const current=lines[idx];
-  if(current){const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;current.scrollIntoView({block:'center',behavior:reduce?'auto':'smooth'})}
+  lines.forEach(line=>{const i=Number(line.dataset.index);line.toggleAttribute('data-active',i===idx);line.toggleAttribute('data-past',i<idx)});
+  const current=lines.find(line=>Number(line.dataset.index)===idx);
+  if(current){const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;current.scrollIntoView({block:'center',behavior:instant||reduce?'auto':'smooth'})}
   const t=script.turns[idx];
-  const playable=script.turns.filter(isPlayable);
-  $('progress').textContent=isPlayable(t)?`Line ${playable.indexOf(t)+1} of ${playable.length} · ${t.who==='me'?'You':t.who==='them'?'Reader':'Beat'}`:'';
+  const playable=script.turns.slice(sceneRange.start,sceneRange.end).filter(isPlayable);
+  $('progress').textContent=isPlayable(t)?`Line ${playable.indexOf(t)+1} of ${playable.length}`:'';
 }
 // Show Start when idle and Stop while playing, keeping keyboard focus on whichever is visible.
 function setTransport(isPlaying){
   const hadFocus=document.activeElement===$('start')||document.activeElement===$('stop');
   $('start').classList.toggle('hidden',isPlaying);$('stop').classList.toggle('hidden',!isPlaying);
-  if(hadFocus)$(isPlaying?'stop':'start').focus();
+  if(hadFocus)$(isPlaying?'stop':'start').focus({preventScroll:true});
 }
-$('start').onclick=async()=>{if(!script.turns.some(isPlayable))return alert('Add some lines first');try{const mic=await getMicrophone();audioCtx=new AudioContext();await audioCtx.resume();let source=audioCtx.createMediaStreamSource(mic);analyser=audioCtx.createAnalyser();analyser.fftSize=2048;source.connect(analyser);playing=true;idx=firstPlayable(0);setTransport(true);next()}catch(e){alert('Microphone unavailable: '+e.message);stop()}};$('stop').onclick=()=>stop();
-function next(){if(!playing)return;cancelAnimationFrame(raf);idx=firstPlayable(idx);if(idx>=script.turns.length){status('Scene complete');stop(true);return}display();let t=script.turns[idx];if(t.who==='beat'){let seconds=beatSeconds(t);status(`Beat — ${seconds} second${seconds===1?'':'s'}…`);beatTimer=setTimeout(()=>{beatTimer=null;idx++;next()},seconds*1000);return}if(t.who==='them'){status('Playing reader…');if(!t.audio){status('Reader recording missing — skipping');idx++;setTimeout(next,250);return}let url=URL.createObjectURL(t.audio);activeAudio=new Audio(url);activeAudio.onended=()=>{URL.revokeObjectURL(url);activeAudio=null,beatTimer=null;idx++;next()};activeAudio.onerror=()=>{URL.revokeObjectURL(url);activeAudio=null,beatTimer=null;idx++;next()};activeAudio.play().catch(e=>{status('Playback failed: '+e.message);stop()})}else{status('Listening for your line…');heard=false;speechAt=0;lastVoice=0;listen()}}
-function listen(){if(!playing)return;let a=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(a);let sum=0;for(let v of a)sum+=v*v;let rms=Math.sqrt(sum/a.length),now=performance.now();const threshold=Math.max(.022,noiseFloor*2.8);if(rms>threshold){if(!speechAt)speechAt=now;if(now-speechAt>120){heard=true;lastVoice=now;status('Speaking…')}}else{speechAt=0;if(!heard)noiseFloor=noiseFloor*.98+rms*.02;if(heard&&now-lastVoice>850){idx++;next();return}}raf=requestAnimationFrame(listen)}
-function stop(done=false){playing=false;cancelAnimationFrame(raf);if(beatTimer!==null){clearTimeout(beatTimer);beatTimer=null}if(activeAudio){activeAudio.pause();activeAudio=null}/* Keep microphone permission/stream alive until explicitly released. */if(audioCtx){audioCtx.close();audioCtx=null}setTransport(false);if(!done&&$('status'))status('Stopped')}
+$('start').onclick=async()=>{if(!script.turns.slice(sceneRange.start,sceneRange.end).some(isPlayable))return alert('This scene has no lines yet');try{const mic=await getMicrophone();audioCtx=new AudioContext();await audioCtx.resume();let source=audioCtx.createMediaStreamSource(mic);analyser=audioCtx.createAnalyser();analyser.fftSize=2048;source.connect(analyser);playing=true;idx=firstPlayable(sceneRange.start);setTransport(true);next()}catch(e){alert('Microphone unavailable: '+e.message);stop()}};$('stop').onclick=()=>stop();
+function next(){if(!playing)return;cancelAnimationFrame(raf);idx=firstPlayable(idx);if(idx>=sceneRange.end){status('Scene complete');stop(true);return}display();let t=script.turns[idx];if(t.who==='beat'){let seconds=beatSeconds(t);status(`Beat — ${seconds} second${seconds===1?'':'s'}…`);beatTimer=setTimeout(()=>{beatTimer=null;idx++;next()},seconds*1000);return}if(t.who==='them'){status('Playing reader…');if(!t.audio){status('Reader recording missing — skipping');idx++;setTimeout(next,250);return}playReaderLine(t);return}else{partsNeeded=lineParts(t.text);partsHeard=0;status(partsNeeded>1?`Listening for your line… (part 1 of ${partsNeeded})`:'Listening for your line…');heard=false;speechAt=0;lastVoice=0;listen()}}
+// Plays one reader line. Back-to-back reader lines use the script's Reader spacing:
+// a pause after this line ends, or (negative) starting the next line before this one ends.
+function playReaderLine(t){
+  const url=URL.createObjectURL(t.audio);const audio=new Audio(url);
+  activeAudio=audio;playingAudios.add(audio);
+  const following=script.turns[firstPlayable(idx+1)];
+  const spacing=following?.who==='them'&&following.audio?readerSpacing():0;
+  let advanced=false;
+  const advance=()=>{if(advanced||!playing)return;advanced=true;clearTimeout(gapTimer);gapTimer=null;idx++;next()};
+  const cleanup=()=>{URL.revokeObjectURL(url);playingAudios.delete(audio);if(activeAudio===audio)activeAudio=null};
+  audio.onended=()=>{cleanup();if(spacing>0&&!advanced&&playing)gapTimer=setTimeout(advance,spacing*1000);else advance()};
+  audio.onerror=()=>{cleanup();advance()};
+  audio.play().then(async()=>{
+    if(spacing>=0)return;
+    const duration=await audioDuration(t.audio).catch(()=>null);
+    if(duration&&playing&&!advanced)gapTimer=setTimeout(advance,Math.max(0,duration-audio.currentTime+spacing)*1000);
+  }).catch(e=>{status('Playback failed: '+e.message);stop()});
+}
+function listen(){if(!playing)return;let a=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(a);let sum=0;for(let v of a)sum+=v*v;let rms=Math.sqrt(sum/a.length),now=performance.now();const threshold=Math.max(.022,noiseFloor*2.8);if(rms>threshold){if(!speechAt)speechAt=now;if(now-speechAt>120){if(!heard)status(partsNeeded>1?`Speaking… (part ${partsHeard+1} of ${partsNeeded})`:'Speaking…');heard=true;lastVoice=now}}else{speechAt=0;if(!heard)noiseFloor=noiseFloor*.98+rms*.02;if(heard&&now-lastVoice>850){
+  partsHeard++;
+  if(partsHeard<partsNeeded){heard=false;status(`Keep going… (part ${partsHeard+1} of ${partsNeeded})`)}
+  else{idx++;next();return}
+}}raf=requestAnimationFrame(listen)}
+function stop(done=false){playing=false;cancelAnimationFrame(raf);if(beatTimer!==null){clearTimeout(beatTimer);beatTimer=null}if(gapTimer!==null){clearTimeout(gapTimer);gapTimer=null}playingAudios.forEach(a=>a.pause());playingAudios.clear();activeAudio=null;/* Keep microphone permission/stream alive until explicitly released. */if(audioCtx){audioCtx.close();audioCtx=null}setTransport(false);if(!done&&$('status'))status('Stopped')}

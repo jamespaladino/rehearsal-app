@@ -89,7 +89,6 @@
   width: 100%;
   margin: 0 auto 2px;
   padding: 0 5px;
-  font-weight: bold;
   letter-spacing: 0.03em;
   text-align: center;
   text-transform: uppercase;
@@ -215,8 +214,9 @@
 }
 
 @media (max-width: 750px) {
+  /* Room on both sides for the margin tools and record controls, inside the screen. */
   .screenplay {
-    padding: 24px 16px 24px 65px;
+    padding: 24px 52px 24px 65px;
   }
 
   .screenplay .margin-tools {
@@ -229,14 +229,12 @@
 
   .screenplay .record-controls {
     top: 4px;
-    right: -56px;
+    right: -48px;
     flex-direction: column;
   }
-}
 
-@media (max-width: 600px) {
   .screenplay .turn::before {
     left: -65px;
-    right: -65px;
+    right: -52px;
   }
 }

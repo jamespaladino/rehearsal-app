@@ -102,7 +102,7 @@
 
   /* Layout */
   --header-height: 64px;
-  --play-bar-height: 84px;
+  --play-bar-height: 74px; /* floating bar (50px) + its 24px offset from the bottom */
   --sidebar-width: 260px;
   --main-gutter: 30px;
 }

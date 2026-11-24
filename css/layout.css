@@ -74,7 +74,7 @@
 
 .sidebar-footer {
   margin-top: auto;
-  padding: 8px 0;
+  padding: 8px;
 }
 
 /* ---- Main area --------------------------------------------------------- */
@@ -164,6 +164,39 @@
   margin: 0 auto;
 }
 
+/* ---- Mobile sidebar (shadcn: under 768px it opens over the page) -------- */
+
+.sidebar-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 49;
+  background: rgb(0 0 0 / 10%);
+}
+
+@supports (backdrop-filter: blur(4px)) {
+  .sidebar-backdrop {
+    backdrop-filter: blur(4px);
+  }
+}
+
+@media (max-width: 767px) {
+  .sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 50;
+    display: none;
+    width: min(18rem, 85vw);
+    height: 100dvh;
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
+  }
+
+  .app-shell.sidebar-mobile-open .sidebar {
+    display: flex;
+  }
+}
+
 /* ---- Responsive -------------------------------------------------------- */
 
 @media (max-width: 900px) {
@@ -190,12 +223,6 @@
     justify-content: flex-end;
     gap: 4px;
     max-width: 48%;
-  }
-}
-
-@media (max-width: 650px) {
-  .app-shell:not(.sidebar-closed) .app-main {
-    min-width: 300px;
   }
 }
 

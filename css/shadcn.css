@@ -9,6 +9,9 @@
  *   Tooltip           https://ui.shadcn.com/r/styles/base-nova/tooltip.json
  *   Popover           https://ui.shadcn.com/r/styles/base-nova/popover.json
  *   Dialog            https://ui.shadcn.com/r/styles/base-nova/dialog.json
+ *   Card              https://ui.shadcn.com/r/styles/base-nova/card.json
+ *   Toggle            https://ui.shadcn.com/r/styles/base-nova/toggle.json
+ *   ToggleGroup       https://ui.shadcn.com/r/styles/base-nova/toggle-group.json
  *
  * Tailwind's hover: variant only applies on devices that can hover, so hover rules
  * below are wrapped in @media (hover: hover) the same way.
@@ -470,6 +473,20 @@
   position: relative;
 }
 
+/* SidebarGroupLabel */
+.sidebar-group-label {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  height: 32px;
+  padding: 0 8px;
+  border-radius: var(--radius-md);
+  color: color-mix(in oklch, var(--sidebar-foreground) 70%, transparent);
+  font-size: 12px;
+  font-weight: 500;
+  outline: none;
+}
+
 .sidebar-menu-button {
   display: flex;
   align-items: center;
@@ -552,6 +569,24 @@
   flex-shrink: 0;
   width: 16px;
   height: 16px;
+}
+
+/* showOnHover: on desktop the action only appears while its row is hovered or focused,
+   or while its menu is open. Touch screens (under 768px) always show it. */
+.sidebar-menu-button[data-active] ~ .sidebar-menu-action[data-show-on-hover] {
+  color: var(--sidebar-accent-foreground);
+}
+
+@media (min-width: 768px) {
+  .sidebar-menu-action[data-show-on-hover] {
+    opacity: 0;
+  }
+
+  .sidebar-menu-item:hover > .sidebar-menu-action[data-show-on-hover],
+  .sidebar-menu-item:focus-within > .sidebar-menu-action[data-show-on-hover],
+  .sidebar-menu-action[data-show-on-hover][aria-expanded="true"] {
+    opacity: 1;
+  }
 }
 
 /* Larger touch target on small screens. */
@@ -685,6 +720,132 @@
     flex-direction: row;
     justify-content: flex-end;
   }
+}
+
+/* ======================================================================== */
+/* Toggle and ToggleGroup                                                    */
+/*                                                                           */
+/*   <div class="toggle-group" data-spacing="0">                             */
+/*     <button class="toggle [toggle-outline]" aria-pressed="true|false">    */
+/*   data-spacing="0" joins the items into one segmented control.           */
+/* ======================================================================== */
+
+.toggle {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-sizing: border-box;
+  height: 32px;
+  min-width: 32px;
+  padding: 0 10px;
+  border: 1px solid transparent;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+  outline: none;
+  cursor: pointer;
+  transition: all 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.toggle-outline {
+  border-color: var(--input);
+}
+
+.toggle[aria-pressed="true"] {
+  background: var(--muted);
+}
+
+.toggle:focus-visible {
+  z-index: 10;
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
+}
+
+.toggle:disabled {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
+.toggle svg {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+@media (hover: hover) {
+  .toggle:hover {
+    background: var(--muted);
+    color: var(--foreground);
+  }
+}
+
+.toggle-group {
+  display: flex;
+  align-items: center;
+  width: fit-content;
+  border-radius: var(--radius-lg);
+}
+
+.toggle-group[data-spacing="0"] > .toggle {
+  padding: 0 8px;
+  border-radius: 0;
+}
+
+.toggle-group[data-spacing="0"] > .toggle:first-child {
+  border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+}
+
+.toggle-group[data-spacing="0"] > .toggle:last-child {
+  border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+}
+
+.toggle-group[data-spacing="0"] > .toggle-outline:not(:first-child) {
+  border-left-width: 0;
+}
+
+/* ======================================================================== */
+/* Card: .card > .card-header (.card-title) + .card-content                  */
+/* ======================================================================== */
+
+.card {
+  --card-spacing: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--card-spacing);
+  box-sizing: border-box;
+  overflow: hidden;
+  padding: var(--card-spacing) 0;
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  color: var(--card-foreground);
+  font-size: 14px;
+  line-height: 20px;
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--foreground) 10%, transparent);
+}
+
+.card-header {
+  display: grid;
+  gap: 4px;
+  padding: 0 var(--card-spacing);
+}
+
+.card-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.375;
+}
+
+.card-content {
+  padding: 0 var(--card-spacing);
 }
 
 /* ======================================================================== */
