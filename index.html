@@ -5,10 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Rehearsal V1</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400..700&amp;display=swap">
-
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/base.css">
   <link rel="stylesheet" href="css/shadcn.css">
@@ -27,11 +23,11 @@
         <strong class="sidebar-brand">Rehearsal</strong>
         <div class="sidebar-buttons">
           <button id="collapseSidebar" class="btn btn-ghost btn-icon" type="button" aria-label="Close sidebar" data-tooltip="Close sidebar"><i data-lucide="panel-left"></i></button>
-          <button id="newScript" class="btn btn-ghost btn-icon" type="button" aria-label="New script" data-tooltip="New script"><i data-lucide="plus"></i></button>
+          <button id="newScript" class="btn btn-ghost btn-icon" type="button" aria-label="New script" data-tooltip="New script"><i data-lucide="pen-line"></i></button>
         </div>
       </div>
       <nav id="libraryPanel" class="sidebar-library" aria-label="Scripts">
-        <ul id="library" class="sidebar-menu"></ul>
+        <div id="library"></div>
       </nav>
       <div class="sidebar-footer">
         <div class="toggle-group" data-spacing="0" role="group" aria-label="Theme">
@@ -63,7 +59,9 @@
           <div id="topScriptActions" class="script-actions hidden">
             <button id="topScriptMenuToggle" class="btn btn-ghost btn-icon" type="button" aria-label="Script options" aria-haspopup="true" aria-expanded="false" data-tooltip="Script options"><i data-lucide="ellipsis"></i></button>
             <div id="topScriptMenu" class="dropdown-menu script-menu hidden">
+              <button type="button" id="topPin" class="dropdown-menu-item"></button>
               <button type="button" id="topRename" class="dropdown-menu-item"><i data-lucide="pen"></i>Rename</button>
+              <div class="dropdown-menu-separator" role="separator"></div>
               <button type="button" id="topDelete" class="dropdown-menu-item" data-variant="destructive"><i data-lucide="trash"></i>Delete</button>
             </div>
           </div>
@@ -102,19 +100,21 @@
           <input id="title" class="hidden" placeholder="Untitled script" aria-label="Script name">
           <div id="recordPanel" class="record-panel">
             <div id="turns" class="screenplay"></div>
-            <div class="add-turn-actions">
-              <button id="addLine" class="btn btn-secondary" type="button" data-tooltip="Add line"><i data-lucide="text-align-start" data-icon="inline-start"></i>Add line</button>
-              <button id="addBeat" class="btn btn-secondary" type="button" data-tooltip="Add beat"><i data-lucide="gap-vertical" data-icon="inline-start"></i>Add beat</button>
-            </div>
           </div>
         </div>
       </main>
     </div>
   </div>
 
-  <div id="playPane" class="play-pane hidden" role="dialog" aria-modal="true" aria-labelledby="playPaneTitle">
+  <div id="playPane" class="play-pane hidden" role="dialog" aria-modal="true" aria-labelledby="playScriptTitle playSceneTitle">
     <header class="play-pane-header">
-      <h2 id="playPaneTitle"></h2>
+      <nav class="breadcrumb" aria-label="Breadcrumb">
+        <ol class="breadcrumb-list">
+          <li class="breadcrumb-item"><span id="playScriptTitle" class="truncate"></span></li>
+          <li class="breadcrumb-separator" role="presentation" aria-hidden="true"><i data-lucide="chevron-right"></i></li>
+          <li class="breadcrumb-item"><span id="playSceneTitle" class="breadcrumb-page truncate" aria-current="page"></span></li>
+        </ol>
+      </nav>
       <div class="play-pane-actions">
         <div class="help-menu">
           <button id="playHelpToggle" class="btn btn-ghost btn-icon" type="button" aria-label="Rehearsal tips" aria-haspopup="true" aria-expanded="false" aria-controls="playHelp" data-tooltip="Help"><i data-lucide="circle-question-mark"></i></button>
@@ -128,26 +128,31 @@
     </header>
 
     <div class="play-content">
-      <div class="play-main">
+      <div id="playMain" class="play-main">
         <div id="playPanel" class="play-pane-body">
           <ol id="prompter" class="prompter" aria-label="Script"></ol>
         </div>
-        <div class="play-bar">
-          <button id="start" class="btn btn-default" type="button"><i data-lucide="play" data-icon="inline-start"></i>Start</button>
-          <button id="stop" class="btn btn-secondary hidden" type="button"><i data-lucide="square" data-icon="inline-start"></i>Stop</button>
-          <p class="play-meta"><span id="progress"></span><span id="status" role="status">Ready</span></p>
-          <div class="play-settings">
-            <button id="playSettingsToggle" class="btn btn-ghost btn-icon" type="button" aria-label="Rehearsal settings" aria-haspopup="true" aria-expanded="false" aria-controls="playSettingsMenu" data-tooltip="Settings"><i data-lucide="settings-2"></i></button>
-            <div id="playSettingsMenu" class="dropdown-menu play-settings-menu hidden" role="menu"></div>
+        <div id="playDock" class="play-dock">
+          <div id="playAlert" class="alert alert-destructive play-alert hidden" role="alert">
+            <i data-lucide="circle-exclamation-point"></i>
+            <div id="playAlertTitle" class="alert-title"></div>
+            <div class="alert-description">They'll be skipped when you rehearse. Record them on the script page.</div>
+          </div>
+          <div class="play-bar">
+            <button id="start" class="btn btn-default" type="button"><i data-lucide="play" data-icon="inline-start"></i>Start</button>
+            <button id="stop" class="btn btn-secondary hidden" type="button"><i data-lucide="square" data-icon="inline-start"></i>Stop</button>
+            <p class="play-meta"><span id="progress"></span><span id="status" role="status">Ready</span></p>
+            <div class="play-settings">
+              <button id="playSettingsToggle" class="btn btn-ghost btn-icon" type="button" aria-label="Rehearsal settings" aria-haspopup="true" aria-expanded="false" aria-controls="playSettingsMenu" data-tooltip="Settings"><i data-lucide="settings-2"></i></button>
+              <div id="playSettingsMenu" class="dropdown-menu play-settings-menu hidden" role="menu"></div>
+            </div>
           </div>
         </div>
       </div>
 
-      <aside id="playSidebar" class="card play-sidebar" aria-labelledby="scenesTitle">
-        <div class="card-header">
-          <h3 id="scenesTitle" class="card-title">Scenes</h3>
-        </div>
-        <nav class="card-content play-scene-list" aria-labelledby="scenesTitle">
+      <aside id="playSidebar" class="play-sidebar" aria-labelledby="scenesLabel">
+        <div id="scenesLabel" class="sidebar-group-label">Scenes</div>
+        <nav class="play-scene-list" aria-labelledby="scenesLabel">
           <ul id="sceneList" class="sidebar-menu"></ul>
         </nav>
       </aside>
@@ -163,7 +168,7 @@
       </div>
       <form id="modalForm" class="dialog-form">
         <div id="renameFields">
-          <label for="renameInput">Script name</label>
+          <label id="renameLabel" for="renameInput">Script name</label>
           <input id="renameInput" maxlength="200" autocomplete="off" required>
           <div id="modalError" class="error" aria-live="polite"></div>
         </div>

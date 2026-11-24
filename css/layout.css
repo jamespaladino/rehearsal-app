@@ -43,7 +43,21 @@
   padding: 0 0 0 8px;
 }
 
+/* Sidebar rows, their actions and the sidebar's buttons use the lighter grey in every
+   state (hover/selected show through the background), via the shadcn colour tokens. */
+.sidebar,
+.play-sidebar {
+  --sidebar-foreground: var(--sidebar-item-foreground);
+  --sidebar-accent-foreground: var(--sidebar-item-foreground);
+}
+
+.sidebar-buttons,
+.sidebar-footer {
+  --foreground: var(--sidebar-item-foreground);
+}
+
 .sidebar-brand {
+  color: var(--foreground);
   font-family: var(--font-heading);
   font-size: 19px;
   letter-spacing: -0.5px;
@@ -66,10 +80,11 @@
   gap: 2px;
 }
 
+/* Script-row menus: placed against the window by placeMenu() in js/app.js so the
+   scrolling list doesn't clip them. */
 .sidebar .script-menu {
-  top: calc(100% + 4px);
-  right: 0;
-  z-index: 15;
+  position: fixed;
+  z-index: 60;
 }
 
 .sidebar-footer {

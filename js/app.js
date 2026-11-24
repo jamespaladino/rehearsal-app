@@ -172,16 +172,18 @@ function audioDuration(blob){
   if(!audioDurations.has(blob))audioDurations.set(blob,blob.arrayBuffer().then(data=>audioCtx.decodeAudioData(data)).then(buffer=>buffer.duration));
   return audioDurations.get(blob);
 }
-// Block types a block can be turned into, in menu order.
+// Block types a block can be turned into, in menu order. A "Line" is dialogue: whether it's
+// yours or a reader's comes from its character name, so there's one option for both.
+const isLine=t=>t.who==='me'||t.who==='them';
 const BLOCK_TYPES=[
-  {who:'me',label:'Me',icon:'arrow-left',apply:t=>{t.who='me'}},
-  {who:'them',label:'Them',icon:'arrow-right',apply:t=>{t.who='them'}},
-  {who:'beat',label:'Beat',icon:'gap-vertical',apply:t=>{t.who='beat';t.duration??=2}},
-  {who:'heading',label:'Scene heading',icon:'clapperboard',apply:t=>{t.who='heading';t.text=(t.text||'').toUpperCase()}},
-  {who:'action',label:'Action',icon:'pilcrow',apply:t=>{t.who='action'}},
+  {label:'Line',icon:'text-align-start',is:isLine,apply:t=>{if(!isLine(t)){t.who='them';t.character='';t.audio=null}}},
+  {label:'Beat',icon:'gap-vertical',is:t=>t.who==='beat',apply:t=>{t.who='beat';t.duration??=2}},
+  {label:'Scene heading',icon:'clapperboard',is:t=>t.who==='heading',apply:t=>{t.who='heading';t.text=(t.text||'').toUpperCase()}},
+  {label:'Action',icon:'pilcrow',is:t=>t.who==='action',apply:t=>{t.who='action'}},
 ];
+// onChange(becameLine): becameLine is true when a non-dialogue block was turned into a line.
 function turnIntoSubmenu(t,onChange){
-  return dropdownSubmenu('repeat','Turn into',BLOCK_TYPES.map(type=>({label:type.label,icon:type.icon,checked:t.who===type.who,onSelect:()=>{type.apply(t);onChange()}})));
+  return dropdownSubmenu('repeat','Turn into',BLOCK_TYPES.map(type=>({label:type.label,icon:type.icon,checked:type.is(t),onSelect:()=>{const was=isLine(t);type.apply(t);onChange(!was&&isLine(t))}})));
 }
 // Tooltips: any element with data-tooltip shows one on mouse hover or keyboard focus.
 const tooltip=el('div');tooltip.className='tooltip';tooltip.setAttribute('aria-hidden','true');document.body.append(tooltip);
@@ -210,6 +212,7 @@ function queueSave(immediate=false){
   const id=script.id;
   saveTimer=setTimeout(()=>{
     if(!script||script.id!==id)return;
+    script.lastUsed=Date.now();
     const snapshot=structuredClone(script);
     saveChain=saveChain.catch(()=>{}).then(()=>put(snapshot)).then(()=>library()).catch(e=>console.error('Autosave failed:',e));
   },immediate?0:400);
@@ -221,38 +224,99 @@ async function flushSave(){
 }
 
 function closeModal(){modalAction=null;$('modalBackdrop').classList.add('hidden');$('modalError').textContent='';if(modalPreviousFocus?.isConnected)modalPreviousFocus.focus()}
-function openModal(type,s){modalPreviousFocus=document.activeElement;modalAction={type,id:s.id};$('modalTitle').textContent=type==='rename'?'Rename script':'Delete script?';$('modalMessage').textContent=type==='rename'?'Choose a new name for this script.':`Delete “${s.title||'Untitled'}” and all its recordings? This cannot be undone.`;$('renameFields').classList.toggle('hidden',type!=='rename');$('renameInput').required=type==='rename';$('renameInput').value=s.title||'';$('modalConfirm').textContent=type==='rename'?'Save':'Delete';$('modalConfirm').className='btn '+(type==='rename'?'btn-default':'btn-destructive');$('modalError').textContent='';$('modalBackdrop').classList.remove('hidden');(type==='rename'?$('renameInput'):$('modalCancel')).focus()}
+function openModal(type,s){
+  modalPreviousFocus=document.activeElement;modalAction={type,id:s.id,name:s.name};
+  const text={
+    rename:{title:'Rename script',message:'Choose a new name for this script.',label:'Script name',value:s.title||'',confirm:'Save'},
+    character:{title:'Rename character',message:'Every line by '+s.name+' will use the new name.',label:'Character name',value:s.name,confirm:'Save'},
+    delete:{title:'Delete script?',message:`Delete “${s.title||'Untitled'}” and all its recordings? This cannot be undone.`,confirm:'Delete'},
+  }[type];
+  const hasField=type!=='delete';
+  $('modalTitle').textContent=text.title;$('modalMessage').textContent=text.message;
+  $('renameFields').classList.toggle('hidden',!hasField);$('renameInput').required=hasField;
+  $('renameLabel').textContent=text.label||'';$('renameInput').value=text.value||'';
+  // Character names are uppercase, like the rest of the script.
+  $('renameInput').oninput=type==='character'?()=>{const el=$('renameInput'),pos=el.selectionStart;el.value=el.value.toUpperCase();el.setSelectionRange(pos,pos)}:null;
+  $('modalConfirm').textContent=text.confirm;$('modalConfirm').className='btn '+(hasField?'btn-default':'btn-destructive');
+  $('modalError').textContent='';$('modalBackdrop').classList.remove('hidden');
+  if(hasField){$('renameInput').focus();$('renameInput').select()}else $('modalCancel').focus();
+}
 $('modalCancel').onclick=closeModal;
 $('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modalAction){e.preventDefault();closeModal()}});
-$('modalForm').onsubmit=async e=>{e.preventDefault();if(!modalAction)return;const {type,id}=modalAction;const btn=$('modalConfirm');btn.disabled=true;try{if(type==='rename'){const title=$('renameInput').value.trim();if(!title){$('modalError').textContent='Enter a script name.';return}const r=store().get(id);const saved=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});if(!saved)throw new Error('Script no longer exists');saved.title=title;await put(saved);if(script?.id===id){script.title=title;$('title').value=title;$('scriptHeading').textContent=title;updateScriptHeader()}}else{if(script?.id===id){clearTimeout(saveTimer);script=null;}await saveChain;await del(id);try{if(localStorage.getItem("rehearsal-last-opened")===id)localStorage.removeItem("rehearsal-last-opened")}catch(e){}if(!script){stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader()}}closeModal();await library()}catch(err){$('modalError').textContent=err.message||'Could not save changes.';$('renameFields').classList.remove('hidden')}finally{btn.disabled=false}};
+$('modalForm').onsubmit=async e=>{e.preventDefault();if(!modalAction)return;const {type,id}=modalAction;const btn=$('modalConfirm');btn.disabled=true;try{if(type==='character'){const name=$('renameInput').value.trim().toUpperCase();if(!name){$('modalError').textContent='Enter a character name.';return}const oldName=modalAction.name;closeModal();renameCharacter(oldName,name);return}if(type==='rename'){const title=$('renameInput').value.trim();if(!title){$('modalError').textContent='Enter a script name.';return}const r=store().get(id);const saved=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});if(!saved)throw new Error('Script no longer exists');saved.title=title;await put(saved);if(script?.id===id){script.title=title;$('title').value=title;$('scriptHeading').textContent=title;updateScriptHeader()}}else{if(script?.id===id){clearTimeout(saveTimer);script=null;}await saveChain;await del(id);try{if(localStorage.getItem("rehearsal-last-opened")===id)localStorage.removeItem("rehearsal-last-opened")}catch(e){}if(!script){stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader()}}closeModal();await library()}catch(err){$('modalError').textContent=err.message||'Could not save changes.';$('renameFields').classList.remove('hidden')}finally{btn.disabled=false}};
 let activeMenu=null;
 function closeMenu(){if(activeMenu){activeMenu.classList.add('hidden');activeMenu.previousElementSibling?.setAttribute('aria-expanded','false');activeMenu=null}}
 document.addEventListener('click',()=>closeMenu());
+// Script-row menus are positioned against the window (position: fixed) so the scrolling
+// script list can't clip them: right-aligned with the ⋯ button, 4px below it, or above it
+// when there isn't room below. They close if the list scrolls, and follow their button if the
+// window resizes (phones resize when the address bar or keyboard appears).
+function placeMenu(menu,trigger){
+  const t=trigger.getBoundingClientRect(),h=menu.offsetHeight,gap=4,margin=8;
+  const below=t.bottom+gap,above=t.top-gap-h;
+  menu.style.top=(below+h>innerHeight-margin&&above>=margin?above:below)+'px';
+  menu.style.right=Math.max(margin,innerWidth-t.right)+'px';
+}
+$('libraryPanel').addEventListener('scroll',()=>closeMenu());
+addEventListener('resize',()=>{if(activeMenu?.closest('.sidebar'))placeMenu(activeMenu,activeMenu.previousElementSibling)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
+// Sidebar: a "Pinned" section (only when something is pinned) and a "Recents" section
+// (everything else), each newest first and collapsible. Collapsed sections are remembered.
+const SECTIONS_KEY='rehearsal-sidebar-collapsed';
+function collapsedSections(){try{return JSON.parse(localStorage.getItem(SECTIONS_KEY)||'{}')}catch(e){return {}}}
+function setSectionCollapsed(name,collapsed){const all=collapsedSections();all[name]=collapsed;try{localStorage.setItem(SECTIONS_KEY,JSON.stringify(all))}catch(e){}}
+// shadcn SidebarGroup whose label is a collapsible trigger.
+function sidebarSection(name,label,rows){
+  const group=el('div');group.className='sidebar-group';group.dataset.section=name;
+  const list=el('ul');list.className='sidebar-menu';list.id='section-'+name;list.append(...rows);
+  const trigger=el('button');trigger.type='button';trigger.className='sidebar-group-label';
+  trigger.setAttribute('aria-controls',list.id);
+  trigger.append(el('span',label),icon('chevron-down'));
+  const setOpen=open=>{list.classList.toggle('hidden',!open);trigger.setAttribute('aria-expanded',String(open))};
+  setOpen(!collapsedSections()[name]);
+  trigger.onclick=()=>{const open=list.classList.contains('hidden');setOpen(open);setSectionCollapsed(name,!open)};
+  group.append(trigger,list);
+  return group;
+}
+function scriptRow(s){
+  const name=s.title||'Untitled script';
+  const item=el('li');item.className='sidebar-menu-item';
+  const open=el('button');open.type='button';open.className='sidebar-menu-button';
+  open.setAttribute('aria-label','Open '+name);
+  if(script?.id===s.id){open.dataset.active='';open.setAttribute('aria-current','true')}
+  open.append(el('span',s.title||'Untitled'));
+  open.onclick=()=>{closeMenu();closeMobileSidebar();openScript(s)};
+  const toggle=el('button');toggle.type='button';toggle.className='sidebar-menu-action';toggle.dataset.showOnHover='';toggle.append(icon('ellipsis'));
+  toggle.setAttribute('aria-label','Options for '+name);toggle.setAttribute('aria-haspopup','true');toggle.setAttribute('aria-expanded','false');
+  const menu=el('div');menu.className='dropdown-menu script-menu hidden';
+  menu.append(
+    dropdownItem(isPinned(s)?'Unpin':'Pin',()=>{closeMenu();togglePin(s.id)},undefined,isPinned(s)?'pin-off':'pin'),
+    dropdownItem('Rename',()=>{closeMenu();openModal('rename',s)},undefined,'pen'),
+    dropdownSeparator(),
+    dropdownItem('Delete',()=>{closeMenu();openModal('delete',s)},'destructive','trash'));
+  menu.onclick=e=>e.stopPropagation();
+  toggle.onclick=e=>{e.stopPropagation();const wasOpen=!menu.classList.contains('hidden');closeMenu();if(!wasOpen){menu.classList.remove('hidden');placeMenu(menu,toggle);toggle.setAttribute('aria-expanded','true');activeMenu=menu}};
+  item.append(open,toggle,menu);
+  return item;
+}
 async function library(){
   closeMenu();
   // Load first, then replace the list in one step, so overlapping calls can't add duplicate rows.
-  const scripts=await getAll();
-  const list=$('library');list.replaceChildren();
-  for(const s of scripts){
-    const name=s.title||'Untitled script';
-    const item=el('li');item.className='sidebar-menu-item';
-    const open=el('button');open.type='button';open.className='sidebar-menu-button';
-    open.setAttribute('aria-label','Open '+name);
-    if(script?.id===s.id){open.dataset.active='';open.setAttribute('aria-current','true')}
-    open.append(el('span',s.title||'Untitled'));
-    open.onclick=()=>{closeMenu();closeMobileSidebar();openScript(s)};
-    const toggle=el('button');toggle.type='button';toggle.className='sidebar-menu-action';toggle.dataset.showOnHover='';toggle.append(icon('ellipsis'));
-    toggle.setAttribute('aria-label','Options for '+name);toggle.setAttribute('aria-haspopup','true');toggle.setAttribute('aria-expanded','false');
-    const menu=el('div');menu.className='dropdown-menu script-menu hidden';
-    menu.append(
-      dropdownItem('Rename',()=>{closeMenu();openModal('rename',s)},undefined,'pen'),
-      dropdownItem('Delete',()=>{closeMenu();openModal('delete',s)},'destructive','trash'));
-    menu.onclick=e=>e.stopPropagation();
-    toggle.onclick=e=>{e.stopPropagation();const wasOpen=!menu.classList.contains('hidden');closeMenu();if(!wasOpen){menu.classList.remove('hidden');toggle.setAttribute('aria-expanded','true');activeMenu=menu}};
-    item.append(open,toggle,menu);list.append(item);
-  }
+  const scripts=(await getAll()).sort((a,b)=>(b.lastUsed||0)-(a.lastUsed||0));
+  const pinned=scripts.filter(isPinned),recents=scripts.filter(s=>!isPinned(s));
+  const sections=[];
+  if(pinned.length)sections.push(sidebarSection('pinned','Pinned',pinned.map(scriptRow)));
+  if(recents.length)sections.push(sidebarSection('recents','Recents',recents.map(scriptRow)));
+  $('library').replaceChildren(...sections);
+}
+// Pinned scripts: stored as "pinned" (scripts saved earlier as "favorite" count as pinned).
+const isPinned=s=>!!(s.pinned??s.favorite);
+function setPinned(s,pinned){s.pinned=pinned;delete s.favorite}
+async function togglePin(id){
+  if(script?.id===id){setPinned(script,!isPinned(script));await flushSave()}
+  else{const saved=(await getAll()).find(x=>x.id===id);if(!saved)return;setPinned(saved,!isPinned(saved));await put(saved)}
+  await library();
 }
 function updateScriptHeader(){
   $('topScriptTitleText').textContent=script?(script.title||'Untitled script'):'';
@@ -293,14 +357,16 @@ $('titleDropdown').onsubmit=async e=>{
 };
 document.addEventListener('click',e=>{if(!e.target.closest('#titleDropdownWrap'))closeTitleDropdown()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeTitleDropdown()});
-$('topScriptMenuToggle').onclick=e=>{e.stopPropagation();const menu=$('topScriptMenu');const opening=menu.classList.contains('hidden');menu.classList.toggle('hidden',!opening);$('topScriptMenuToggle').setAttribute('aria-expanded',String(opening))};
+$('topScriptMenuToggle').onclick=e=>{e.stopPropagation();const menu=$('topScriptMenu');const opening=menu.classList.contains('hidden');if(opening&&script)$('topPin').replaceChildren(icon(isPinned(script)?'pin-off':'pin'),document.createTextNode(isPinned(script)?'Unpin':'Pin'));menu.classList.toggle('hidden',!opening);$('topScriptMenuToggle').setAttribute('aria-expanded',String(opening))};
 $('topScriptActions').onclick=e=>e.stopPropagation();
 document.addEventListener('click',e=>{if(!e.target.closest('#topScriptActions'))$('topScriptMenu').classList.add('hidden')});
+$('topPin').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden');togglePin(script.id)}};
 $('topRename').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden');openModal('rename',script)}};
 $('topDelete').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden');openModal('delete',script)}};
-// New scripts start with one blank dialogue line, ready for the first character name.
-$('newScript').onclick=async()=>{closeMobileSidebar();await flushSave();const fresh={id:crypto.randomUUID(),title:'Untitled script',meCharacter:'ME',otherCharacters:[],turns:[{who:'heading',text:''},{who:'action',text:''},newDialogueLine()]};await put(fresh);await openScript(fresh);focusBlockText(0)};$('back').onclick=async()=>{await flushSave();stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader();library()};
-async function openScript(s){await flushSave();$('playButton').classList.remove('hidden');if(script?.id!==s.id){stop();releaseMicrophone()}script=s;try{localStorage.setItem("rehearsal-last-opened",s.id)}catch(e){}$('title').value=s.title;updateScriptHeader();$('editor').classList.remove('hidden');enterMode('record');render();library()}
+// New scripts start with just a scene heading (cursor in it). Enter adds the action, then Enter
+// again starts the first dialogue line.
+$('newScript').onclick=async()=>{closeMobileSidebar();await flushSave();const fresh={id:crypto.randomUUID(),title:'Untitled script',meCharacter:'ME',otherCharacters:[],turns:[{who:'heading',text:''}]};await put(fresh);await openScript(fresh);focusBlockText(0)};$('back').onclick=async()=>{await flushSave();stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader();library()};
+async function openScript(s){await flushSave();$('playButton').classList.remove('hidden');if(script?.id!==s.id){stop();releaseMicrophone()}script=s;script.lastUsed=Date.now();queueSave(true);try{localStorage.setItem("rehearsal-last-opened",s.id)}catch(e){}$('title').value=s.title;updateScriptHeader();$('editor').classList.remove('hidden');enterMode('record');render();library()}
 function showHome(){stop();$('scriptHeading').textContent=script.title||'Untitled script';$('scriptHome').classList.remove('hidden');$('workspace').classList.add('hidden')}
 function enterMode(m){$('scriptHome').classList.add('hidden');$('workspace').classList.remove('hidden');setMode(m)}
 $('home').onclick=()=>{script.title=$('title').value.trim()||'Untitled script';showHome()};$('enterRecord').onclick=()=>enterMode('record');$('enterPlay').onclick=()=>enterMode('play');
@@ -309,7 +375,7 @@ function setMode(m){if(m==='play')openPlayPane();else closePlayPane()}
 function openPlayPane(){
   if(!script)return;
   stop();hideTip();
-  $('playPaneTitle').textContent=script.title||'Untitled script';
+  $('playScriptTitle').textContent=script.title||'Untitled script';
   const all=scenes();
   const kept=sceneRange.scriptId===script.id&&all.find(scene=>scene.start===sceneRange.start);
   selectScene(kept||all[0]);
@@ -347,7 +413,6 @@ $('playScenesBackdrop').onclick=()=>setScenesOpen(false);
 $('playSettingsToggle').onclick=e=>{e.stopPropagation();setPlaySettings($('playSettingsMenu').classList.contains('hidden'))};
 $('playSettingsMenu').onclick=e=>e.stopPropagation();
 document.addEventListener('click',()=>setPlaySettings(false));
-$('addLine').onclick=()=>addDialogueLine();$('addBeat').onclick=()=>{script.turns.push({who:'beat',text:'',duration:2});render();queueSave(true)};
 function newDialogueLine(){return {who:'them',character:'',text:'',audio:null}}
 function addDialogueLine(index=script.turns.length){
   script.turns.splice(index,0,newDialogueLine());
@@ -414,6 +479,28 @@ $('turns').addEventListener('keydown',e=>{
     if(moveFocus(field,up,arrowOptions(up)))e.preventDefault();
   }
 });
+// Re-render the script without losing the field the user just moved into (e.g. clicking
+// from a character name into dialogue): find the same field in the same block afterwards.
+function renderKeepingFocus(target){
+  const turn=target?.closest?.('#turns .turn');
+  const kind=turn&&['.character','.dialogue','.block-text'].find(k=>target.matches(k));
+  const key=kind&&{i:[...$('turns').children].indexOf(turn),kind,start:target.selectionStart,end:target.selectionEnd};
+  render();
+  if(!key)return;
+  const field=$('turns').children[key.i]?.querySelector(key.kind);
+  if(field){field.focus({preventScroll:true});try{field.setSelectionRange(key.start,key.end)}catch(e){}}
+}
+// Leave any script field first, so its "save on click-away" can't write the old name back
+// once the script is redrawn (used before renaming a character).
+function leaveScriptField(){if(document.activeElement?.closest?.('#turns'))document.activeElement.blur()}
+// Rename a character on every one of their lines (your own character included).
+function renameCharacter(oldName,newName){
+  if(!newName||oldName===newName)return;
+  leaveScriptField();
+  if(oldName===script.meCharacter)script.meCharacter=newName;
+  else script.turns.forEach(x=>{if(x.who==='them'&&(x.character||'').toUpperCase()===oldName){x.character=newName;if(newName===script.meCharacter)x.who='me'}});
+  queueSave(true);render();
+}
 function focusBlockText(index){$('turns').children[index]?.querySelector('.block-text')?.focus({preventScroll:true})}
 
 function normalizeCharacters(){
@@ -438,10 +525,10 @@ function render(){
     const menu=el('div');menu.className='dropdown-menu block-menu hidden';
     const menuItem=(name,fn,variant,iconName)=>{const b=dropdownItem(name,fn,variant,iconName);menu.append(b);return b};
     const insert=(who)=>{if(who==='line'){addDialogueLine(i+1);return}if(who==='heading'||who==='action'){addTextBlock(i+1,who);return}script.turns.splice(i+1,0,{who:'beat',text:'',duration:2});render();queueSave(true)};
-    add.onclick=e=>{e.stopPropagation();const was=menu.classList.contains('hidden');document.querySelectorAll('.block-menu').forEach(m=>m.classList.add('hidden'));menu.replaceChildren();menuItem('Add line',()=>insert('line'),undefined,'text-align-start');menuItem('Add beat',()=>insert('beat'),undefined,'gap-vertical');menuItem('Add scene heading',()=>insert('heading'),undefined,'clapperboard');menuItem('Add action',()=>insert('action'),undefined,'pilcrow');menu.classList.toggle('hidden',!was);resetBlockMenuButtons();add.setAttribute('aria-expanded',String(was))};
+    add.onclick=e=>{e.stopPropagation();const was=menu.classList.contains('hidden');document.querySelectorAll('.block-menu').forEach(m=>m.classList.add('hidden'));menu.replaceChildren();menuItem('Line',()=>insert('line'),undefined,'text-align-start');menuItem('Beat',()=>insert('beat'),undefined,'gap-vertical');menuItem('Scene heading',()=>insert('heading'),undefined,'clapperboard');menuItem('Action',()=>insert('action'),undefined,'pilcrow');menu.classList.toggle('hidden',!was);resetBlockMenuButtons();add.setAttribute('aria-expanded',String(was))};
     dots.onclick=e=>{e.stopPropagation();const was=menu.classList.contains('hidden');document.querySelectorAll('.block-menu').forEach(m=>m.classList.add('hidden'));menu.replaceChildren();
       if(t.who==='beat'){menu.append(beatDurationSubmenu(t,n=>{t.duration=n;render();queueSave(true)}),dropdownSeparator())}
-      menu.append(turnIntoSubmenu(t,()=>{render();queueSave(true)}),dropdownSeparator());
+      menu.append(turnIntoSubmenu(t,becameLine=>{render();queueSave(true);if(becameLine)focusCharacter(i)}),dropdownSeparator());
       const up=menuItem('Move up',()=>{[script.turns[i-1],script.turns[i]]=[script.turns[i],script.turns[i-1]];render();queueSave(true)},undefined,'arrow-up');up.disabled=i===0;
       const down=menuItem('Move down',()=>{[script.turns[i+1],script.turns[i]]=[script.turns[i],script.turns[i+1]];render();queueSave(true)},undefined,'arrow-down');down.disabled=i===script.turns.length-1;
       menu.append(dropdownSeparator());
@@ -452,83 +539,94 @@ function render(){
     if(t.who==='me'||t.who==='them'){
       const picker=el('div');picker.className='character-picker';
       const character=el('input');character.className='character';character.type='text';
-      character.placeholder=t.who==='me'?'ME':'Character name…';
-      character.value=t.who==='me'?script.meCharacter:(t.character||'');
-      character.setAttribute('aria-label',t.who==='me'?'Your character name (applies to all your lines)':'Select or create reader character');
+      // The block's committed character: your character for your lines, the reader's otherwise.
+      const current=()=>t.who==='me'?script.meCharacter:(t.character||'');
+      character.placeholder='Character name…';
+      character.value=current();
+      character.setAttribute('aria-label',t.who==='me'?'Character name (you)':'Character name');
       const choices=el('div');choices.className='dropdown-menu character-choices hidden';
-      const commit=(focusDialogue=false)=>{
-        const name=character.value.trim().toUpperCase();if(!name)return;
+      // Assign this block's character. Your character's name makes it your line; any other
+      // name makes it a reader line. An empty name puts the previous one back.
+      const commit=(focusDialogue=false,nextFocus=null)=>{
+        const name=character.value.trim().toUpperCase();
+        if(!name){character.value=current();return}
         character.value=name;
-        if(t.who==='me'){
-          script.meCharacter=name;
-          script.turns.filter(x=>x.who==='me').forEach(x=>x.character=name);
-        }else if(name===script.meCharacter){
-          t.who='me';t.character=script.meCharacter;t.audio=null;
-        }else{
-          t.who='them';t.character=name;
-        }
-        queueSave(true);render();
+        if(name===script.meCharacter){if(t.who!=='me')t.audio=null;t.who='me';t.character=name}
+        else{t.who='them';t.character=name}
+        queueSave(true);
+        if(nextFocus)renderKeepingFocus(nextFocus);else render();
         if(focusDialogue){const next=$('turns').children[i]?.querySelector('textarea.dialogue');next?.focus({preventScroll:true});}
       };
-      if(t.who==='them'){
-        let activeChoice=0;
-        const drawChoices=()=>{
-          choices.replaceChildren();activeChoice=0;
-          const typed=character.value.trim().toUpperCase();
-          const existing=[script.meCharacter,...script.otherCharacters.filter(name=>name!==script.meCharacter)].filter(name=>name.includes(typed));
-          existing.forEach((name,index)=>{
-            const option=el('button');option.type='button';option.className='dropdown-menu-item';
-            option.append(document.createTextNode(name));
-            if(name===script.meCharacter){const hint=el('span',' (me)');hint.className='me-hint';option.append(hint)}
-            option.toggleAttribute('data-highlighted',index===activeChoice);
-            option.onmousedown=e=>e.preventDefault();
-            option.onclick=()=>{character.value=name;commit()};
-            choices.append(option);
-          });
-          choices.classList.toggle('hidden',!typed||!choices.childElementCount);
-        };
-        character.oninput=()=>{
-          const pos=character.selectionStart;
-          character.value=character.value.toUpperCase();
-          character.setSelectionRange(pos,pos);
-          if(character.value.trim())drawChoices();else choices.classList.add('hidden');
-        };
-        character.onkeydown=e=>{
-          const options=[...choices.querySelectorAll('button')];
-          if(!choices.classList.contains('hidden')&&options.length&&(e.key==='ArrowDown'||e.key==='ArrowUp')){
-            e.preventDefault();activeChoice=(activeChoice+(e.key==='ArrowDown'?1:-1)+options.length)%options.length;
-            options.forEach((option,index)=>option.toggleAttribute('data-highlighted',index===activeChoice));
-            options[activeChoice].scrollIntoView({block:'nearest'});return;
-          }
-          if(e.key==='Enter'){
-            e.preventDefault();
-            if(!choices.classList.contains('hidden')&&options.length)character.value=options[activeChoice].textContent.replace(/\s*\(me\)$/i,'');
-            commit(true);
-          }
-          if(e.key==='Escape'){choices.classList.add('hidden');character.blur()}
-          if(e.key==='Tab'){
-            e.preventDefault();
-            if(!choices.classList.contains('hidden')&&options.length)character.value=options[activeChoice].textContent.replace(/\s*\(me\)$/i,'');
-            choices.classList.add('hidden');
-            tabFromCharacter(character,i,e.shiftKey,()=>character.value.trim().toUpperCase()!==(t.character||''),commit);
-          }
-          if(plainArrow(e)&&!e.defaultPrevented){
-            const up=e.key==='ArrowUp';
-            if(!moveTarget(character,up))return;
-            e.preventDefault();choices.classList.add('hidden');
-            tabFromCharacter(character,i,up,()=>character.value.trim().toUpperCase()!==(t.character||''),commit,arrowOptions(up));
-          }
-        };
-        character.onblur=()=>{choices.classList.add('hidden');if(character.value.trim()&&character.value.trim()!==t.character){character.value=t.character||''}};
-      }else{
-        character.oninput=()=>{const pos=character.selectionStart;character.value=character.value.toUpperCase();character.setSelectionRange(pos,pos)};
-        character.onkeydown=e=>{
-          if(e.key==='Enter'){e.preventDefault();commit(true)}
-          if(e.key==='Tab'){e.preventDefault();tabFromCharacter(character,i,e.shiftKey,()=>character.value.trim().toUpperCase()!==script.meCharacter,commit)}
-          if(plainArrow(e)){const up=e.key==='ArrowUp';if(!moveTarget(character,up))return;e.preventDefault();tabFromCharacter(character,i,up,()=>character.value.trim().toUpperCase()!==script.meCharacter,commit,arrowOptions(up))}
-        };
-        character.onblur=()=>{if(character.value.trim()&&character.value.trim()!==script.meCharacter){script.meCharacter=character.value.trim();commit()}};
-      }
+      const changed=()=>character.value.trim().toUpperCase()!==current();
+      // Dropdown: every character (yours marked "(me)", the current one checked), narrowed while
+      // typing; then "Rename" for the block's current character. Up/Down move through every
+      // item in the list while it's showing; Enter picks the character or runs the action.
+      let activeChoice=-1;
+      const items=()=>[...choices.querySelectorAll('.dropdown-menu-item')];
+      const highlight=()=>items().forEach((o,k)=>o.toggleAttribute('data-highlighted',k===activeChoice));
+      const drawChoices=()=>{
+        const typed=character.value.trim().toUpperCase(),name=current(),filtering=!!typed&&typed!==name;
+        const names=[...new Set([script.meCharacter,...script.otherCharacters])].filter(n=>n&&(!filtering||n.includes(typed)));
+        choices.replaceChildren();
+        for(const n of names){
+          const option=el('button');option.type='button';option.className='dropdown-menu-item character-option';
+          option.append(el('span',n));
+          if(n===script.meCharacter){const hint=el('span','(me)');hint.className='me-hint';option.append(hint)}
+          if(n===name&&!filtering)option.append(icon('check'));
+          option.onmousedown=e=>e.preventDefault();
+          option.onclick=()=>{character.value=n;choices.classList.add('hidden');commit(true)};
+          choices.append(option);
+        }
+        activeChoice=filtering&&names.length?0:-1;highlight();
+        if(name&&!filtering){
+          const actions=[];
+          actions.push(dropdownItem('Rename',()=>{choices.classList.add('hidden');openModal('character',{id:script.id,name})},undefined,'pen'));
+          for(const a of actions)a.onmousedown=e=>e.preventDefault();
+          if(names.length)choices.append(dropdownSeparator());
+          choices.append(...actions);
+        }
+        choices.classList.toggle('hidden',!choices.childElementCount);
+      };
+      // While typing, Enter/Tab take the highlighted suggestion.
+      // The highlighted item, if the list is showing.
+      const highlighted=()=>choices.classList.contains('hidden')?null:items()[activeChoice]||null;
+      // Enter/Tab take a highlighted character name.
+      const takeHighlighted=()=>{const o=highlighted();if(o?.classList.contains('character-option'))character.value=o.firstChild.textContent};
+      character.onfocus=drawChoices;
+      character.oninput=()=>{
+        const pos=character.selectionStart;
+        character.value=character.value.toUpperCase();
+        character.setSelectionRange(pos,pos);
+        drawChoices();
+      };
+      character.onkeydown=e=>{
+        const all=items();
+        if((e.key==='ArrowDown'||e.key==='ArrowUp')&&!e.shiftKey&&all.length&&!choices.classList.contains('hidden')){
+          e.preventDefault();
+          const down=e.key==='ArrowDown';
+          activeChoice=activeChoice<0?(down?0:all.length-1):(activeChoice+(down?1:-1)+all.length)%all.length;
+          highlight();all[activeChoice].scrollIntoView({block:'nearest'});return;
+        }
+        if(e.key==='Enter'){
+          e.preventDefault();
+          const o=highlighted();
+          if(o&&!o.classList.contains('character-option')){o.click();return} // an action, e.g. Rename
+          takeHighlighted();choices.classList.add('hidden');commit(true);return;
+        }
+        if(e.key==='Escape'){character.value=current();choices.classList.add('hidden');character.blur();return}
+        if(e.key==='Tab'){
+          e.preventDefault();takeHighlighted();choices.classList.add('hidden');
+          tabFromCharacter(character,i,e.shiftKey,changed,commit);return;
+        }
+        if(plainArrow(e)){
+          const up=e.key==='ArrowUp';
+          if(!moveTarget(character,up))return;
+          e.preventDefault();choices.classList.add('hidden');
+          tabFromCharacter(character,i,up,changed,commit,arrowOptions(up));
+        }
+      };
+      // Clicking away saves the typed name (and keeps the click's new focus).
+      character.onblur=e=>{choices.classList.add('hidden');if(character.isConnected&&changed())commit(false,e.relatedTarget)};
       picker.append(character,choices);div.append(picker);
     }else if(t.who==='beat'){
       const beat=el('div','Beat.');beat.className='beat-text';div.append(beat);
@@ -623,9 +721,19 @@ function renderSceneList(){
 function selectScene(scene){
   stop();
   sceneRange={start:scene.start,end:scene.end,scriptId:script.id};
+  $('playSceneTitle').textContent=scene.name;
   renderSceneList();renderPrompter();idx=firstPlayable(scene.start);display(true);status('Ready');
   if(mobileQuery.matches&&scenesVisible())setScenesOpen(false);
 }
+// Keep the space reserved under the teleprompter equal to the bottom dock (alert + bar), so
+// the cued line stays centred above it whether or not the alert is showing.
+let dockHeight=0;
+new ResizeObserver(()=>{
+  const h=$('playDock').offsetHeight;
+  if(!h||h===dockHeight)return;
+  dockHeight=h;$('playMain').style.setProperty('--play-bar-height',(h+24)+'px');
+  if(!$('playPane').classList.contains('hidden'))display(true); // re-centre the cued line
+}).observe($('playDock'));
 // Scene sidebar: the header's sidebar button opens and closes it. On desktop it starts open
 // (and remembers your choice while in play mode); on mobile it starts closed and opens over
 // the teleprompter, closing again once you pick a scene.
@@ -643,11 +751,16 @@ mobileQuery.addEventListener('change',()=>{if(!$('playPane').classList.contains(
 function firstPlayable(from){let i=from;while(i<sceneRange.end&&!isPlayable(script.turns[i]))i++;return i}
 // Teleprompter: every block of the scene, with the current one cued in the middle of the screen.
 function renderPrompter(){
+  // Alert when reader lines in this scene have no recording (they're skipped in rehearsal).
+  const missing=script.turns.slice(sceneRange.start,sceneRange.end).filter(t=>t.who==='them'&&!t.audio).length;
+  $('playAlert').classList.toggle('hidden',!missing);
+  $('playAlertTitle').textContent=missing===1?"1 reader line in this scene hasn't been recorded":missing+" reader lines in this scene haven't been recorded";
   const list=$('prompter');list.replaceChildren();
   script.turns.slice(sceneRange.start,sceneRange.end).forEach((t,k)=>{
     const line=el('li');line.className='prompter-line';line.dataset.who=t.who;line.dataset.index=sceneRange.start+k;
     const who=t.who==='me'?script.meCharacter:t.who==='them'?(t.character||'Reader'):'';
     const name=el('div',who);name.className='prompter-character';
+    if(t.who==='them'&&!t.audio){const flag=el('span');flag.className='prompter-flag';flag.dataset.tooltip='Not recorded';flag.setAttribute('aria-label','Not recorded');flag.append(icon('circle-exclamation-point'));name.append(flag);line.dataset.unrecorded=''}
     const text=el('div',t.who==='beat'?'Beat.':(t.text||''));text.className='prompter-text';
     line.append(name,text);list.append(line);
   });

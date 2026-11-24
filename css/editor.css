@@ -16,15 +16,6 @@
   overflow-anchor: none;
 }
 
-.add-turn-actions {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin: 25px auto 40px;
-}
-
 /* ---- Blocks ------------------------------------------------------------ */
 
 .screenplay .turn {
@@ -82,6 +73,11 @@
   z-index: 3;
   width: 75%;
   margin: 0 auto;
+}
+
+/* The picker being edited (and its dropdown) sits above later blocks' fields and buttons. */
+.screenplay .character-picker:focus-within {
+  z-index: 25;
 }
 
 .screenplay .character {
@@ -159,12 +155,23 @@
   text-transform: none;
 }
 
+/* The block's current character is checked at the right of its row. */
+.screenplay .character-choices .lucide-check {
+  margin-left: auto;
+}
+
 /* ---- Margin tools (left) and record controls (right) ------------------- */
+
+/* The 32px buttons are centred on each block's first line of text: the block's 7px top
+   padding, plus half a line (1.35em at the block's 16px), minus half a button. */
+.screenplay .turn {
+  --block-tools-top: calc(7px + (1.35em - 32px) / 2);
+}
 
 .screenplay .margin-tools,
 .screenplay .record-controls {
   position: absolute;
-  top: 7px;
+  top: var(--block-tools-top);
   z-index: 3;
   display: flex;
   align-items: center;
@@ -191,12 +198,14 @@
   pointer-events: auto;
 }
 
-/* Block menu opens under the margin tools (32px buttons at top 7px, plus a 4px offset). */
+/* Block menu opens 4px below the margin tools' 32px buttons. */
 .screenplay .block-menu {
   position: absolute;
-  top: 43px;
+  top: calc(var(--block-tools-top) + 32px + 4px);
   left: -126px;
-  z-index: 3;
+  /* Above every block's margin and record buttons (z-index 3), which come later in the
+     page and would otherwise paint over an open menu; below character suggestions (30). */
+  z-index: 20;
   /* Let the beat-length submenu extend outside the menu. */
   overflow: visible;
   font-family: var(--font-sans);
@@ -228,7 +237,6 @@
   }
 
   .screenplay .record-controls {
-    top: 4px;
     right: -48px;
     flex-direction: column;
   }
