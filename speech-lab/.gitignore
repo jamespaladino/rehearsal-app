@@ -1,0 +1,5 @@
+# Large downloaded binaries: installed by setup.py from pins.json, never committed.
+.cache/
+vendor/
+models/
+samples/

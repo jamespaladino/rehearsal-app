@@ -1,0 +1,81 @@
+{
+  "_comment": "Pinned runtimes and models. setup.py downloads exactly these and verifies every SHA-256. The lab reads this file for display and paths.",
+  "sherpa": {
+    "runtime": {
+      "name": "sherpa-onnx WebAssembly ASR runtime (SIMD, single-threaded)",
+      "version": "v1.13.7",
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/k2-fsa/sherpa-onnx",
+      "dir": "sherpa-onnx-v1.13.7",
+      "archive": {
+        "url": "https://github.com/k2-fsa/sherpa-onnx/releases/download/v1.13.7/sherpa-onnx-wasm-simd-v1.13.7-en-asr-zipformer.tar.bz2",
+        "sha256": "21559527d65f7674a45834870e4f51b0af14be27d4de1043aa6f576d9b426acc",
+        "note": "Only the three runtime files below are kept; the bundled ~190 MB model (.data) is discarded."
+      },
+      "files": {
+        "sherpa-onnx-asr.js": "d51ae8e8b756ee5e53423ffada0c9702973f154f561aca7984fe0b12f4060178",
+        "sherpa-onnx-wasm-main-asr.js": "fd9e40cb7f871a94132fd722bde8a18aeb41a7e8cb95eee81a55b510e621c20a",
+        "sherpa-onnx-wasm-main-asr.wasm": "d0c15c3042fd61ca2a158a1eeb8b8c2099201f7580945efc8f729d2830cf746d"
+      }
+    },
+    "model": {
+      "name": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17 (int8 encoder/joiner)",
+      "license": "Apache-2.0",
+      "homepage": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17",
+      "trainingData": "LibriSpeech (CC BY 4.0)",
+      "dir": "sherpa-onnx-streaming-zipformer-en-20M-2023-02-17",
+      "revision": "d42f2d9f7ca24806fb667456a18a9f1b60f70d16",
+      "baseUrl": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/d42f2d9f7ca24806fb667456a18a9f1b60f70d16/",
+      "files": {
+        "encoder-epoch-99-avg-1.int8.onnx": "3810755ce7c3ab26b42a8bcf39d191308fa27fb0f53358823ba46141d03b7eb3",
+        "decoder-epoch-99-avg-1.onnx": "45a7f940ecfb53d89fa270ad11b88b961e53a317203eb24b1c8e95ed208b0f30",
+        "joiner-epoch-99-avg-1.int8.onnx": "e085d73b593cf9b0707f370dbd656d58327d3fe36d80d849202ef81df02cb01e",
+        "tokens.txt": "49e3c2646595fd907228b3c6787069658f67b17377c60aeb8619c4551b2316fb"
+      },
+      "use": {
+        "encoder": "encoder-epoch-99-avg-1.int8.onnx",
+        "decoder": "decoder-epoch-99-avg-1.onnx",
+        "joiner": "joiner-epoch-99-avg-1.int8.onnx",
+        "tokens": "tokens.txt"
+      }
+    }
+  },
+  "vosk": {
+    "runtime": {
+      "name": "vosk-browser (Vosk/Kaldi WebAssembly build, UMD bundle with inline worker)",
+      "version": "0.0.8",
+      "license": "Apache-2.0",
+      "homepage": "https://github.com/ccoreilly/vosk-browser",
+      "dir": "vosk-browser-0.0.8",
+      "archive": {
+        "url": "https://registry.npmjs.org/vosk-browser/-/vosk-browser-0.0.8.tgz",
+        "sha256": "fd16fc7e64c935d7a79cf07c8f67d84232b6485376a59144af8a234979a9a4b4"
+      },
+      "files": {
+        "vosk.js": "29504515526e974f4cb053cf08811c4de5fb2a74007c0a5a957db50eaa8d5d0c"
+      }
+    },
+    "model": {
+      "name": "vosk-model-small-en-us-0.15",
+      "license": "Apache-2.0",
+      "homepage": "https://alphacephei.com/vosk/models",
+      "zip": {
+        "url": "https://alphacephei.com/vosk/models/vosk-model-small-en-us-0.15.zip",
+        "sha256": "30f26242c4eb449f948e42cb302dd7a686cb29a3423a8367f99ff41780942498"
+      },
+      "archive": "vosk-model-small-en-us-0.15.tar.gz",
+      "archiveSha256": "1de107c834dc51c51d9c8bf58c3704ba2ff00ef86938d5720a2df5e71e1ddea7",
+      "note": "vosk-browser loads .tar.gz archives; setup.py repacks the official .zip deterministically."
+    }
+  },
+  "samples": {
+    "note": "Optional public test audio for a quick smoke test (from the sherpa-onnx model repo, LibriSpeech).",
+    "files": {
+      "librispeech-0.wav": {
+        "url": "https://huggingface.co/csukuangfj/sherpa-onnx-streaming-zipformer-en-20M-2023-02-17/resolve/d42f2d9f7ca24806fb667456a18a9f1b60f70d16/test_wavs/0.wav",
+        "sha256": "6bc58a4efdf20daac252b6b1502632601a71efe0308f6757dc1eda34891a7e4f",
+        "transcript": "AFTER EARLY NIGHTFALL THE YELLOW LAMPS WOULD LIGHT UP HERE AND THERE THE SQUALID QUARTER OF THE BROTHELS"
+      }
+    }
+  }
+}
