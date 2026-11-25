@@ -419,21 +419,22 @@ function openModal(type,s){
     rename:{title:'Rename script',message:'Choose a new name for this script.',label:'Script name',value:s.title||'',confirm:'Save'},
     character:{title:'Rename character',message:'Every line by '+s.name+' will use the new name.',label:'Character name',value:s.name,confirm:'Save'},
     delete:{title:'Delete script?',message:`Delete “${s.title||'Untitled'}” and all its recordings? This cannot be undone.`,confirm:'Delete'},
+    discardImport:{title:'Cancel import?',message:'This script hasn’t been imported yet. Your changes will be lost.',confirm:'Discard import',cancel:'Keep editing'},
   }[type];
-  const hasField=type!=='delete';
+  const hasField=type!=='delete'&&type!=='discardImport';
   $('modalTitle').textContent=text.title;$('modalMessage').textContent=text.message;
   $('renameFields').classList.toggle('hidden',!hasField);$('renameInput').required=hasField;
   $('renameLabel').textContent=text.label||'';$('renameInput').value=text.value||'';
   // Character names are uppercase, like the rest of the script.
   $('renameInput').oninput=type==='character'?()=>{const el=$('renameInput'),pos=el.selectionStart;el.value=el.value.toUpperCase();el.setSelectionRange(pos,pos)}:null;
-  $('modalConfirm').textContent=text.confirm;$('modalConfirm').className='btn '+(hasField?'btn-default':'btn-destructive');
+  $('modalConfirm').textContent=text.confirm;$('modalCancel').textContent=text.cancel||'Cancel';$('modalConfirm').className='btn '+(hasField?'btn-default':'btn-destructive');
   $('modalError').textContent='';$('modalBackdrop').classList.remove('hidden');
   if(hasField){$('renameInput').focus();$('renameInput').select()}else $('modalCancel').focus();
 }
 $('modalCancel').onclick=closeModal;
 $('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modalAction){e.preventDefault();closeModal()}});
-$('modalForm').onsubmit=async e=>{e.preventDefault();if(!modalAction)return;const {type,id}=modalAction;const btn=$('modalConfirm');btn.disabled=true;try{if(type==='character'){const name=$('renameInput').value.trim().toUpperCase();if(!name){$('modalError').textContent='Enter a character name.';return}const oldName=modalAction.name;closeModal();renameCharacter(oldName,name);return}if(type==='rename'){const title=$('renameInput').value.trim();if(!title){$('modalError').textContent='Enter a script name.';return}const r=store().get(id);const saved=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});if(!saved)throw new Error('Script no longer exists');saved.title=title;await put(saved);if(script?.id===id){script.title=title;$('title').value=title;$('scriptHeading').textContent=title;updateScriptHeader()}}else{if(script?.id===id){clearTimeout(saveTimer);script=null;}await saveChain;await del(id);try{if(localStorage.getItem("rehearsal-last-opened")===id)localStorage.removeItem("rehearsal-last-opened")}catch(e){}if(!script){stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader()}}closeModal();await library()}catch(err){$('modalError').textContent=err.message||'Could not save changes.';$('renameFields').classList.remove('hidden')}finally{btn.disabled=false}};
+$('modalForm').onsubmit=async e=>{e.preventDefault();if(!modalAction)return;const {type,id}=modalAction;if(type==='discardImport'){closeModal();closeImportPane();return}const btn=$('modalConfirm');btn.disabled=true;try{if(type==='character'){const name=$('renameInput').value.trim().toUpperCase();if(!name){$('modalError').textContent='Enter a character name.';return}const oldName=modalAction.name;closeModal();renameCharacter(oldName,name);return}if(type==='rename'){const title=$('renameInput').value.trim();if(!title){$('modalError').textContent='Enter a script name.';return}const r=store().get(id);const saved=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});if(!saved)throw new Error('Script no longer exists');saved.title=title;await put(saved);if(script?.id===id){script.title=title;$('title').value=title;$('scriptHeading').textContent=title;updateScriptHeader()}}else{if(script?.id===id){clearTimeout(saveTimer);script=null;}await saveChain;await del(id);try{if(localStorage.getItem("rehearsal-last-opened")===id)localStorage.removeItem("rehearsal-last-opened")}catch(e){}if(!script){stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader()}}closeModal();await library()}catch(err){$('modalError').textContent=err.message||'Could not save changes.';$('renameFields').classList.remove('hidden')}finally{btn.disabled=false}};
 let activeMenu=null;
 function closeMenu(){if(activeMenu){activeMenu.classList.add('hidden');activeMenu.previousElementSibling?.setAttribute('aria-expanded','false');activeMenu=null}}
 document.addEventListener('click',()=>closeMenu());
@@ -560,7 +561,11 @@ async function openScript(s){showView(null);await flushSave();$('playButton').cl
 // the current script closes, the sidebar row is selected, and it's remembered as last opened.
 // Tests is the Speech Recognition Lab (speech-lab/); it loads on first open and stays alive
 // (models, takes) while you switch to scripts and back.
-const PAGES={tests:{view:'testsView',row:'openTests',title:'Tests'},settings:{view:'settingsView',row:'openSettings',title:'Settings'}};
+// Tests is a page from its own folder, shown in an iframe (src loaded on first open).
+const PAGES={
+  tests:{view:'testsView',row:'openTests',title:'Tests',frame:'testsFrame',src:'speech-lab/?embed',needsServer:'testsNeedsServer'},
+  settings:{view:'settingsView',row:'openSettings',title:'Settings'},
+};
 function showView(name){
   for(const [id,page] of Object.entries(PAGES)){
     const on=id===name;
@@ -570,7 +575,8 @@ function showView(name){
   }
   $('topViewTitle').classList.toggle('hidden',!name);
   if(name)$('topViewTitle').textContent=PAGES[name].title;
-  if(name==='tests'){const f=$('testsFrame');const fromDisk=location.protocol==='file:';f.classList.toggle('hidden',fromDisk);$('testsNeedsServer').classList.toggle('hidden',!fromDisk);if(!fromDisk&&!f.getAttribute('src'))f.src='speech-lab/?embed'}
+  const page=PAGES[name];
+  if(page?.frame){const f=$(page.frame);const fromDisk=location.protocol==='file:';f.classList.toggle('hidden',fromDisk);$(page.needsServer).classList.toggle('hidden',!fromDisk);if(!fromDisk&&!f.getAttribute('src'))f.src=page.src}
 }
 async function openPage(name){
   // Tests uses its own microphone, so the app's is released. Settings leaves a connected
@@ -584,6 +590,78 @@ async function openPage(name){
 }
 const openTests=()=>openPage('tests'),openSettings=()=>openPage('settings');
 $('openTests').onclick=openTests;$('openSettings').onclick=openSettings;
+
+// ---- Import flow ----------------------------------------------------------
+// Import in the sidebar opens the file picker. Choosing a file opens the import pane (a full-page
+// pane like the teleprompter's): name the script, pick your character, review the blocks. Import
+// saves it and opens the script; exiting asks first. The importer is script-import/ (ES modules,
+// loaded on first use); review-ui.js renders the character list and the block table.
+let importUi=null,importReview=null,importBusy=false;
+async function loadImportUi(){
+  if(!importUi)importUi=await import(new URL('script-import/review-ui.js',document.baseURI).href);
+  return importUi;
+}
+$('openImport').onclick=()=>{
+  closeMobileSidebar();
+  if(location.protocol==='file:'){alert('Importing needs a local server. From the repository root, run python3 speech-lab/serve.py, then open http://localhost:8000/');return}
+  $('importFile').value='';$('importFile').click();
+};
+$('importFile').onchange=e=>{const file=e.target.files[0];if(file)startImport(file)};
+async function startImport(file){
+  openImportPane(file.name);
+  $('importStatus').textContent=`Reading ${file.name}…`;
+  try{
+    const ui=await loadImportUi();
+    importReview||=ui.createImportReview({characters:$('importCharacters'),selectId:'importMe',blocks:$('importBlocks'),filter:$('importFilter'),confidence:false,onChange:renderImportSummary});
+    const result=await ui.readScriptFile(file);
+    if($('importPane').classList.contains('hidden'))return; // exited while reading
+    $('importTitle').value=result.title||file.name.replace(/\.[^.]+$/,'');
+    $('importStatus').textContent='';$('importContent').classList.remove('hidden');
+    importReview.load(result);
+    $('importConfirm').disabled=!result.blocks.length;
+    $('importTitle').focus({preventScroll:true});
+  }catch(err){console.error(err);$('importStatus').textContent=`Couldn't read ${file.name}: ${err.message}`}
+}
+function renderImportSummary(review){
+  const r=review.result;
+  $('importUndo').classList.toggle('hidden',!review.canUndo);
+  $('importWarnings').replaceChildren(...r.warnings.map(w=>{const a=el('div');a.className='alert import-warning';a.setAttribute('role','alert');const d=el('div',w);d.className='alert-description';a.append(d);return a}));
+}
+function openImportPane(fileName){
+  closeMenu();hideTip();
+  $('importFileName').textContent=fileName;
+  $('importContent').classList.add('hidden');$('importWarnings').replaceChildren();
+  $('importUndo').classList.add('hidden');$('importConfirm').disabled=true;
+  $('importPane').classList.remove('hidden');document.body.style.overflow='hidden';
+  $('importPane').querySelector('.import-pane-main').scrollTop=0;
+  $('cancelImport').focus({preventScroll:true});
+}
+function closeImportPane(){
+  $('importPane').classList.add('hidden');
+  if($('playPane').classList.contains('hidden'))document.body.style.overflow='';
+}
+// Nothing is saved until Import, so leaving asks first once a file has been read.
+function requestExitImport(){
+  if(importBusy)return;
+  if($('importContent').classList.contains('hidden')){closeImportPane();return}
+  openModal('discardImport',{});
+}
+$('cancelImport').onclick=requestExitImport;
+$('importUndo').onclick=()=>importReview?.undo();
+$('importConfirm').onclick=async()=>{
+  if(!importReview?.result||importBusy)return;
+  importBusy=true;$('importConfirm').disabled=true;
+  try{
+    const s=importReview.toScript({title:$('importTitle').value.trim()});
+    s.lastUsed=Date.now();
+    await put(s);
+    closeImportPane();
+    await openScript(s);
+  }catch(err){alert('Could not import: '+err.message)}
+  finally{importBusy=false;$('importConfirm').disabled=false}
+};
+// Escape asks to exit (after an open dialog has handled its own Escape).
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!e.defaultPrevented&&!modalAction&&!$('importPane').classList.contains('hidden')){e.preventDefault();requestExitImport()}});
 function showHome(){stop();$('scriptHeading').textContent=script.title||'Untitled script';$('scriptHome').classList.remove('hidden');$('workspace').classList.add('hidden')}
 function enterMode(m){$('scriptHome').classList.add('hidden');$('workspace').classList.remove('hidden');setMode(m)}
 $('home').onclick=()=>{script.title=$('title').value.trim()||'Untitled script';showHome()};$('enterRecord').onclick=()=>enterMode('record');$('enterPlay').onclick=()=>enterMode('play');
@@ -729,6 +807,15 @@ function normalizeCharacters(){
   script.turns.filter(t=>t.who==='me').forEach(t=>t.character=script.meCharacter);
   script.otherCharacters=[...new Set(script.turns.filter(t=>t.who==='them').map(t=>(t.character||'').trim().toUpperCase()).filter(Boolean))];
 }
+// Character extensions (V.O., O.S., CONT'D) stay on the line, shown after the name as in the
+// script; the line still belongs to the bare name (you vs reader, the character list).
+function cueSuffix(t){return extensionText(t.extensions)}
+function extensionText(list){return list?.length?' '+list.map(e=>`(${e})`).join(' '):''}
+function splitCue(value){
+  let name=value.trim().toUpperCase();const extensions=[];let m;
+  while((m=name.match(/\s*\(([^()]*)\)\s*$/))){if(m[1].trim())extensions.unshift(m[1].trim());name=name.slice(0,m.index).trim()}
+  return {name,extensions};
+}
 function render(){
   normalizeCharacters();
   hideTip();const root=$('turns');const savedScroll=window.scrollY;root.replaceChildren();openBlockMenu=null;
@@ -757,22 +844,23 @@ function render(){
       // The block's committed character: your character for your lines, the reader's otherwise.
       const current=()=>t.who==='me'?script.meCharacter:(t.character||'');
       character.placeholder='Character name…';
-      character.value=current();
+      character.value=current()+cueSuffix(t);
       character.setAttribute('aria-label',t.who==='me'?'Character name (you)':'Character name');
       const choices=el('div');choices.className='dropdown-menu character-choices hidden';
       // Assign this block's character. Your character's name makes it your line; any other
       // name makes it a reader line. An empty name puts the previous one back.
       const commit=(focusDialogue=false,nextFocus=null)=>{
-        const name=character.value.trim().toUpperCase();
-        if(!name){character.value=current();return}
-        character.value=name;
+        const {name,extensions}=splitCue(character.value);
+        if(!name){character.value=current()+cueSuffix(t);return}
+        if(extensions.length)t.extensions=extensions;else delete t.extensions;
+        character.value=name+cueSuffix(t);
         if(name===script.meCharacter){if(t.who!=='me')t.audio=null;t.who='me';t.character=name}
         else{t.who='them';t.character=name}
         queueSave(true);
         if(nextFocus)renderKeepingFocus(nextFocus);else render();
         if(focusDialogue){const next=$('turns').children[i]?.querySelector('textarea.dialogue');next?.focus({preventScroll:true});}
       };
-      const changed=()=>character.value.trim().toUpperCase()!==current();
+      const changed=()=>character.value.trim().toUpperCase()!==current()+cueSuffix(t);
       // Dropdown: every character (yours marked "(me)", the current one checked), narrowed while
       // typing; then "Rename" for the block's current character. Up/Down move through every
       // item in the list while it's showing; Enter picks the character or runs the action.
@@ -780,7 +868,7 @@ function render(){
       const items=()=>[...choices.querySelectorAll('.dropdown-menu-item')];
       const highlight=()=>items().forEach((o,k)=>o.toggleAttribute('data-highlighted',k===activeChoice));
       const drawChoices=()=>{
-        const typed=character.value.trim().toUpperCase(),name=current(),filtering=!!typed&&typed!==name;
+        const typed=splitCue(character.value).name,name=current(),filtering=!!typed&&typed!==name;
         const names=[...new Set([script.meCharacter,...script.otherCharacters])].filter(n=>n&&(!filtering||n.includes(typed)));
         choices.replaceChildren();
         for(const n of names){
@@ -789,7 +877,7 @@ function render(){
           if(n===script.meCharacter){const hint=el('span','(me)');hint.className='me-hint';option.append(hint)}
           if(n===name&&!filtering)option.append(icon('check'));
           option.onmousedown=e=>e.preventDefault();
-          option.onclick=()=>{character.value=n;choices.classList.add('hidden');commit(true)};
+          option.onclick=()=>{character.value=n+extensionText(splitCue(character.value).extensions);choices.classList.add('hidden');commit(true)};
           choices.append(option);
         }
         activeChoice=filtering&&names.length?0:-1;highlight();
@@ -805,8 +893,8 @@ function render(){
       // While typing, Enter/Tab take the highlighted suggestion.
       // The highlighted item, if the list is showing.
       const highlighted=()=>choices.classList.contains('hidden')?null:items()[activeChoice]||null;
-      // Enter/Tab take a highlighted character name.
-      const takeHighlighted=()=>{const o=highlighted();if(o?.classList.contains('character-option'))character.value=o.firstChild.textContent};
+      // Enter/Tab take a highlighted character name, keeping any extensions typed in the field.
+      const takeHighlighted=()=>{const o=highlighted();if(o?.classList.contains('character-option'))character.value=o.firstChild.textContent+extensionText(splitCue(character.value).extensions)};
       character.onfocus=drawChoices;
       character.oninput=()=>{
         const pos=character.selectionStart;
@@ -828,7 +916,7 @@ function render(){
           if(o&&!o.classList.contains('character-option')){o.click();return} // an action, e.g. Rename
           takeHighlighted();choices.classList.add('hidden');commit(true);return;
         }
-        if(e.key==='Escape'){character.value=current();choices.classList.add('hidden');character.blur();return}
+        if(e.key==='Escape'){character.value=current()+cueSuffix(t);choices.classList.add('hidden');character.blur();return}
         if(e.key==='Tab'){
           e.preventDefault();takeHighlighted();choices.classList.add('hidden');
           tabFromCharacter(character,i,e.shiftKey,changed,commit);return;
@@ -1018,7 +1106,7 @@ function renderPrompter(){
   script.turns.slice(sceneRange.start,sceneRange.end).forEach((t,k)=>{
     const line=el('li');line.className='prompter-line';line.dataset.who=t.who;line.dataset.index=sceneRange.start+k;
     const who=t.who==='me'?script.meCharacter:t.who==='them'?(t.character||'Reader'):'';
-    const name=el('div',who);name.className='prompter-character';
+    const name=el('div',who&&who+cueSuffix(t));name.className='prompter-character';
     if(t.who==='them'&&!t.audio){const flag=el('span');flag.className='prompter-flag';flag.dataset.tooltip='Not recorded';flag.setAttribute('aria-label','Not recorded');flag.append(icon('circle-exclamation-point'));name.append(flag);line.dataset.unrecorded=''}
     const text=el('div',t.who==='beat'?'Beat.':(t.text||''));text.className='prompter-text';
     line.append(name,text);list.append(line);

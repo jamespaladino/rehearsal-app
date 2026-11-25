@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no" ?>
+<FinalDraft DocumentType="Script" Template="No" Version="5">
+  <Content>
+    <Paragraph Type="Transition"><Text>FADE IN:</Text></Paragraph>
+    <Paragraph Number="1" Type="Scene Heading">
+      <SceneProperties Length="1" Page="1" Title=""/>
+      <Text>INT. KITCHEN - DAY</Text>
+    </Paragraph>
+    <Paragraph Type="Action"><Text>Anna stands at the sink, washing a cup that is </Text><Text Style="Italic">already</Text><Text> clean.</Text></Paragraph>
+    <Paragraph Type="Character"><Text>ANNA</Text></Paragraph>
+    <Paragraph Type="Dialogue"><Text>You said you would call.</Text></Paragraph>
+    <Paragraph Type="Character"><Text>BEN (O.S.)</Text></Paragraph>
+    <Paragraph Type="Parenthetical"><Text>(from the hall)</Text></Paragraph>
+    <Paragraph Type="Dialogue"><Text>I know. I know I did, and I meant it.</Text></Paragraph>
+    <Paragraph Type="Character"><Text>ANNA</Text></Paragraph>
+    <Paragraph Type="Dialogue"><Text>Then why didn&apos;t you?</Text></Paragraph>
+    <Paragraph Type="Parenthetical"><Text>(beat)</Text></Paragraph>
+    <Paragraph Type="Dialogue"><Text>Never mind.</Text></Paragraph>
+    <Paragraph Type="Action"><Text>They both start talking at once.</Text></Paragraph>
+    <DualDialogue>
+      <Paragraph Type="Character"><Text>ANNA</Text></Paragraph>
+      <Paragraph Type="Dialogue"><Text>I told you we should have left earlier.</Text></Paragraph>
+      <Paragraph Type="Character"><Text>BEN</Text></Paragraph>
+      <Paragraph Type="Parenthetical"><Text>(shouting)</Text></Paragraph>
+      <Paragraph Type="Dialogue"><Text>You never said anything about leaving!</Text></Paragraph>
+    </DualDialogue>
+    <Paragraph Type="Transition"><Text>CUT TO:</Text></Paragraph>
+    <Paragraph Number="2" Type="Scene Heading"><Text>EXT. GARDEN - NIGHT</Text></Paragraph>
+    <Paragraph Type="Shot"><Text>CLOSE ON A DOG</Text></Paragraph>
+    <Paragraph Type="Action"><Text>It barks &amp; runs off.</Text></Paragraph>
+    <Paragraph Type="Transition"><Text>FADE OUT.</Text></Paragraph>
+  </Content>
+  <TitlePage>
+    <Content>
+      <Paragraph Alignment="Center" Type="Action"><Text>NIGHT DRIVE</Text></Paragraph>
+      <Paragraph Alignment="Center" Type="Action"><Text>written by</Text></Paragraph>
+    </Content>
+  </TitlePage>
+</FinalDraft>

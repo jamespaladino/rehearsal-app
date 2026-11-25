@@ -1,0 +1,103 @@
+/* Script import debug view. Uses the Rehearsal design tokens (css/tokens.css). */
+
+body {
+  background: var(--page-bg);
+}
+
+.import-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: var(--header-height);
+  padding: 0 var(--main-gutter);
+}
+
+.import-header strong {
+  margin-right: 8px;
+}
+
+.import-main {
+  display: grid;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px var(--main-gutter) 48px;
+}
+
+.import-drop {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 28px 16px;
+  border: 1px dashed var(--input);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  text-align: center;
+  cursor: pointer;
+}
+
+.import-drop.dragging,
+.import-drop:hover {
+  border-color: var(--ring);
+}
+
+.import-drop svg {
+  width: 24px;
+  height: 24px;
+  color: var(--muted-foreground);
+}
+
+#status {
+  min-height: 20px;
+  margin: 0;
+}
+
+.import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.import-warning {
+  margin-bottom: 12px;
+}
+
+.import-columns {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+@media (max-width: 860px) {
+  .import-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.import-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+#title {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+#saved {
+  margin: 8px 0 0;
+}
+
+.import-blocks-card .card-content {
+  overflow-x: auto;
+}
+
+.import-characters {
+  margin-bottom: 16px;
+}

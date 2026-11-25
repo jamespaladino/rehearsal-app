@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/editor.css">
+  <link rel="stylesheet" href="script-import/review.css">
 
   <script src="vendor/lucide/lucide.min.js" defer></script>
   <script src="js/icons.js" defer></script>
@@ -27,6 +28,10 @@
         </div>
       </div>
       <ul class="sidebar-menu sidebar-pages">
+        <li class="sidebar-menu-item">
+          <button id="openImport" class="sidebar-menu-button" type="button"><i data-lucide="arrow-down-to-line"></i><span>Import</span></button>
+          <input id="importFile" type="file" accept=".pdf,.fountain,.spmd,.fdx,.txt,application/pdf" hidden>
+        </li>
         <li class="sidebar-menu-item">
           <button id="openTests" class="sidebar-menu-button" type="button"><i data-lucide="flask-conical"></i><span>Tests</span></button>
         </li>
@@ -189,6 +194,56 @@
         </nav>
       </aside>
       <div id="playScenesBackdrop" class="sidebar-backdrop hidden"></div>
+    </div>
+  </div>
+
+  <!-- Import flow: opens after a file is chosen from the sidebar's Import. -->
+  <div id="importPane" class="play-pane import-pane hidden" role="dialog" aria-modal="true" aria-labelledby="importPaneTitle">
+    <header class="play-pane-header">
+      <div class="import-pane-title">
+        <span id="importPaneTitle">Import</span>
+        <span id="importFileName" class="muted truncate"></span>
+      </div>
+      <div class="play-pane-actions import-pane-actions">
+        <button id="cancelImport" class="btn btn-outline" type="button">Cancel</button>
+        <button id="importConfirm" class="btn btn-default" type="button" disabled>Import</button>
+      </div>
+    </header>
+    <div class="import-pane-main">
+      <div class="import-pane-body">
+        <p id="importStatus" class="muted import-status" role="status"></p>
+        <div id="importContent" class="hidden">
+          <div id="importWarnings"></div>
+          <section class="import-section">
+            <label for="importTitle" class="import-section-title">Script name</label>
+            <input id="importTitle" maxlength="200" autocomplete="off">
+          </section>
+          <section class="import-section">
+            <label for="importMe" class="import-section-title">You</label>
+            <p class="muted">The character you'll play. Everyone else is read by the reader.</p>
+            <div id="importCharacters" class="import-characters"></div>
+          </section>
+          <section class="import-section" aria-labelledby="importBlocksTitle">
+            <div class="import-section-head">
+              <h2 id="importBlocksTitle" class="import-section-title">Blocks</h2>
+              <div class="import-tools">
+                <button id="importUndo" class="btn btn-ghost btn-sm hidden" type="button"><i data-lucide="undo-2" data-icon="inline-start"></i>Undo</button>
+                <div id="importFilter" class="toggle-group" data-spacing="0" role="group" aria-label="Show blocks">
+                  <button class="toggle toggle-outline" type="button" data-filter="all" aria-pressed="true">All</button>
+                  <button class="toggle toggle-outline" type="button" data-filter="review" aria-pressed="false">Review</button>
+                </div>
+              </div>
+            </div>
+            <p class="muted">Highlighted rows need a look: pick the right type, mark it correct, or delete it. Any row can be changed.</p>
+            <div class="import-table-wrap">
+              <table class="import-blocks">
+                <thead><tr><th>#</th><th>Page</th><th>Text</th><th>Type</th><th><span class="sr-only">Actions</span></th></tr></thead>
+                <tbody id="importBlocks"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
     </div>
   </div>
 

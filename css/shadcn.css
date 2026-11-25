@@ -15,6 +15,7 @@
  *   Breadcrumb        https://ui.shadcn.com/r/styles/base-nova/breadcrumb.json
  *   Alert             https://ui.shadcn.com/r/styles/base-nova/alert.json
  *   Switch            https://ui.shadcn.com/r/styles/base-nova/switch.json
+ *   NativeSelect      https://ui.shadcn.com/r/styles/base-nova/native-select.json
  *
  * Tailwind's hover: variant only applies on devices that can hover, so hover rules
  * below are wrapped in @media (hover: hover) the same way.
@@ -1126,4 +1127,81 @@ button.sidebar-group-label:focus-visible {
 
 .tooltip.visible {
   opacity: 1;
+}
+
+/* ======================================================================== */
+/* NativeSelect: <div class="native-select" [data-size="sm"]>                */
+/*   <select>…</select><svg class="native-select-icon" (chevron-down)></div> */
+/* ======================================================================== */
+
+.native-select {
+  position: relative;
+  width: fit-content;
+}
+
+.native-select:has(select:disabled) {
+  opacity: 0.5;
+}
+
+.native-select select {
+  box-sizing: border-box;
+  width: 100%;
+  min-width: 0;
+  height: 32px;
+  padding: 4px 32px 4px 10px;
+  border: 1px solid var(--input);
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: var(--foreground);
+  font: inherit;
+  font-size: 14px;
+  outline: none;
+  appearance: none;
+  user-select: none;
+  transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1), background-color 150ms cubic-bezier(0.4, 0, 0.2, 1), border-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.native-select select:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
+}
+
+.native-select select:disabled {
+  pointer-events: none;
+  cursor: not-allowed;
+}
+
+.native-select[data-size="sm"] select {
+  height: 28px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  border-radius: min(var(--radius-md), 10px);
+}
+
+.native-select option,
+.native-select optgroup {
+  background: Canvas;
+  color: CanvasText;
+}
+
+:root[data-theme="dark"] .native-select select {
+  background: color-mix(in oklch, var(--input) 30%, transparent);
+}
+
+@media (hover: hover) {
+  :root[data-theme="dark"] .native-select select:hover {
+    background: color-mix(in oklch, var(--input) 50%, transparent);
+  }
+}
+
+.native-select-icon {
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  width: 16px;
+  height: 16px;
+  color: var(--muted-foreground);
+  pointer-events: none;
+  user-select: none;
+  transform: translateY(-50%);
 }
