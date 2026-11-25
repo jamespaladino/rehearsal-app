@@ -25,7 +25,17 @@ python3 speech-lab/serve.py                 # from the repository root
 ```
 
 Choose or drop a file to see every block with its type, confidence, metadata and flags. Tick
-"Only blocks to review" to see just the flagged ones. Pick your character and press **Save to
+"Only blocks to review" to see just the flagged ones.
+
+Fix blocks before saving:
+- **Change a type:** pick it from the dropdown.
+- **Mark correct:** press ✓.
+- **Delete:** press 🗑.
+
+Flagged rows show these controls all the time; other rows show them when you hover or tab to
+them, because the real mistake can sit on an unflagged row (a cue read as action leaves the
+dialogue under it flagged). Edits recompute speakers, the character list and the review count.
+**Undo** steps back. Pick your character and press **Save to
 Rehearsal** to create a new script in the app. Inside the app, the sidebar updates straight away and
 **Open it** opens the new script.
 
@@ -103,6 +113,7 @@ ctx) }`, so a stage-play ruleset can be added beside `rulesets/screenplay.js`.
 | `src/` | The parser. No DOM, no UI; runs in browsers and Node |
 | `src/index.js` | `importScript`, `detectFormat`, re-exports |
 | `src/fountain.js`, `src/fdx.js` | Fountain and Final Draft importers, same block model |
+| `src/edit.js` | `retypeBlock`, `acceptBlock`, `deleteBlock`: manual corrections, recomputing everything that depends on them |
 | `tests/` | `run.js` (a tiny harness for Node 16+) and the `*.test.js` files |
 | `test-support/synthetic.js` | Builds synthetic screenplay pages and minimal PDFs for tests and fixtures |
 | `fixtures/` | Synthetic fixtures and the generator; `real/` for your own scripts |

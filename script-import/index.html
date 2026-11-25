@@ -49,7 +49,10 @@
     <section id="result" class="hidden">
       <div class="import-summary">
         <div id="summary"></div>
-        <label class="import-filter"><input id="onlyReview" type="checkbox"> Only blocks to review</label>
+        <div class="import-tools">
+          <button id="undo" class="btn btn-outline btn-sm hidden" type="button"><i data-lucide="undo-2" data-icon="inline-start"></i>Undo</button>
+          <label class="import-filter"><input id="onlyReview" type="checkbox"> Only blocks to review</label>
+        </div>
       </div>
       <div id="warnings"></div>
 
@@ -66,10 +69,10 @@
         </div>
 
         <div class="card import-blocks-card">
-          <div class="card-header"><h2 class="card-title">Blocks</h2><p class="muted">Type and confidence for every block. Rows marked <span class="review-dot" aria-hidden="true"></span> need a look.</p></div>
+          <div class="card-header"><h2 class="card-title">Blocks</h2><p class="muted">Type and confidence for every block. Rows marked <span class="review-dot" aria-hidden="true"></span> need a look: pick the right type, mark it correct, or delete it.</p></div>
           <div class="card-content">
             <table class="import-blocks">
-              <thead><tr><th>#</th><th>Page</th><th>Type</th><th>Conf.</th><th>Text</th></tr></thead>
+              <thead><tr><th>#</th><th>Page</th><th>Type</th><th>Conf.</th><th>Text</th><th><span class="sr-only">Actions</span></th></tr></thead>
               <tbody id="blocks"></tbody>
             </table>
           </div>

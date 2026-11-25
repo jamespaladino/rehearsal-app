@@ -1,5 +1,5 @@
 // Browser debug view for the script importer. UI only: parsing lives in src/.
-import { importScript, toRehearsalScript, FLAGS } from './src/index.js';
+import { importScript, toRehearsalScript, retypeBlock, acceptBlock, deleteBlock, BLOCK_TYPES, FLAGS } from './src/index.js';
 
 const $ = (id) => document.getElementById(id);
 const PDFJS = new URL('../vendor/pdfjs-4.10.38/pdf.min.mjs', import.meta.url).href;
@@ -10,6 +10,7 @@ const embedded = window.parent !== window;
 let pdfjs = null;
 let current = null; // { result, fileName }
 let me = null;
+let history = []; // earlier results, for Undo
 
 async function loadPdfjs() {
   if (!pdfjs) {
@@ -30,6 +31,7 @@ async function handleFile(file) {
     const t0 = performance.now();
     const result = await importScript({ name: file.name, data }, { pdfjs: isPdf ? await loadPdfjs() : null });
     current = { result, fileName: file.name };
+    history = [];
     me = result.characters[0]?.name || null;
     $('status').textContent = `Imported ${file.name} in ${((performance.now() - t0) / 1000).toFixed(1)} s.`;
     render();
@@ -49,13 +51,16 @@ function render() {
     el('span', ` · ${result.source.toUpperCase()}${s.pages ? ` · ${s.pages} pages` : ''} · ${s.blocks} blocks · `),
     el('span', `${s.review} to review`, s.review ? 'review-count' : ''),
   );
+  if (result.edits) $('summary').append(el('span', ` · ${result.edits} edit${result.edits === 1 ? '' : 's'}`));
+  $('undo').classList.toggle('hidden', !history.length);
   $('warnings').replaceChildren(...result.warnings.map((w) => {
     const a = el('div', '', 'alert import-warning');
     a.setAttribute('role', 'alert');
     a.append(el('div', w, 'alert-description'));
     return a;
   }));
-  $('title').value = result.title || fileName.replace(/\.[^.]+$/, '');
+  if (!result.edits) $('title').value = result.title || fileName.replace(/\.[^.]+$/, '');
+  if (me && !result.characters.some((c) => c.name === me)) me = result.characters[0]?.name || null;
   renderCharacters();
   renderBlocks();
 }
@@ -110,17 +115,59 @@ function renderBlocks() {
     }
     const idCell = el('td', String(b.id), 'num');
     if (b.review) idCell.prepend(el('span', '', 'review-dot'));
-    tr.append(idCell, el('td', b.page ?? '–', 'num'), el('td', TYPE_LABEL[b.type], 'type'), conf, textCell);
+    // Every block can be retyped or deleted. Rows that need review show the controls all the
+    // time (plus Mark correct); other rows show them on hover or keyboard focus.
+    const typeCell = el('td', '', 'type');
+    const actions = el('td', '', 'actions');
+    {
+      const select = document.createElement('select');
+      select.className = 'type-select';
+      select.setAttribute('aria-label', `Type of block ${b.id}`);
+      for (const t of BLOCK_TYPES) {
+        const o = el('option', TYPE_LABEL[t]);
+        o.value = t;
+        o.selected = t === b.type;
+        select.append(o);
+      }
+      select.onchange = () => apply(retypeBlock(current.result, b.id, select.value));
+      typeCell.append(select);
+      if (b.review) actions.append(iconButton('check', `Mark block ${b.id} correct`, 'Mark correct', () => apply(acceptBlock(current.result, b.id))));
+      actions.append(iconButton('trash', `Delete block ${b.id}`, 'Delete', () => apply(deleteBlock(current.result, b.id)), 'destructive'));
+    }
+    tr.append(idCell, el('td', b.page ?? '–', 'num'), typeCell, conf, textCell, actions);
     rows.push(tr);
   }
   if (!rows.length) {
     const tr = document.createElement('tr');
     const td = el('td', only ? 'Nothing needs review.' : 'No blocks.', 'muted');
-    td.colSpan = 5;
+    td.colSpan = 6;
     tr.append(td);
     rows.push(tr);
   }
   $('blocks').replaceChildren(...rows);
+}
+
+// Edits replace the current result; the previous one goes on the Undo stack.
+function apply(next) {
+  history.push(current.result);
+  current = { ...current, result: next };
+  render();
+}
+
+function undo() {
+  if (!history.length) return;
+  current = { ...current, result: history.pop() };
+  render();
+}
+
+function iconButton(name, label, tip, onClick, variant) {
+  const b = el('button', '', 'btn btn-ghost btn-icon btn-sm' + (variant === 'destructive' ? ' btn-icon-destructive' : ''));
+  b.type = 'button';
+  b.setAttribute('aria-label', label);
+  b.title = tip;
+  if (window.icon) b.append(window.icon(name)); else b.textContent = tip;
+  b.onclick = onClick;
+  return b;
 }
 
 // Save as a new script in Rehearsal's own IndexedDB store (same origin as the app).
@@ -184,6 +231,7 @@ matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme
 $('file').onchange = (e) => handleFile(e.target.files[0]);
 $('onlyReview').onchange = () => current && renderBlocks();
 $('save').onclick = save;
+$('undo').onclick = undo;
 const drop = $('drop');
 drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragging'); });
 drop.addEventListener('dragleave', () => drop.classList.remove('dragging'));

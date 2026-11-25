@@ -26,6 +26,7 @@
 //     sceneNumber?: string,     // scene heading: number found in the margins
 //     revised?: true,           // a revision asterisk was next to it
 //     x?: number,               // PDF: left edge in inches, for debugging
+//     edited?: true,            // type set or confirmed by hand (see edit.js)
 //   }
 // }
 
@@ -44,6 +45,7 @@ export const FLAGS = {
   stitched: 'Dialogue continued across a page break; (MORE) and the repeated cue were merged.',
   scanned_page: 'This page has no text layer (probably scanned); OCR is not available yet.',
   unusual_indent: 'Text at an indent that matches no block type in this document.',
+  edited: 'Type set or confirmed by hand.',
 };
 
 // Flags that always mean "a person should look at this", whatever the confidence.
