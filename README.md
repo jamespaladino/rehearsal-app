@@ -26,6 +26,14 @@ The engines are loaded on demand from `speech-lab/js/rehearsal-engine.js`, the s
 
 **Tests**, at the top of the sidebar, opens the Speech Recognition Lab (`speech-lab/`) in the main area, the way a script opens. It benchmarks offline speech engines for cue detection. It needs a one-time `python3 speech-lab/setup.py` and a local server (`python3 speech-lab/serve.py`, then open `http://localhost:8000/`). It doesn't work from `file://`. Use `serve.py` rather than `python3 -m http.server`: the plain server sends no cache headers, so browsers can keep running old JavaScript after an update. See `speech-lab/README.md`.
 
+## Script import (first pass)
+
+`script-import/` turns a screenplay PDF, Fountain or Final Draft file into typed blocks
+(scene heading, action, character, parenthetical, dialogue, transition) with a confidence for each,
+entirely on the device. Open `http://localhost:8000/script-import/` (with `python3 speech-lab/serve.py`
+running) to import a file, inspect every block, and save it as a new script. Tests:
+`node script-import/tests/run.js`. Details and known limitations: [script-import/README.md](script-import/README.md).
+
 ## Settings
 
 **Settings** sits under Tests at the top of the sidebar. Choices are saved in this browser (`localStorage`).
