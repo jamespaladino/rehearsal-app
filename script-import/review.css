@@ -192,17 +192,6 @@ tr:not(.needs-review):focus-within .actions .btn,
   font-size: 12px;
 }
 
-.flag {
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--muted);
-}
-
-.flag-review {
-  background: color-mix(in oklch, var(--destructive) 15%, transparent);
-  color: var(--destructive);
-}
-
 
 /* Narrow screens: each block is two lines instead of a table row. Number, type, confidence and
    actions on top (whatever the column order); the text full width below, with smaller indents. */

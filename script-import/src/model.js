@@ -49,7 +49,8 @@ export const FLAGS = {
 };
 
 // Flags that always mean "a person should look at this", whatever the confidence.
-const REVIEW_FLAGS = new Set(['dual_dialogue_unparsed', 'orphan_dialogue', 'unusual_indent']);
+// (A character with nothing after it usually means its dialogue was misread, or it isn't a cue.)
+const REVIEW_FLAGS = new Set(['dual_dialogue_unparsed', 'orphan_dialogue', 'unusual_indent', 'no_dialogue']);
 
 export function makeBlock(type, text, confidence, extra = {}) {
   return {
@@ -77,6 +78,12 @@ const round = (n) => Math.round(Math.max(0, Math.min(1, n)) * 100) / 100;
 export function finalize({ source, title = null, blocks, warnings = [], pages }) {
   let speaker = null;
   let speakerExt = [];
+  // A character with no dialogue or parenthetical right after it (any format), unless confirmed by hand.
+  blocks.forEach((b, i) => {
+    if (b.type !== 'character' || b.meta.edited) return;
+    const next = blocks[i + 1];
+    if (!next || (next.type !== 'dialogue' && next.type !== 'parenthetical')) addFlag(b, 'no_dialogue');
+  });
   for (const b of blocks) {
     b.confidence = round(b.confidence);
     if (b.type === 'character') {

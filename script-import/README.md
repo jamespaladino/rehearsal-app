@@ -28,7 +28,9 @@ Node with a note; everything else, including the classifier and page-break stitc
 **Debug view in the browser** (the same review on a standalone page; PDFs work here on any machine):
 open <http://localhost:8000/script-import/>.
 
-Choose or drop a file to see every block with its type, confidence, metadata and flags. Tick
+Choose or drop a file to see every block with its type and confidence; rows that need review are
+highlighted (the reasons are in each block's `flags`, printed by the CLI, not shown as badges). A
+character with nothing after it is always highlighted. Tick
 "Only blocks to review" to see just the flagged ones.
 
 Fix blocks before saving:

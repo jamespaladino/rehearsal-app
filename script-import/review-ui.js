@@ -6,13 +6,11 @@
 //   review.load(result);            // renders the character list and the block table
 //   review.toScript({ title });     // Rehearsal script, using the chosen character and every edit
 
-import { importScript, toRehearsalScript, retypeBlock, acceptBlock, deleteBlock, guessMyCharacter, BLOCK_TYPES, FLAGS } from './src/index.js';
+import { importScript, toRehearsalScript, retypeBlock, acceptBlock, deleteBlock, guessMyCharacter, BLOCK_TYPES } from './src/index.js';
 
 const PDFJS = new URL('../vendor/pdfjs-4.10.38/pdf.min.mjs', import.meta.url).href;
 const PDF_WORKER = new URL('../vendor/pdfjs-4.10.38/pdf.worker.min.mjs', import.meta.url).href;
 export const TYPE_LABEL = { scene_heading: 'Scene heading', action: 'Action', character: 'Character', parenthetical: 'Parenthetical', dialogue: 'Dialogue', transition: 'Transition' };
-// Flags kept in the data but not shown as badges: the highlighted row already says it needs a look.
-const HIDDEN_FLAGS = new Set(['low_confidence', 'unusual_indent']);
 export const ACCEPT ='.pdf,.fountain,.spmd,.fdx,.txt,application/pdf';
 
 let pdfjs = null;
@@ -126,15 +124,10 @@ export function createImportReview(els) {
       if (b.meta.sceneNumber) notes.push(`scene ${b.meta.sceneNumber}`);
       if (b.meta.dual) notes.push(`dual: ${b.meta.dual}`);
       if (b.meta.revised) notes.push('revised');
-      const shownFlags = b.flags.filter((f) => !HIDDEN_FLAGS.has(f));
-      if (notes.length || shownFlags.length) {
+      // Flags aren't shown as badges: the highlighted row is the cue (they stay in the data).
+      if (notes.length) {
         const n = el('div', '', 'block-notes');
         notes.forEach((t) => n.append(el('span', t, 'muted')));
-        shownFlags.forEach((f) => {
-          const chip = el('span', f.replace(/_/g, ' '), 'flag' + (b.review ? ' flag-review' : ''));
-          chip.title = FLAGS[f] || f;
-          n.append(chip);
-        });
         textCell.append(n);
       }
       const idCell = el('td', String(b.id), 'num');

@@ -4,6 +4,7 @@ import { layout } from '../test-support/synthetic.js';
 import { parseLayout } from '../src/parse-layout.js';
 import { retypeBlock, acceptBlock, deleteBlock } from '../src/edit.js';
 import { toRehearsalScript } from '../src/convert.js';
+import { parseFdx } from '../src/fdx.js';
 
 // A cue typed at the action margin: the importer can't tell it's a character, so it becomes
 // action and the dialogue under it is an orphan, flagged for review.
@@ -84,4 +85,18 @@ test('scene headings are upper-cased; unknown types are rejected', () => {
   const next = retypeBlock(r, find(r, 'Later that night').id, 'scene_heading');
   assert.ok(find(next, 'LATER THAT NIGHT'));
   assert.throws(() => retypeBlock(r, 1, 'shot'), /Unknown block type/);
+});
+
+test('a character with nothing after it needs review in any format, until marked correct', () => {
+  const xml = '<FinalDraft><Content><Paragraph Type="Scene Heading"><Text>INT. ROOM - DAY</Text></Paragraph>'
+    + '<Paragraph Type="Character"><Text>ANNA</Text></Paragraph><Paragraph Type="Action"><Text>She leaves.</Text></Paragraph>'
+    + '<Paragraph Type="Character"><Text>BEN</Text></Paragraph><Paragraph Type="Dialogue"><Text>Bye.</Text></Paragraph></Content></FinalDraft>';
+  const r = parseFdx(xml);
+  const anna = find(r, 'ANNA');
+  assert.ok(anna.flags.includes('no_dialogue') && anna.review, JSON.stringify(anna));
+  assert.ok(!find(r, 'BEN').review);
+  const accepted = acceptBlock(r, anna.id);
+  assert.ok(!find(accepted, 'ANNA').review);
+  // Still fine after another, unrelated edit recomputes everything.
+  assert.ok(!find(deleteBlock(accepted, find(accepted, 'Bye.').id), 'ANNA').review);
 });
