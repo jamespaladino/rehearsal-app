@@ -11,7 +11,9 @@ import { importScript, toRehearsalScript, retypeBlock, acceptBlock, deleteBlock,
 const PDFJS = new URL('../vendor/pdfjs-4.10.38/pdf.min.mjs', import.meta.url).href;
 const PDF_WORKER = new URL('../vendor/pdfjs-4.10.38/pdf.worker.min.mjs', import.meta.url).href;
 export const TYPE_LABEL = { scene_heading: 'Scene heading', action: 'Action', character: 'Character', parenthetical: 'Parenthetical', dialogue: 'Dialogue', transition: 'Transition' };
-export const ACCEPT = '.pdf,.fountain,.spmd,.fdx,.txt,application/pdf';
+// Flags kept in the data but not shown as badges: the highlighted row already says it needs a look.
+const HIDDEN_FLAGS = new Set(['low_confidence', 'unusual_indent']);
+export const ACCEPT ='.pdf,.fountain,.spmd,.fdx,.txt,application/pdf';
 
 let pdfjs = null;
 async function loadPdfjs() {
@@ -124,11 +126,11 @@ export function createImportReview(els) {
       if (b.meta.sceneNumber) notes.push(`scene ${b.meta.sceneNumber}`);
       if (b.meta.dual) notes.push(`dual: ${b.meta.dual}`);
       if (b.meta.revised) notes.push('revised');
-      if (notes.length || b.flags.some((f) => f !== 'low_confidence')) {
+      const shownFlags = b.flags.filter((f) => !HIDDEN_FLAGS.has(f));
+      if (notes.length || shownFlags.length) {
         const n = el('div', '', 'block-notes');
         notes.forEach((t) => n.append(el('span', t, 'muted')));
-        // 'low confidence' isn't shown: the highlighted row already says it needs a look.
-        b.flags.filter((f) => f !== 'low_confidence').forEach((f) => {
+        shownFlags.forEach((f) => {
           const chip = el('span', f.replace(/_/g, ' '), 'flag' + (b.review ? ' flag-review' : ''));
           chip.title = FLAGS[f] || f;
           n.append(chip);
