@@ -38,6 +38,7 @@ export function describe(result) {
 /**
  * els: { characters: Element, selectId?: string, labelledBy?: string, blocks: <tbody>,
  *         filter?: shadcn ToggleGroup with <button data-filter="all"> and <button data-filter="review">,
+ *         confidence?: false to leave out the confidence column (the table head must match),
  *         onChange?: (review) => void }
  * Every row can be retyped or deleted; rows that need review show their controls all the time
  * (plus Mark correct), other rows on hover or keyboard focus (see review.css).
@@ -142,13 +143,13 @@ export function createImportReview(els) {
       const actions = el('td', '', 'actions');
       if (b.review) actions.append(iconButton('check', `Mark block ${b.id} correct`, 'Mark correct', () => apply(acceptBlock(result, b.id))));
       actions.append(iconButton('trash', `Delete block ${b.id}`, 'Delete', () => apply(deleteBlock(result, b.id)), 'destructive'));
-      tr.append(idCell, el('td', b.page ?? '–', 'num'), conf, textCell, typeCell, actions);
+      tr.append(idCell, el('td', b.page ?? '–', 'num'), ...(els.confidence === false ? [] : [conf]), textCell, typeCell, actions);
       rows.push(tr);
     }
     if (!rows.length) {
       const tr = document.createElement('tr');
       const td = el('td', only ? 'Nothing needs review.' : 'No blocks.', 'muted');
-      td.colSpan = 6;
+      td.colSpan = els.confidence === false ? 5 : 6;
       tr.append(td);
       rows.push(tr);
     }
