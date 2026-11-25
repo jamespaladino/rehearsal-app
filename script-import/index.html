@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Script Import (debug) · Rehearsal</title>
+  <link rel="icon" href="data:,">
+
+  <!-- Rehearsal design system (shared with the main app) -->
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/shadcn.css">
+  <link rel="stylesheet" href="debug.css">
+
+  <script>
+    // Saved theme: 'light', 'dark' or 'system', shared with the main app.
+    try { const t = localStorage.getItem('rehearsal-theme'); if (t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.dataset.theme = 'dark'; } catch (e) {}
+  </script>
+  <script src="../vendor/lucide/lucide.min.js" defer></script>
+  <script src="../js/icons.js" defer></script>
+  <script type="module" src="debug.js"></script>
+</head>
+<body>
+  <header class="import-header">
+    <div>
+      <strong>Script import</strong>
+      <span class="muted">Debug view · PDF, Fountain, Final Draft · on this device</span>
+    </div>
+    <a class="btn btn-ghost" href="../"><i data-lucide="arrow-left" data-icon="inline-start"></i>Rehearsal</a>
+  </header>
+
+  <main class="import-main">
+    <div id="needsServer" class="alert alert-destructive hidden" role="alert">
+      <div class="alert-title">This page needs a local server</div>
+      <div class="alert-description">Browsers won't load its modules from a file opened on disk. From the repository root, run <code>python3 speech-lab/serve.py</code>, then open <code>http://localhost:8000/script-import/</code>.</div>
+    </div>
+
+    <label id="drop" class="import-drop" for="file">
+      <i data-lucide="file-up"></i>
+      <span><strong>Choose a script</strong> or drop it here</span>
+      <span class="muted">.pdf, .fountain, .fdx, .txt</span>
+      <input id="file" type="file" accept=".pdf,.fountain,.spmd,.fdx,.txt,application/pdf" hidden>
+    </label>
+
+    <p id="status" class="muted" role="status"></p>
+
+    <section id="result" class="hidden">
+      <div class="import-summary">
+        <div id="summary"></div>
+        <label class="import-filter"><input id="onlyReview" type="checkbox"> Only blocks to review</label>
+      </div>
+      <div id="warnings"></div>
+
+      <div class="import-columns">
+        <div class="card">
+          <div class="card-header"><h2 class="card-title">Characters</h2><p class="muted">Pick your character to save the script to Rehearsal.</p></div>
+          <div class="card-content">
+            <div id="characters" class="import-characters" role="radiogroup" aria-label="My character"></div>
+            <label for="title" class="import-label">Script name</label>
+            <input id="title" autocomplete="off">
+            <button id="save" class="btn btn-default" type="button"><i data-lucide="save" data-icon="inline-start"></i>Save to Rehearsal</button>
+            <p id="saved" class="muted" role="status"></p>
+          </div>
+        </div>
+
+        <div class="card import-blocks-card">
+          <div class="card-header"><h2 class="card-title">Blocks</h2><p class="muted">Type and confidence for every block. Rows marked <span class="review-dot" aria-hidden="true"></span> need a look.</p></div>
+          <div class="card-content">
+            <table class="import-blocks">
+              <thead><tr><th>#</th><th>Page</th><th>Type</th><th>Conf.</th><th>Text</th></tr></thead>
+              <tbody id="blocks"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    if (location.protocol === 'file:') document.getElementById('needsServer').classList.remove('hidden');
+  </script>
+</body>
+</html>

@@ -1,0 +1,221 @@
+/* Script import debug view. Uses the Rehearsal design tokens (css/tokens.css). */
+
+body {
+  background: var(--page-bg);
+}
+
+.import-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  height: var(--header-height);
+  padding: 0 var(--main-gutter);
+}
+
+.import-header strong {
+  margin-right: 8px;
+}
+
+.import-main {
+  display: grid;
+  gap: 16px;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 8px var(--main-gutter) 48px;
+}
+
+.import-drop {
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+  padding: 28px 16px;
+  border: 1px dashed var(--input);
+  border-radius: var(--radius-xl);
+  background: var(--card);
+  text-align: center;
+  cursor: pointer;
+}
+
+.import-drop.dragging,
+.import-drop:hover {
+  border-color: var(--ring);
+}
+
+.import-drop svg {
+  width: 24px;
+  height: 24px;
+  color: var(--muted-foreground);
+}
+
+#status {
+  min-height: 20px;
+  margin: 0;
+}
+
+.import-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.review-count {
+  color: var(--destructive);
+  font-weight: 500;
+}
+
+.import-filter,
+.import-character {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+/* Radios and checkboxes keep their natural size (the app styles inputs as full-width fields). */
+.import-filter input,
+.import-character input {
+  flex: none;
+  width: auto;
+  height: auto;
+  margin: 0;
+}
+
+.import-filter {
+  white-space: nowrap;
+}
+
+.import-warning {
+  margin-bottom: 12px;
+}
+
+.import-columns {
+  display: grid;
+  grid-template-columns: 280px minmax(0, 1fr);
+  align-items: start;
+  gap: 16px;
+}
+
+@media (max-width: 860px) {
+  .import-columns {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
+
+.import-characters {
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.import-character .muted {
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.import-label {
+  display: block;
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+#title {
+  width: 100%;
+  margin-bottom: 12px;
+}
+
+#saved {
+  margin: 8px 0 0;
+}
+
+.import-blocks-card .card-content {
+  overflow-x: auto;
+}
+
+.import-blocks {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.import-blocks th {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  color: var(--muted-foreground);
+  font-weight: 500;
+  text-align: left;
+}
+
+.import-blocks td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: top;
+}
+
+.import-blocks tr.needs-review td {
+  background: color-mix(in oklch, var(--destructive) 7%, transparent);
+}
+
+.import-blocks .num {
+  white-space: nowrap;
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
+.import-blocks .type {
+  white-space: nowrap;
+}
+
+.conf {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+}
+
+.conf-high { color: color-mix(in oklch, var(--foreground) 70%, transparent); }
+.conf-mid { color: oklch(0.65 0.15 70); }
+.conf-low { color: var(--destructive); }
+
+/* Screenplay-style indents, so the layout reads like the page. */
+.block-text {
+  font-family: var(--font-screenplay);
+  font-size: 13px;
+}
+
+.block-text.type-scene_heading { font-weight: 700; }
+.block-text.type-character > div:first-child { padding-left: 13ch; }
+.block-text.type-parenthetical > div:first-child { padding-left: 9ch; }
+.block-text.type-dialogue > div:first-child { padding-left: 6ch; max-width: 42ch; }
+.block-text.type-transition > div:first-child { text-align: right; }
+
+.block-notes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 8px;
+  margin-top: 4px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+}
+
+.flag {
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--muted);
+}
+
+.flag-review {
+  background: color-mix(in oklch, var(--destructive) 15%, transparent);
+  color: var(--destructive);
+}
+
+.review-dot {
+  display: inline-block;
+  width: 7px;
+  height: 7px;
+  margin-right: 5px;
+  border-radius: 999px;
+  background: var(--destructive);
+  vertical-align: 1px;
+}
