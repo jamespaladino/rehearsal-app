@@ -6,6 +6,13 @@
   font-weight: 500;
 }
 
+/* Undo and the review filter, beside the Blocks heading. */
+.import-tools {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
 .import-filter {
   display: flex;
   align-items: center;
@@ -196,15 +203,6 @@ tr:not(.needs-review):focus-within .actions .btn,
   color: var(--destructive);
 }
 
-.review-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 5px;
-  border-radius: 999px;
-  background: var(--destructive);
-  vertical-align: 1px;
-}
 
 /* Narrow screens: each block is two lines instead of a table row. Number, type, confidence and
    actions on top (whatever the column order); the text full width below, with smaller indents. */

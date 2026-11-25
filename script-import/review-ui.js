@@ -124,10 +124,11 @@ export function createImportReview(els) {
       if (b.meta.sceneNumber) notes.push(`scene ${b.meta.sceneNumber}`);
       if (b.meta.dual) notes.push(`dual: ${b.meta.dual}`);
       if (b.meta.revised) notes.push('revised');
-      if (notes.length || b.flags.length) {
+      if (notes.length || b.flags.some((f) => f !== 'low_confidence')) {
         const n = el('div', '', 'block-notes');
         notes.forEach((t) => n.append(el('span', t, 'muted')));
-        b.flags.forEach((f) => {
+        // 'low confidence' isn't shown: the highlighted row already says it needs a look.
+        b.flags.filter((f) => f !== 'low_confidence').forEach((f) => {
           const chip = el('span', f.replace(/_/g, ' '), 'flag' + (b.review ? ' flag-review' : ''));
           chip.title = FLAGS[f] || f;
           n.append(chip);
@@ -135,7 +136,6 @@ export function createImportReview(els) {
         textCell.append(n);
       }
       const idCell = el('td', String(b.id), 'num');
-      if (b.review) idCell.prepend(el('span', '', 'review-dot'));
       const typeCell = el('td', '', 'type');
       const select = document.createElement('select');
       select.className = 'type-select';

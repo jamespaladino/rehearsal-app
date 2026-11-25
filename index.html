@@ -226,9 +226,12 @@
           <section class="import-section" aria-labelledby="importBlocksTitle">
             <div class="import-section-head">
               <h2 id="importBlocksTitle" class="import-section-title">Blocks</h2>
-              <label class="import-filter"><input id="importOnlyReview" type="checkbox"> Only blocks to review</label>
+              <div class="import-tools">
+                <button id="importUndo" class="btn btn-ghost btn-sm hidden" type="button"><i data-lucide="undo-2" data-icon="inline-start"></i>Undo</button>
+                <label class="import-filter"><input id="importOnlyReview" type="checkbox"> Only blocks to review</label>
+              </div>
             </div>
-            <p class="muted">Rows marked <span class="review-dot" aria-hidden="true"></span> need a look: pick the right type, mark it correct, or delete it. Any row can be changed.</p>
+            <p class="muted">Highlighted rows need a look: pick the right type, mark it correct, or delete it. Any row can be changed.</p>
             <div class="import-table-wrap">
               <table class="import-blocks">
                 <thead><tr><th>#</th><th>Page</th><th>Conf.</th><th>Text</th><th>Type</th><th><span class="sr-only">Actions</span></th></tr></thead>
@@ -236,12 +239,6 @@
               </table>
             </div>
           </section>
-        </div>
-      </div>
-      <div class="play-dock import-dock">
-        <div class="play-bar">
-          <p id="importSummary" class="play-meta"></p>
-          <button id="importUndo" class="btn btn-ghost hidden" type="button"><i data-lucide="undo-2" data-icon="inline-start"></i>Undo</button>
         </div>
       </div>
     </div>

@@ -401,7 +401,7 @@
 }
 
 /* ---- Import flow pane (opened after choosing a file from the sidebar's Import) ---- */
-/* Same frame as the play pane: header, scrolling body, floating bar docked at the bottom. */
+/* Same frame as the play pane: header (with Cancel and Import), then a scrolling body. */
 
 .import-pane-title {
   display: flex;
@@ -478,16 +478,3 @@
   overflow-x: auto;
 }
 
-.import-dock {
-  max-width: 900px;
-}
-
-.import-dock .play-meta {
-  color: var(--muted-foreground);
-}
-
-.import-dock .play-meta span + span::before {
-  content: "·";
-  margin-right: 8px;
-  color: var(--muted-foreground);
-}

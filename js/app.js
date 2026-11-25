@@ -625,10 +625,6 @@ async function startImport(file){
 }
 function renderImportSummary(review){
   const r=review.result;
-  const parts=[el('span',importUi.describe(r))];
-  if(r.stats.review){const n=el('span',`${r.stats.review} to review`);n.className='review-count';parts.push(n)}
-  if(r.edits)parts.push(el('span',`${r.edits} edit${r.edits===1?'':'s'}`));
-  $('importSummary').replaceChildren(...parts);
   $('importUndo').classList.toggle('hidden',!review.canUndo);
   $('importWarnings').replaceChildren(...r.warnings.map(w=>{const a=el('div');a.className='alert import-warning';a.setAttribute('role','alert');const d=el('div',w);d.className='alert-description';a.append(d);return a}));
 }
@@ -636,7 +632,7 @@ function openImportPane(fileName){
   closeMenu();hideTip();
   $('importFileName').textContent=fileName;
   $('importContent').classList.add('hidden');$('importWarnings').replaceChildren();
-  $('importSummary').replaceChildren();$('importUndo').classList.add('hidden');$('importConfirm').disabled=true;
+  $('importUndo').classList.add('hidden');$('importConfirm').disabled=true;
   $('importPane').classList.remove('hidden');document.body.style.overflow='hidden';
   $('importPane').querySelector('.import-pane-main').scrollTop=0;
   $('cancelImport').focus({preventScroll:true});
