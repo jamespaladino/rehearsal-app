@@ -419,7 +419,7 @@ function openModal(type,s){
     rename:{title:'Rename script',message:'Choose a new name for this script.',label:'Script name',value:s.title||'',confirm:'Save'},
     character:{title:'Rename character',message:'Every line by '+s.name+' will use the new name.',label:'Character name',value:s.name,confirm:'Save'},
     delete:{title:'Delete script?',message:`Delete “${s.title||'Untitled'}” and all its recordings? This cannot be undone.`,confirm:'Delete'},
-    discardImport:{title:'Exit import?',message:'This script hasn’t been imported yet. Your changes will be lost.',confirm:'Exit'},
+    discardImport:{title:'Cancel import?',message:'This script hasn’t been imported yet. Your changes will be lost.',confirm:'Discard import',cancel:'Keep editing'},
   }[type];
   const hasField=type!=='delete'&&type!=='discardImport';
   $('modalTitle').textContent=text.title;$('modalMessage').textContent=text.message;
@@ -427,7 +427,7 @@ function openModal(type,s){
   $('renameLabel').textContent=text.label||'';$('renameInput').value=text.value||'';
   // Character names are uppercase, like the rest of the script.
   $('renameInput').oninput=type==='character'?()=>{const el=$('renameInput'),pos=el.selectionStart;el.value=el.value.toUpperCase();el.setSelectionRange(pos,pos)}:null;
-  $('modalConfirm').textContent=text.confirm;$('modalConfirm').className='btn '+(hasField?'btn-default':'btn-destructive');
+  $('modalConfirm').textContent=text.confirm;$('modalCancel').textContent=text.cancel||'Cancel';$('modalConfirm').className='btn '+(hasField?'btn-default':'btn-destructive');
   $('modalError').textContent='';$('modalBackdrop').classList.remove('hidden');
   if(hasField){$('renameInput').focus();$('renameInput').select()}else $('modalCancel').focus();
 }
@@ -639,7 +639,7 @@ function openImportPane(fileName){
   $('importSummary').replaceChildren();$('importUndo').classList.add('hidden');$('importConfirm').disabled=true;
   $('importPane').classList.remove('hidden');document.body.style.overflow='hidden';
   $('importPane').querySelector('.import-pane-main').scrollTop=0;
-  $('closeImport').focus({preventScroll:true});
+  $('cancelImport').focus({preventScroll:true});
 }
 function closeImportPane(){
   $('importPane').classList.add('hidden');
@@ -651,7 +651,7 @@ function requestExitImport(){
   if($('importContent').classList.contains('hidden')){closeImportPane();return}
   openModal('discardImport',{});
 }
-$('closeImport').onclick=requestExitImport;
+$('cancelImport').onclick=requestExitImport;
 $('importUndo').onclick=()=>importReview?.undo();
 $('importConfirm').onclick=async()=>{
   if(!importReview?.result||importBusy)return;

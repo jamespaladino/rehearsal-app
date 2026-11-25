@@ -204,8 +204,9 @@
         <span id="importPaneTitle">Import</span>
         <span id="importFileName" class="muted truncate"></span>
       </div>
-      <div class="play-pane-actions">
-        <button id="closeImport" class="btn btn-ghost btn-icon" type="button" aria-label="Exit import" data-tooltip="Exit import"><i data-lucide="x"></i></button>
+      <div class="play-pane-actions import-pane-actions">
+        <button id="cancelImport" class="btn btn-outline" type="button">Cancel</button>
+        <button id="importConfirm" class="btn btn-default" type="button" disabled><i data-lucide="arrow-down-to-line" data-icon="inline-start"></i>Import</button>
       </div>
     </header>
     <div class="import-pane-main">
@@ -241,7 +242,6 @@
         <div class="play-bar">
           <p id="importSummary" class="play-meta"></p>
           <button id="importUndo" class="btn btn-ghost hidden" type="button"><i data-lucide="undo-2" data-icon="inline-start"></i>Undo</button>
-          <button id="importConfirm" class="btn btn-default" type="button" disabled><i data-lucide="arrow-down-to-line" data-icon="inline-start"></i>Import</button>
         </div>
       </div>
     </div>

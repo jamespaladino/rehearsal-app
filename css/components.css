@@ -412,6 +412,11 @@
   font-weight: 500;
 }
 
+.import-pane-actions {
+  flex: none;
+  gap: 8px;
+}
+
 .import-pane-title .muted {
   font-weight: 400;
 }
