@@ -6,17 +6,26 @@
   font-weight: 500;
 }
 
-.import-filter,
-.import-character {
+.import-filter {
   display: flex;
   align-items: center;
   gap: 8px;
   cursor: pointer;
 }
 
-/* Radios and checkboxes keep their natural size (the app styles inputs as full-width fields). */
-.import-filter input,
-.import-character input {
+/* One character per row: radio, name (shadcn Label), number of speeches at the end. */
+.import-character {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.import-character .label {
+  cursor: pointer;
+}
+
+/* The checkbox keeps its natural size (the app styles inputs as full-width fields). */
+.import-filter input {
   flex: none;
   width: auto;
   height: auto;
@@ -27,9 +36,9 @@
   white-space: nowrap;
 }
 
+/* A little more room than the RadioGroup default (8px): these are tap targets on phones. */
 .import-characters {
-  display: grid;
-  gap: 8px;
+  gap: 12px;
 }
 
 .import-character .muted {

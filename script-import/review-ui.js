@@ -81,24 +81,61 @@ export function createImportReview(els) {
     els.onChange?.(review);
   }
 
+  // shadcn RadioGroup (css/shadcn.css): radio buttons with a Label each, arrow keys to move,
+  // and Tab landing on the chosen character (roving tabindex), as Base UI's RadioGroup does.
   function renderCharacters() {
+    const box = els.characters;
+    box.classList.add('radio-group');
+    box.setAttribute('role', 'radiogroup');
     if (!result.characters.length) {
-      els.characters.replaceChildren(el('p', 'No characters found.', 'muted'));
+      box.replaceChildren(el('p', 'No characters found.', 'muted'));
       return;
     }
-    els.characters.replaceChildren(...result.characters.map((c) => {
-      const label = el('label', '', 'import-character');
-      const input = document.createElement('input');
-      input.type = 'radio';
-      input.name = radioName;
-      input.value = c.name;
-      input.checked = c.name === me;
-      input.onchange = () => { me = c.name; els.onChange?.(review); };
-      const meta = `${c.speeches} speech${c.speeches === 1 ? '' : 'es'}${c.extensions.length ? ` · ${c.extensions.join(', ')}` : ''}`;
-      label.append(input, el('span', c.name), el('span', meta, 'muted'));
-      return label;
+    box.replaceChildren(...result.characters.map((c, i) => {
+      const row = el('div', '', 'import-character');
+      const item = el('button', '', 'radio-group-item');
+      item.type = 'button';
+      item.id = `${radioName}-${i}`;
+      item.setAttribute('role', 'radio');
+      item.value = c.name;
+      const checked = c.name === me;
+      item.setAttribute('aria-checked', String(checked));
+      item.toggleAttribute('data-checked', checked);
+      item.tabIndex = checked ? 0 : -1;
+      item.append(el('span', '', 'radio-group-indicator'));
+      item.onclick = () => choose(c.name);
+      const label = el('label', c.name, 'label');
+      label.htmlFor = item.id;
+      row.append(item, label, el('span', `${c.speeches} speech${c.speeches === 1 ? '' : 'es'}`, 'muted'));
+      return row;
     }));
   }
+
+  function choose(name, focus = false) {
+    me = name;
+    for (const item of els.characters.querySelectorAll('.radio-group-item')) {
+      const on = item.value === name;
+      item.setAttribute('aria-checked', String(on));
+      item.toggleAttribute('data-checked', on);
+      item.tabIndex = on ? 0 : -1;
+      if (on && focus) item.focus();
+    }
+    els.onChange?.(review);
+  }
+
+  els.characters.addEventListener('keydown', (e) => {
+    const items = [...els.characters.querySelectorAll('.radio-group-item')];
+    const at = items.indexOf(document.activeElement);
+    if (at < 0) return;
+    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
+    if (step) {
+      e.preventDefault();
+      choose(items[(at + step + items.length) % items.length].value, true);
+    } else if (e.key === 'Home' || e.key === 'End') {
+      e.preventDefault();
+      choose(items[e.key === 'Home' ? 0 : items.length - 1].value, true);
+    }
+  });
 
   function renderBlocks() {
     const only = !!els.onlyReview?.checked;

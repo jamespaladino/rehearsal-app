@@ -15,6 +15,8 @@
  *   Breadcrumb        https://ui.shadcn.com/r/styles/base-nova/breadcrumb.json
  *   Alert             https://ui.shadcn.com/r/styles/base-nova/alert.json
  *   Switch            https://ui.shadcn.com/r/styles/base-nova/switch.json
+ *   RadioGroup        https://ui.shadcn.com/r/styles/base-nova/radio-group.json
+ *   Label             https://ui.shadcn.com/r/styles/base-nova/label.json
  *
  * Tailwind's hover: variant only applies on devices that can hover, so hover rules
  * below are wrapped in @media (hover: hover) the same way.
@@ -1126,4 +1128,97 @@ button.sidebar-group-label:focus-visible {
 
 .tooltip.visible {
   opacity: 1;
+}
+
+/* ======================================================================== */
+/* RadioGroup: <div class="radio-group" role="radiogroup">                    */
+/*   <button class="radio-group-item" role="radio" aria-checked data-checked> */
+/*     <span class="radio-group-indicator"></span></button>                   */
+/*   Pair each item with a Label (<label class="label" for=...>). The group   */
+/*   owns arrow-key navigation and roving tabindex, like Base UI's.           */
+/* ======================================================================== */
+
+.radio-group {
+  display: grid;
+  width: 100%;
+  gap: 8px;
+}
+
+.radio-group-item {
+  position: relative;
+  display: flex;
+  flex-shrink: 0;
+  box-sizing: border-box;
+  width: 16px;
+  height: 16px;
+  aspect-ratio: 1;
+  padding: 0;
+  border: 1px solid var(--input);
+  border-radius: 999px;
+  background: transparent;
+  outline: none;
+  cursor: pointer;
+}
+
+/* Larger hit area (after:-inset-x-3 after:-inset-y-2). */
+.radio-group-item::after {
+  content: "";
+  position: absolute;
+  inset: -8px -12px;
+}
+
+.radio-group-item:focus-visible {
+  border-color: var(--ring);
+  box-shadow: 0 0 0 3px color-mix(in oklch, var(--ring) 50%, transparent);
+}
+
+.radio-group-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.radio-group-item[data-checked] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: var(--primary-foreground);
+}
+
+:root[data-theme="dark"] .radio-group-item:not([data-checked]) {
+  background: color-mix(in oklch, var(--input) 30%, transparent);
+}
+
+.radio-group-indicator {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--primary-foreground);
+  transform: translate(-50%, -50%);
+}
+
+.radio-group-item[data-checked] > .radio-group-indicator {
+  display: block;
+}
+
+/* ======================================================================== */
+/* Label: <label class="label">                                              */
+/* ======================================================================== */
+
+.label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin: 0; /* overrides the form-field label spacing in base.css */
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1;
+  user-select: none;
+}
+
+.radio-group-item:disabled + .label {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
