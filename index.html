@@ -97,40 +97,47 @@
 
       <!-- Settings: app-wide preferences, stored in this browser. -->
       <section id="settingsView" class="settings-view hidden" aria-label="Settings">
-        <section class="card" aria-labelledby="audioSettingsTitle">
-          <div class="card-header">
-            <h2 id="audioSettingsTitle" class="card-title">Audio</h2>
+        <section class="settings-section" aria-labelledby="audioSettingsTitle">
+          <div class="settings-section-header">
+            <h2 id="audioSettingsTitle" class="settings-section-title">Audio</h2>
             <p class="muted">The microphone turns on when you press Start or Record, and off when you stop.</p>
           </div>
-          <div class="card-content settings-rows">
-            <div class="settings-row">
-              <div class="settings-row-text"><span class="settings-row-label">Microphone</span><span id="micSettingsStatus" class="muted">Not connected</span></div>
-              <button id="connectMic" class="btn btn-outline btn-sm" type="button"><i data-lucide="mic" data-icon="inline-start"></i>Connect microphone</button>
-              <button id="releaseMic" class="btn btn-outline btn-sm hidden" type="button"><i data-lucide="mic-off" data-icon="inline-start"></i>Release microphone</button>
+          <div class="card">
+            <div class="card-content settings-rows">
+              <div class="settings-row">
+                <div class="settings-row-text"><span class="settings-row-label">Microphone</span><span id="micSettingsStatus" class="muted">Not connected</span></div>
+                <button id="connectMic" class="btn btn-outline btn-sm" type="button"><i data-lucide="mic" data-icon="inline-start"></i>Connect microphone</button>
+                <button id="releaseMic" class="btn btn-outline btn-sm hidden" type="button"><i data-lucide="mic-off" data-icon="inline-start"></i>Release microphone</button>
+              </div>
             </div>
           </div>
         </section>
-        <section class="card" aria-labelledby="storageSettingsTitle">
-          <div class="card-header">
-            <h2 id="storageSettingsTitle" class="card-title">Storage</h2>
-            <p class="muted">Scripts and recordings are saved in this browser on this device only.</p>
+        <section class="settings-section" aria-labelledby="storageSettingsTitle">
+          <div class="settings-section-header">
+            <h2 id="storageSettingsTitle" class="settings-section-title">Storage</h2>
+            <p class="muted">Scripts and recordings are saved in this browser on this device only. <span id="storageStatus"></span></p>
           </div>
-          <div class="card-content settings-rows">
-            <div class="settings-row">
-              <div class="settings-row-text"><span class="settings-row-label">Kept on this device</span><span id="storageStatus" class="muted">Checking…</span></div>
+          <div class="card">
+            <div class="card-content settings-rows">
+              <div class="settings-row">
+                <div class="settings-row-text"><span class="settings-row-label">Clear storage</span><span class="muted">Delete every script and recording on this device.</span></div>
+                <button id="clearStorage" class="btn btn-outline btn-sm" type="button"><i data-lucide="trash-2" data-icon="inline-start"></i>Clear storage</button>
+              </div>
             </div>
           </div>
         </section>
-        <section class="card" aria-labelledby="appearanceSettingsTitle">
-          <div class="card-header">
-            <h2 id="appearanceSettingsTitle" class="card-title">Appearance</h2>
+        <section class="settings-section" aria-labelledby="appearanceSettingsTitle">
+          <div class="settings-section-header">
+            <h2 id="appearanceSettingsTitle" class="settings-section-title">Appearance</h2>
           </div>
-          <div class="card-content settings-rows">
-            <div class="settings-row">
-              <div class="settings-row-text"><span id="themeLabel" class="settings-row-label">Theme</span><span class="muted">System follows your device's light or dark setting.</span></div>
-              <div class="settings-select">
-                <button id="themeToggle" class="btn btn-outline btn-sm" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu" aria-labelledby="themeLabel themeValue"><span id="themeValue">Light</span><i data-lucide="chevron-down" data-icon="inline-end"></i></button>
-                <div id="themeMenu" class="dropdown-menu settings-select-menu hidden" role="menu" aria-labelledby="themeLabel"></div>
+          <div class="card">
+            <div class="card-content settings-rows">
+              <div class="settings-row">
+                <div class="settings-row-text"><span id="themeLabel" class="settings-row-label">Theme</span><span class="muted">System follows your device's light or dark setting.</span></div>
+                <div class="settings-select">
+                  <button id="themeToggle" class="btn btn-outline btn-sm" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu" aria-labelledby="themeLabel themeValue"><span id="themeValue">Light</span><i data-lucide="chevron-down" data-icon="inline-end"></i></button>
+                  <div id="themeMenu" class="dropdown-menu settings-select-menu hidden" role="menu" aria-labelledby="themeLabel"></div>
+                </div>
               </div>
             </div>
           </div>

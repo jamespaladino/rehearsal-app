@@ -123,12 +123,32 @@
   background: var(--page-bg);
 }
 
-/* Settings view: a column of cards, one per section. */
+/* Settings view: a column of sections, each a heading and description above a card. */
 .settings-view {
   display: grid;
-  gap: 16px;
+  gap: 32px;
   max-width: 640px;
   margin: 8px auto 40px;
+}
+
+.settings-section {
+  display: grid;
+  gap: 12px;
+}
+
+/* Indented to line up with the text inside the card (.card-content's 16px padding). */
+.settings-section-header {
+  display: grid;
+  gap: 4px;
+  padding: 0 16px;
+}
+
+.settings-section-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.375;
 }
 
 /* Cards clip by default; settings cards let a row's dropdown menu extend past them. */
@@ -171,7 +191,7 @@
   min-width: 140px;
 }
 
-.settings-view .card-header .muted,
+.settings-section-header .muted,
 .settings-row-text .muted {
   margin: 0;
   font-size: 13px;

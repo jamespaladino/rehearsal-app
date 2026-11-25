@@ -108,15 +108,16 @@ const installed=()=>matchMedia('(display-mode: standalone)').matches||navigator.
 const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 async function updateStorageStatus(){
   const out=$('storageStatus');if(!out)return;
-  let kept=false,used='';
+  let kept=false,used=null;
   try{if(navigator.storage?.persist)kept=await navigator.storage.persisted()||await navigator.storage.persist()}catch(e){}
-  try{const est=await navigator.storage?.estimate?.();if(est?.usage!=null)used=` ${(est.usage/1048576).toFixed(1)} MB used.`}catch(e){}
+  try{const est=await navigator.storage?.estimate?.();if(est?.usage!=null)used=`${(est.usage/1048576).toFixed(1)} MB`}catch(e){}
   let text;
-  if(installed())text=kept?'Yes. This home-screen app keeps your data.':'Yes. Home-screen apps keep their data.';
-  else if(kept)text='Yes. This browser has agreed to keep your data.';
-  else if(isIOS())text='Not guaranteed. Safari may clear it after 7 days without a visit. Use Share > Add to Home Screen and open the app from there. Recordings made here won\'t carry over to it.';
-  else text='Not guaranteed. The browser may clear it if the device runs low on space.';
-  out.textContent=text+used;
+  if(installed())text=kept?'This home-screen app keeps your data.':'Home-screen apps keep their data.';
+  else if(kept)text='This browser has agreed to keep your data.';
+  else if(isIOS())text='Safari may clear it after 7 days without a visit. Use Share > Add to Home Screen and open the app from there. Recordings made here won\'t carry over to it.';
+  else text='The browser may clear it if the device runs low on space.';
+  // The usage amount is bold: "… 51.5 MB used."
+  out.replaceChildren(text);if(used)out.append(' ',el('strong',used),' used.');
 }
 updateStorageStatus();
 const req=indexedDB.open('rehearsal-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('scripts',{keyPath:'id'});req.onsuccess=async()=>{db=req.result;try{const scripts=await getAll();const lastId=localStorage.getItem("rehearsal-last-opened");if(lastId==='tests'){await openTests();return}if(lastId==='settings'){await openSettings();return}const target=scripts.find(s=>s.id===lastId)||scripts[0];if(target)await openScript(target);else await library()}catch(e){console.error("Could not restore last script",e);await library()}};req.onerror=()=>alert('Local storage unavailable. Try a modern browser.');
@@ -437,8 +438,9 @@ function openModal(type,s){
     character:{title:'Rename character',message:'Every line by '+s.name+' will use the new name.',label:'Character name',value:s.name,confirm:'Save'},
     delete:{title:'Delete script?',message:`Delete “${s.title||'Untitled'}” and all its recordings? This cannot be undone.`,confirm:'Delete'},
     discardImport:{title:'Cancel import?',message:'This script hasn’t been imported yet. Your changes will be lost.',confirm:'Discard import',cancel:'Keep editing'},
+    clearStorage:{title:'Clear storage?',message:`Delete ${s.count===1?'your 1 script':`all ${s.count} scripts`} and every recording on this device? Your settings are kept. This cannot be undone.`,confirm:'Clear storage'},
   }[type];
-  const hasField=type!=='delete'&&type!=='discardImport';
+  const hasField=!['delete','discardImport','clearStorage'].includes(type);
   $('modalTitle').textContent=text.title;$('modalMessage').textContent=text.message;
   $('renameFields').classList.toggle('hidden',!hasField);$('renameInput').required=hasField;
   $('renameLabel').textContent=text.label||'';$('renameInput').value=text.value||'';
@@ -451,7 +453,7 @@ function openModal(type,s){
 $('modalCancel').onclick=closeModal;
 $('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modalAction){e.preventDefault();closeModal()}});
-$('modalForm').onsubmit=async e=>{e.preventDefault();if(!modalAction)return;const {type,id}=modalAction;if(type==='discardImport'){closeModal();closeImportPane();return}const btn=$('modalConfirm');btn.disabled=true;try{if(type==='character'){const name=$('renameInput').value.trim().toUpperCase();if(!name){$('modalError').textContent='Enter a character name.';return}const oldName=modalAction.name;closeModal();renameCharacter(oldName,name);return}if(type==='rename'){const title=$('renameInput').value.trim();if(!title){$('modalError').textContent='Enter a script name.';return}const r=store().get(id);const saved=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});if(!saved)throw new Error('Script no longer exists');saved.title=title;await put(saved);if(script?.id===id){script.title=title;$('title').value=title;$('scriptHeading').textContent=title;updateScriptHeader()}}else{if(script?.id===id){clearTimeout(saveTimer);script=null;}await saveChain;await del(id);try{if(localStorage.getItem("rehearsal-last-opened")===id)localStorage.removeItem("rehearsal-last-opened")}catch(e){}if(!script){stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader()}}closeModal();await library()}catch(err){$('modalError').textContent=err.message||'Could not save changes.';$('renameFields').classList.remove('hidden')}finally{btn.disabled=false}};
+$('modalForm').onsubmit=async e=>{e.preventDefault();if(!modalAction)return;const {type,id}=modalAction;if(type==='discardImport'){closeModal();closeImportPane();return}if(type==='clearStorage'){await clearStorage();return}const btn=$('modalConfirm');btn.disabled=true;try{if(type==='character'){const name=$('renameInput').value.trim().toUpperCase();if(!name){$('modalError').textContent='Enter a character name.';return}const oldName=modalAction.name;closeModal();renameCharacter(oldName,name);return}if(type==='rename'){const title=$('renameInput').value.trim();if(!title){$('modalError').textContent='Enter a script name.';return}const r=store().get(id);const saved=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});if(!saved)throw new Error('Script no longer exists');saved.title=title;await put(saved);if(script?.id===id){script.title=title;$('title').value=title;$('scriptHeading').textContent=title;updateScriptHeader()}}else{if(script?.id===id){clearTimeout(saveTimer);script=null;}await saveChain;await del(id);try{if(localStorage.getItem("rehearsal-last-opened")===id)localStorage.removeItem("rehearsal-last-opened")}catch(e){}if(!script){stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader()}}closeModal();await library()}catch(err){$('modalError').textContent=err.message||'Could not save changes.';$('renameFields').classList.remove('hidden')}finally{btn.disabled=false}};
 let activeMenu=null;
 function closeMenu(){if(activeMenu){activeMenu.classList.add('hidden');activeMenu.previousElementSibling?.setAttribute('aria-expanded','false');activeMenu=null}}
 document.addEventListener('click',()=>closeMenu());
@@ -606,6 +608,19 @@ async function openPage(name){
   await library();
 }
 const openTests=()=>openPage('tests'),openSettings=()=>{updateStorageStatus();return openPage('settings')};
+// Settings > Storage > Clear storage: deletes every script and recording after a confirmation.
+// Preferences (theme, font size, collapsed sections) stay.
+$('clearStorage').onclick=async()=>{let count=0;try{count=(await getAll()).length}catch(e){}if(!count){$('storageStatus').textContent='There are no scripts or recordings to clear.';return}openModal('clearStorage',{count})};
+async function clearStorage(){
+  const btn=$('modalConfirm');btn.disabled=true;
+  try{
+    clearTimeout(saveTimer);await saveChain;
+    await new Promise((ok,no)=>{const r=store('readwrite').clear();r.onsuccess=ok;r.onerror=()=>no(r.error)});
+    try{const last=localStorage.getItem('rehearsal-last-opened');if(last&&last!=='settings'&&last!=='tests')localStorage.removeItem('rehearsal-last-opened')}catch(e){}
+    closeModal();await library();updateStorageStatus();
+  }catch(err){$('modalMessage').textContent='Could not clear storage: '+(err?.message||'unknown error')}
+  finally{btn.disabled=false}
+}
 $('openTests').onclick=openTests;$('openSettings').onclick=openSettings;
 
 // ---- Import flow ----------------------------------------------------------
