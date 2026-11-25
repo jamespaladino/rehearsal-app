@@ -28,6 +28,9 @@
       </div>
       <ul class="sidebar-menu sidebar-pages">
         <li class="sidebar-menu-item">
+          <button id="openImport" class="sidebar-menu-button" type="button"><i data-lucide="arrow-down-to-line"></i><span>Import</span></button>
+        </li>
+        <li class="sidebar-menu-item">
           <button id="openTests" class="sidebar-menu-button" type="button"><i data-lucide="flask-conical"></i><span>Tests</span></button>
         </li>
         <li class="sidebar-menu-item">
@@ -74,6 +77,15 @@
           <button id="playButton" class="btn btn-default hidden" type="button" aria-label="Start" data-tooltip="Start"><i data-lucide="play" data-icon="inline-start"></i>Start</button>
         </div>
       </header>
+
+      <!-- Import: the script importer's debug view (script-import/), loaded on first open and kept alive. -->
+      <section id="importView" class="tests-view hidden" aria-label="Import">
+        <iframe id="importFrame" title="Script import"></iframe>
+        <div id="importNeedsServer" class="tests-needs-server hidden">
+          <h2>Import needs a local server</h2>
+          <p class="muted">The importer's modules won't load from a file opened on disk. From the repository root, run <code>python3 speech-lab/serve.py</code>, then open <code>http://localhost:8000/</code>.</p>
+        </div>
+      </section>
 
       <!-- Tests: the Speech Recognition Lab (speech-lab/), loaded on first open and kept alive. -->
       <section id="testsView" class="tests-view hidden" aria-label="Tests">

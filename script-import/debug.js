@@ -6,6 +6,7 @@ const PDFJS = new URL('../vendor/pdfjs-4.10.38/pdf.min.mjs', import.meta.url).hr
 const PDF_WORKER = new URL('../vendor/pdfjs-4.10.38/pdf.worker.min.mjs', import.meta.url).href;
 const TYPE_LABEL = { scene_heading: 'Scene heading', action: 'Action', character: 'Character', parenthetical: 'Parenthetical', dialogue: 'Dialogue', transition: 'Transition' };
 
+const embedded = window.parent !== window;
 let pdfjs = null;
 let current = null; // { result, fileName }
 let me = null;
@@ -139,9 +140,18 @@ async function save() {
         tx.onerror = () => reject(tx.error);
       };
     });
-    try { localStorage.setItem('rehearsal-last-opened', script.id); } catch (e) { /* private mode */ }
     const turns = script.turns.length;
-    $('saved').replaceChildren(`Saved "${script.title}" (${turns} blocks, you are ${script.meCharacter}). `, link('../', 'Open it in Rehearsal'));
+    const message = `Saved "${script.title}" (${turns} blocks, you are ${script.meCharacter}). `;
+    if (embedded) {
+      // Inside the app: refresh its sidebar now, and open the script in place on request.
+      parent.postMessage({ type: 'rehearsal:script-saved', id: script.id }, location.origin);
+      const open = link('#', 'Open it');
+      open.onclick = (e) => { e.preventDefault(); parent.postMessage({ type: 'rehearsal:open-script', id: script.id }, location.origin); };
+      $('saved').replaceChildren(message, open);
+    } else {
+      try { localStorage.setItem('rehearsal-last-opened', script.id); } catch (e) { /* private mode */ }
+      $('saved').replaceChildren(message, link('../', 'Open it in Rehearsal'));
+    }
   } catch (e) {
     $('saved').textContent = `Couldn't save: ${e.message}`;
   }
@@ -160,6 +170,16 @@ function link(href, text) {
 }
 
 window.renderIcons?.(); // swap the <i data-lucide> placeholders for icons (js/icons.js)
+
+// Follow theme changes made in the app (light, dark or system).
+function applyTheme() {
+  let t = 'light';
+  try { t = localStorage.getItem('rehearsal-theme') || 'light'; } catch (e) { /* private mode */ }
+  const dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+  document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+}
+window.addEventListener('storage', (e) => { if (e.key === 'rehearsal-theme') applyTheme(); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change', applyTheme);
 
 $('file').onchange = (e) => handleFile(e.target.files[0]);
 $('onlyReview').onchange = () => current && renderBlocks();

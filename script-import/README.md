@@ -20,12 +20,14 @@ Node with a note; everything else, including the classifier and page-break stitc
 
 ```sh
 python3 speech-lab/serve.py                 # from the repository root
-# open http://localhost:8000/script-import/
+# open http://localhost:8000/ and choose Import in the sidebar,
+# or open http://localhost:8000/script-import/ on its own
 ```
 
 Choose or drop a file to see every block with its type, confidence, metadata and flags. Tick
 "Only blocks to review" to see just the flagged ones. Pick your character and press **Save to
-Rehearsal** to create a new script in the app, then open it from the link.
+Rehearsal** to create a new script in the app. Inside the app, the sidebar updates straight away and
+**Open it** opens the new script.
 
 **Debug view on the command line:**
 
@@ -134,4 +136,5 @@ dependencies.
   - Parentheticals other than beats are stored but not shown.
   - Reader lines arrive without recordings.
 - **Node.** The CLI and the PDF tests need Node 20+, because of pdf.js 4.
-- **No app entry point yet.** Importing happens in the debug view, not from the app's sidebar.
+- **The Import page is the debug view.** It's opened from the sidebar for now; a proper import flow (pick a
+  file, confirm the character, review flagged blocks) would replace it.

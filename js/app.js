@@ -102,7 +102,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('themeMenu').cla
 $('connectMic').onclick=async()=>{try{await getMicrophone()}catch(e){alert('Microphone unavailable: '+e.message)}};
 $('releaseMic').onclick=()=>releaseMicrophone();
 window.addEventListener('pagehide',()=>{if(stream)stream.getTracks().forEach(t=>t.stop())});
-const req=indexedDB.open('rehearsal-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('scripts',{keyPath:'id'});req.onsuccess=async()=>{db=req.result;try{const scripts=await getAll();const lastId=localStorage.getItem("rehearsal-last-opened");if(lastId==='tests'){await openTests();return}if(lastId==='settings'){await openSettings();return}const target=scripts.find(s=>s.id===lastId)||scripts[0];if(target)await openScript(target);else await library()}catch(e){console.error("Could not restore last script",e);await library()}};req.onerror=()=>alert('Local storage unavailable. Try a modern browser.');
+const req=indexedDB.open('rehearsal-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('scripts',{keyPath:'id'});req.onsuccess=async()=>{db=req.result;try{const scripts=await getAll();const lastId=localStorage.getItem("rehearsal-last-opened");if(lastId==='import'){await openImport();return}if(lastId==='tests'){await openTests();return}if(lastId==='settings'){await openSettings();return}const target=scripts.find(s=>s.id===lastId)||scripts[0];if(target)await openScript(target);else await library()}catch(e){console.error("Could not restore last script",e);await library()}};req.onerror=()=>alert('Local storage unavailable. Try a modern browser.');
 const store=(mode='readonly')=>db.transaction('scripts',mode).objectStore('scripts');const getAll=()=>new Promise((ok,no)=>{let r=store().getAll();r.onsuccess=()=>ok(r.result);r.onerror=no});const put=s=>new Promise((ok,no)=>{let r=store('readwrite').put(s);r.onsuccess=ok;r.onerror=no});const del=id=>new Promise((ok,no)=>{let r=store('readwrite').delete(id);r.onsuccess=ok;r.onerror=no});
 function el(tag,text){let x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x}
 // shadcn DropdownMenuItem. variant: undefined (default) or 'destructive'; iconName: optional Lucide icon.
@@ -560,7 +560,12 @@ async function openScript(s){showView(null);await flushSave();$('playButton').cl
 // the current script closes, the sidebar row is selected, and it's remembered as last opened.
 // Tests is the Speech Recognition Lab (speech-lab/); it loads on first open and stays alive
 // (models, takes) while you switch to scripts and back.
-const PAGES={tests:{view:'testsView',row:'openTests',title:'Tests'},settings:{view:'settingsView',row:'openSettings',title:'Settings'}};
+// Import and Tests are pages from their own folders, shown in an iframe (src loaded on first open).
+const PAGES={
+  import:{view:'importView',row:'openImport',title:'Import',frame:'importFrame',src:'script-import/?embed',needsServer:'importNeedsServer'},
+  tests:{view:'testsView',row:'openTests',title:'Tests',frame:'testsFrame',src:'speech-lab/?embed',needsServer:'testsNeedsServer'},
+  settings:{view:'settingsView',row:'openSettings',title:'Settings'},
+};
 function showView(name){
   for(const [id,page] of Object.entries(PAGES)){
     const on=id===name;
@@ -570,7 +575,8 @@ function showView(name){
   }
   $('topViewTitle').classList.toggle('hidden',!name);
   if(name)$('topViewTitle').textContent=PAGES[name].title;
-  if(name==='tests'){const f=$('testsFrame');const fromDisk=location.protocol==='file:';f.classList.toggle('hidden',fromDisk);$('testsNeedsServer').classList.toggle('hidden',!fromDisk);if(!fromDisk&&!f.getAttribute('src'))f.src='speech-lab/?embed'}
+  const page=PAGES[name];
+  if(page?.frame){const f=$(page.frame);const fromDisk=location.protocol==='file:';f.classList.toggle('hidden',fromDisk);$(page.needsServer).classList.toggle('hidden',!fromDisk);if(!fromDisk&&!f.getAttribute('src'))f.src=page.src}
 }
 async function openPage(name){
   // Tests uses its own microphone, so the app's is released. Settings leaves a connected
@@ -582,8 +588,15 @@ async function openPage(name){
   try{localStorage.setItem('rehearsal-last-opened',name)}catch(e){}
   await library();
 }
-const openTests=()=>openPage('tests'),openSettings=()=>openPage('settings');
-$('openTests').onclick=openTests;$('openSettings').onclick=openSettings;
+const openImport=()=>openPage('import'),openTests=()=>openPage('tests'),openSettings=()=>openPage('settings');
+$('openImport').onclick=openImport;$('openTests').onclick=openTests;$('openSettings').onclick=openSettings;
+// The importer (in its iframe) saves scripts straight to IndexedDB, then tells the app:
+// 'rehearsal:script-saved' refreshes the sidebar; 'rehearsal:open-script' opens the new script.
+window.addEventListener('message',async e=>{
+  if(e.origin!==location.origin||!e.data||typeof e.data.type!=='string')return;
+  if(e.data.type==='rehearsal:script-saved')await library();
+  if(e.data.type==='rehearsal:open-script'){const s=(await getAll()).find(x=>x.id===e.data.id);if(s)await openScript(s)}
+});
 function showHome(){stop();$('scriptHeading').textContent=script.title||'Untitled script';$('scriptHome').classList.remove('hidden');$('workspace').classList.add('hidden')}
 function enterMode(m){$('scriptHome').classList.add('hidden');$('workspace').classList.remove('hidden');setMode(m)}
 $('home').onclick=()=>{script.title=$('title').value.trim()||'Untitled script';showHome()};$('enterRecord').onclick=()=>enterMode('record');$('enterPlay').onclick=()=>enterMode('play');
