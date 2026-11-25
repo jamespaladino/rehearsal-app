@@ -42,7 +42,7 @@ export const wordCount = (text) => tokenize(text).length;
 //   const s = await startSession('vosk', micStream);
 //   const h = s.listenFor(lineText, { cueWords: 5, onHeard });  // h.done resolves on the cue
 //   h.cancel();  await s.close();
-export async function startSession(id, stream, { chunkMs = 100, threshold = 0.8 } = {}) {
+export async function startSession(id, stream, { chunkMs = 100, threshold = 0.7 } = {}) {
   const adapter = await loadEngine(id);
   let active = null; // current listen state
   let chunker = null;
