@@ -126,7 +126,7 @@
   --input-surface: color-mix(in oklch, var(--input) 30%, transparent);
 }
 
-@media (max-width: 700px) {
+@media (max-width: 767px) {
   :root {
     --main-gutter: 14px;
   }

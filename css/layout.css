@@ -300,25 +300,4 @@
   .tests-view {
     margin-bottom: -30px;
   }
-
-  .app-header {
-    align-items: flex-start;
-    height: auto;
-    min-height: var(--header-height);
-    padding-top: 12px;
-    padding-bottom: 12px;
-  }
-
-  .header-right {
-    flex-wrap: wrap;
-    justify-content: flex-end;
-    gap: 4px;
-    max-width: 48%;
-  }
-}
-
-@media (max-width: 600px) {
-  .app-header {
-    flex-wrap: wrap;
-  }
 }

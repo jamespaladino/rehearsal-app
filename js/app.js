@@ -131,10 +131,19 @@ function dropdownRadioItem(opt){
   option.onclick=e=>{e.stopPropagation();opt.onSelect()};
   return option;
 }
+function placeMenuAside(content){
+  delete content.dataset.side;delete content.dataset.align;
+  const bounds=content.getBoundingClientRect();
+  if(bounds.right>innerWidth-8){
+    content.dataset.side='left';
+    if(content.getBoundingClientRect().left<8)content.dataset.side='over';
+  }
+  if(content.dataset.side!=='over'&&bounds.bottom>innerHeight-8)content.dataset.align='end';
+}
 // shadcn DropdownMenuSub with RadioItems: a trigger row that opens a list to its right.
 // options: [{label, icon?, checked, onSelect}] — the checked option shows a check mark.
 // extra: {value?, note?} — value shows muted at the end of the trigger (DropdownMenuShortcut),
-// note is a short explanation at the top of the submenu. triggerIcon may be null.
+// note is a short explanation below the submenu options. triggerIcon may be null.
 // The submenu flips left / bottom-aligns when it would leave the window.
 function dropdownSubmenu(triggerIcon,triggerLabel,options,extra={}){
   const sub=el('div');sub.className='dropdown-menu-sub';
@@ -145,21 +154,15 @@ function dropdownSubmenu(triggerIcon,triggerLabel,options,extra={}){
   if(extra.value!=null){const value=el('span',extra.value);value.className='dropdown-menu-shortcut';trigger.append(value)}
   trigger.append(icon('chevron-right'));
   const content=el('div');content.className='dropdown-menu dropdown-menu-sub-content hidden';content.setAttribute('role','menu');
-  if(extra.note){const note=el('div',extra.note);note.className='dropdown-menu-note';content.append(note)}
   for(const opt of options)content.append(dropdownRadioItem(opt));
-  const place=()=>{
-    delete content.dataset.side;delete content.dataset.align;
-    const r=content.getBoundingClientRect();
-    if(r.right>innerWidth-8){content.dataset.side='left';if(content.getBoundingClientRect().left<8)content.dataset.side='over'}
-    if(content.dataset.side!=='over'&&r.bottom>innerHeight-8)content.dataset.align='end';
-  };
-  const setOpen=open=>{content.classList.toggle('hidden',!open);trigger.toggleAttribute('data-open',open);trigger.setAttribute('aria-expanded',String(open));if(open)place()};
+  if(extra.note){const note=el('div',extra.note);note.className='dropdown-menu-note';content.append(dropdownSeparator(),note)}
+  const setOpen=open=>{content.classList.toggle('hidden',!open);trigger.toggleAttribute('data-open',open);trigger.setAttribute('aria-expanded',String(open));if(open)placeMenuAside(content)};
   // With a mouse, hovering opens and leaving closes, so a click only ever opens (a toggle would
   // close the submenu hover just opened). Touch screens toggle on tap.
   const hover=matchMedia('(hover: hover)').matches;
   trigger.onclick=e=>{e.stopPropagation();setOpen(hover||content.classList.contains('hidden'))};
   if(hover){sub.onmouseenter=()=>setOpen(true);sub.onmouseleave=()=>setOpen(false)}
-  trigger.onkeydown=e=>{if(e.key==='ArrowRight'){e.preventDefault();setOpen(true);content.querySelector('[aria-checked="true"]')?.focus()||content.querySelector('button')?.focus()}};
+  trigger.onkeydown=e=>{if(e.key==='ArrowRight'){e.preventDefault();setOpen(true);(content.querySelector('[aria-checked="true"]')||content.querySelector('button'))?.focus()}};
   content.onkeydown=e=>{if(e.key==='ArrowLeft'||e.key==='Escape'){e.preventDefault();e.stopPropagation();setOpen(false);trigger.focus()}};
   sub.append(trigger,content);
   return sub;
@@ -173,54 +176,103 @@ function beatDurationSubmenu(t,onChange){
 // overlap them: the next line starts that long before the current one ends.
 const READER_SPACING=[
   {value:-1,label:'Overlap 1 second'},{value:-0.5,label:'Overlap ½ second'},{value:0,label:'No gap'},
-  {value:0.5,label:'½ second'},{value:1,label:'1 second'},{value:2,label:'2 seconds'},
+  {value:0.5,label:'Pause ½ second'},{value:1,label:'Pause 1 second'},{value:2,label:'Pause 2 seconds'},
 ];
 function readerSpacing(){const v=Number(script?.readerSpacing);return Number.isFinite(v)?Math.max(-5,Math.min(10,v)):0}
 // Line detection (saved for this device, not per script): how play mode decides you've finished
 // your line. Voice activity waits for a pause; the speech engines (from speech-lab/, see
 // speech-lab/js/rehearsal-engine.js) move on as soon as they hear the line's last N words (the cue).
 const LINE_DETECTION=[
-  {value:'vad',label:'Voice activity (pause)'},{value:'vosk',label:'Vosk speech recognition'},{value:'sherpa',label:'Sherpa-ONNX speech recognition'},
+  {value:'vad',label:'VAD',description:'Voice activity detection advances after it hears you speak and then pause.'},
+  // Runtime versions from speech-lab/pins.json.
+  {value:'vosk',label:'Vosk 0.0.8',description:'Uses a compact English speech model in your browser and advances when it recognizes the last few words of your line.'},
+  {value:'sherpa',label:'Sherpa-ONNX v1.13.7',description:'Uses a streaming English Zipformer model in your browser and advances when it recognizes the last few words of your line.'},
 ];
 const CUE_WORDS=[2,3,4,5,6,8];
+const DEFAULT_CUE_WORDS=2;
 function pref(key,fallback){try{return localStorage.getItem(key)??fallback}catch(e){return fallback}}
 function setPref(key,value){try{localStorage.setItem(key,String(value))}catch(e){}}
 function lineDetection(){const v=pref('rehearsal-line-detection','vad');return LINE_DETECTION.some(o=>o.value===v)?v:'vad'}
-function cueWords(){const n=Number(pref('rehearsal-cue-words',5));return CUE_WORDS.includes(n)?n:5}
-// Lines with fewer words than the cue length use voice activity instead (an experiment; off by default).
-function shortLinesUseVad(){return pref('rehearsal-short-lines-vad','false')==='true'}
+function cueWords(){const n=Number(pref('rehearsal-cue-words',DEFAULT_CUE_WORDS));return CUE_WORDS.includes(n)?n:DEFAULT_CUE_WORDS}
+// Lines with fewer words than the cue length use voice activity by default.
+function shortLinesUseVad(){return pref('rehearsal-short-lines-vad','true')==='true'}
 function menuLabel(text){const label=el('div',text);label.className='dropdown-menu-label';return label}
 // Menu row with a switch at its end (shadcn Switch inside a menuitemcheckbox).
-function dropdownSwitchItem(label,checked,onToggle){
+function dropdownSwitchItem(iconName,label,checked,onToggle){
   const item=el('button');item.type='button';item.className='dropdown-menu-item';
   item.setAttribute('role','menuitemcheckbox');item.setAttribute('aria-checked',String(checked));
   const sw=el('span');sw.className='switch';sw.toggleAttribute('data-checked',checked);
   const thumb=el('span');thumb.className='switch-thumb';sw.append(thumb);
-  item.append(el('span',label),sw);
+  item.append(icon(iconName),el('span',label),sw);
   item.onclick=e=>{e.stopPropagation();onToggle()};
   return item;
 }
-// Line detection menu (play bar, left of settings): mode, cue length and the short-line switch.
+// Line detection menu (play bar, left of settings): mode, cue length, VAD override, and reader spacing.
 // The button shows the current mode.
 function renderPlayDetection(){
   const pick=(apply,key)=>()=>{apply();renderPlayDetection();$('playDetectionMenu').querySelector(`[data-key="${key}"]`)?.focus({preventScroll:true})};
   const detection=lineDetection();
   const item=(b,key)=>{b.dataset.key=key;return b};
-  const items=[menuLabel('Line detection'),...LINE_DETECTION.map(o=>item(dropdownRadioItem({label:o.label,checked:o.value===detection,onSelect:pick(()=>{setPref('rehearsal-line-detection',o.value);if(playing)status('Line detection changes next time you press Start')},'detect-'+o.value)}),'detect-'+o.value))];
+  let activeDetails;
+  const withDetails=(choice,title,description)=>{
+    const row=el('div');row.className='dropdown-menu-sub';
+    const details=el('div');details.className='popover dropdown-menu-sub-content play-detection-details hidden';
+    details.id=choice.dataset.key+'-help';
+    details.setAttribute('role','tooltip');
+    details.append(el('strong',title),el('span',description));
+    choice.setAttribute('aria-describedby',details.id);
+    const showDetails=()=>{
+      activeDetails?.classList.add('hidden');
+      details.classList.remove('hidden');
+      placeMenuAside(details);
+      activeDetails=details;
+    };
+    row.onpointerenter=e=>{if(e.pointerType==='mouse'||e.pointerType==='pen')showDetails()};
+    row.onpointerleave=()=>details.classList.add('hidden');
+    choice.onfocus=()=>{if(choice.matches(':focus-visible'))showDetails()};
+    choice.onblur=()=>details.classList.add('hidden');
+    row.append(choice,details);
+    return row;
+  };
+  const choices=LINE_DETECTION.map(o=>{
+    const key='detect-'+o.value;
+    const choice=item(dropdownRadioItem({label:o.label,checked:o.value===detection,onSelect:pick(()=>{
+      setPref('rehearsal-line-detection',o.value);
+      if(playing)status('Line detection changes next time you press Start');
+    },key)}),key);
+    return withDetails(choice,o.label,o.description);
+  });
+  const items=[menuLabel('Line detection'),...choices,dropdownSeparator()];
+  let override;
   if(detection!=='vad'){
     const words=cueWords();
-    const cue=dropdownSubmenu(null,'Cue',CUE_WORDS.map(n=>({label:`${n} words`,checked:n===words,onSelect:pick(()=>setPref('rehearsal-cue-words',n),'cue')})),
+    const cue=dropdownSubmenu('message-square-quote','Cue',CUE_WORDS.map(n=>({label:`${n} words`,checked:n===words,onSelect:pick(()=>setPref('rehearsal-cue-words',n),'cue')})),
       {value:`${words} words`,note:'Your line ends when the last words of it are heard.'});
     cue.querySelector('.dropdown-menu-sub-trigger').dataset.key='cue';
-    const short=item(dropdownSwitchItem('Shorter lines use voice activity',shortLinesUseVad(),pick(()=>setPref('rehearsal-short-lines-vad',!shortLinesUseVad()),'short')),'short');
-    short.title=`Lines with fewer than ${words} words finish on a pause instead of speech recognition`;
-    items.push(dropdownSeparator(),cue,short);
+    const short=item(dropdownSwitchItem('audio-lines','VAD override',shortLinesUseVad(),pick(()=>setPref('rehearsal-short-lines-vad',!shortLinesUseVad()),'short')),'short');
+    override=withDetails(short,'VAD override',`When enabled, lines with fewer than ${words} words advance after you speak and pause.`);
+    items.push(cue);
   }
+  const current=readerSpacing();
+  const spacing=dropdownSubmenu('blend','Spacing',READER_SPACING.map(o=>({
+    label:o.label,checked:o.value===current,onSelect:pick(()=>{
+      script.readerSpacing=o.value;
+      queueSave(true);
+    },'reader-spacing'),
+  })),{value:READER_SPACING.find(o=>o.value===current)?.label,
+    note:'Sets the pause or overlap between consecutive reader lines.'});
+  spacing.querySelector('.dropdown-menu-sub-trigger').dataset.key='reader-spacing';
+  const trim=item(dropdownSwitchItem('scissors','Auto-trim recordings',autoTrimRecordings(),pick(()=>{
+    script.autoTrimRecordings=!autoTrimRecordings();
+    queueSave(true);
+  },'auto-trim')),'auto-trim');
+  items.push(spacing,withDetails(trim,'Auto-trim recordings','Skips silence at the start and end of reader recordings during rehearsal. The original takes are kept.'));
+  if(override)items.push(override);
   $('playDetectionMenu').replaceChildren(...items);
   updateDetectionButton();
 }
 function updateDetectionButton(){
-  const name={vad:'Voice activity',vosk:'Vosk',sherpa:'Sherpa-ONNX'}[lineDetection()];
+  const name=LINE_DETECTION.find(o=>o.value===lineDetection()).label;
   $('playDetectionLabel').textContent=name;
   $('playDetectionToggle').setAttribute('aria-label',`Line detection: ${name}`);
   $('playDetectionToggle').dataset.tooltip=`Line detection: ${name}`;
@@ -230,14 +282,27 @@ function setPlayDetection(open){
   $('playDetectionMenu').classList.toggle('hidden',!open);
   $('playDetectionToggle').setAttribute('aria-expanded',String(open));
 }
-// Play pane settings menu: reader spacing.
+const DIALOGUE_SIZES=[
+  {value:'small',label:'Small'},{value:'medium',label:'Medium'},
+  {value:'large',label:'Large'},{value:'extra-large',label:'Extra Large'},
+];
+const dialogueSizeKey='rehearsal-dialogue-size';
+let dialogueSize=DIALOGUE_SIZES.find(o=>o.value===pref(dialogueSizeKey,'medium'))||DIALOGUE_SIZES[1];
+$('prompter').dataset.dialogueSize=dialogueSize.value;
+
+function autoTrimRecordings(){return script?.autoTrimRecordings??true}
 function renderPlaySettings(){
-  const current=readerSpacing();
-  const label=menuLabel('Reader spacing');
-  $('playSettingsMenu').replaceChildren(label,...READER_SPACING.map(o=>dropdownRadioItem({label:o.label,checked:o.value===current,onSelect:()=>{
-    script.readerSpacing=o.value;queueSave(true);renderPlaySettings();
-    $('playSettingsMenu').querySelector('[aria-checked="true"]')?.focus({preventScroll:true});
-  }})));
+  const size=dropdownSubmenu('type','Font size',DIALOGUE_SIZES.map(o=>({
+    label:o.label,checked:o===dialogueSize,onSelect:()=>{
+      dialogueSize=o;
+      setPref(dialogueSizeKey,o.value);
+      $('prompter').dataset.dialogueSize=o.value;
+      display(true);
+      renderPlaySettings();
+      $('playSettingsMenu').querySelector('.dropdown-menu-sub-trigger').focus({preventScroll:true});
+    },
+  })),{value:dialogueSize.label});
+  $('playSettingsMenu').replaceChildren(size);
 }
 function setPlaySettings(open){
   if(open){setPlayDetection(false);renderPlaySettings()}
@@ -249,6 +314,52 @@ const audioDurations=new WeakMap();
 function audioDuration(blob){
   if(!audioDurations.has(blob))audioDurations.set(blob,blob.arrayBuffer().then(data=>audioCtx.decodeAudioData(data)).then(buffer=>buffer.duration));
   return audioDurations.get(blob);
+}
+
+// Cache the detected bounds with the original take. Only keep decoded audio for the
+// two most recently requested takes so rehearsing a long scene stays bounded.
+const readerTrimBounds=new WeakMap();
+const decodedReaderTakes=new Map();
+function decodeReaderTake(blob,context){
+  const cached=decodedReaderTakes.get(blob);
+  if(cached){decodedReaderTakes.delete(blob);decodedReaderTakes.set(blob,cached);return cached}
+  const decoded=blob.arrayBuffer().then(data=>context.decodeAudioData(data)).catch(()=>null);
+  decodedReaderTakes.set(blob,decoded);
+  if(decodedReaderTakes.size>2)decodedReaderTakes.delete(decodedReaderTakes.keys().next().value);
+  return decoded;
+}
+function findReaderTrim(buffer){
+  const step=Math.round(buffer.sampleRate*.02);
+  const channels=Array.from({length:buffer.numberOfChannels},(_,i)=>buffer.getChannelData(i));
+  const levels=[];
+  let peak=0;
+  for(let start=0;start<buffer.length;start+=step){
+    const end=Math.min(start+step,buffer.length);
+    let level=0;
+    for(const samples of channels){
+      let sum=0;
+      for(let i=start;i<end;i++)sum+=samples[i]*samples[i];
+      level=Math.max(level,Math.sqrt(sum/(end-start)));
+    }
+    levels.push(level);
+    peak=Math.max(peak,level);
+  }
+  const sorted=[...levels].sort((a,b)=>a-b);
+  const floor=sorted[Math.floor(sorted.length*.2)]||0;
+  const threshold=Math.max(.003,peak*.04,floor*3);
+  if(peak<threshold*2)return {start:0,end:buffer.duration};
+  let first=-1,last=-1,run=0;
+  for(let i=0;i<levels.length;i++){
+    run=levels[i]>=threshold?run+1:0;
+    if(run<3)continue;
+    if(first<0)first=i-2;
+    last=i;
+  }
+  if(first<0)return {start:0,end:buffer.duration};
+  return {
+    start:Math.max(0,first*step/buffer.sampleRate-.12),
+    end:Math.min(buffer.duration,(last+1)*step/buffer.sampleRate+.18),
+  };
 }
 // Block types a block can be turned into, in menu order. A "Line" is dialogue: whether it's
 // yours or a reader's comes from its character name, so there's one option for both.
@@ -502,6 +613,8 @@ document.addEventListener('keydown',e=>{
   if(e.key!=='Escape'||modalAction||$('playPane').classList.contains('hidden'))return;
   e.preventDefault();
   if(!$('playSettingsMenu').classList.contains('hidden')){setPlaySettings(false);$('playSettingsToggle').focus({preventScroll:true});return}
+  const detectionHelp=$('playDetectionMenu').querySelector('.play-detection-details:not(.hidden)');
+  if(!$('playDetectionMenu').classList.contains('hidden')&&detectionHelp){detectionHelp.classList.add('hidden');return}
   if(!$('playDetectionMenu').classList.contains('hidden')){setPlayDetection(false);$('playDetectionToggle').focus({preventScroll:true});return}
   if(mobileQuery.matches&&scenesVisible()){setScenesOpen(false);$('toggleScenes').focus({preventScroll:true});return}
   setMode('record');
@@ -881,11 +994,11 @@ new ResizeObserver(()=>{
 // (and remembers your choice while in play mode); on mobile it starts closed and opens over
 // the teleprompter, closing again once you pick a scene.
 // With only one scene there's nothing to pick: the sidebar stays closed and its button is
-// disabled (without changing the remembered desktop choice).
+// hidden (without changing the remembered desktop choice).
 let scenesPreferred=true;
 function setScenesOpen(open){
   const mobile=mobileQuery.matches,single=scenes().length<2;
-  $('toggleScenes').disabled=single;
+  $('toggleScenes').classList.toggle('hidden',single);
   if(single)open=false;else if(!mobile)scenesPreferred=open;
   $('playPane').classList.toggle('scenes-visible',open);
   $('playScenesBackdrop').classList.toggle('hidden',!(open&&mobile));
@@ -931,25 +1044,50 @@ $('start').onclick=async()=>{if(!script.turns.slice(sceneRange.start,sceneRange.
 function next(){if(!playing)return;cancelAnimationFrame(raf);if(engineListen){engineListen.cancel();engineListen=null}idx=firstPlayable(idx);if(idx>=sceneRange.end){status('Scene complete');stop(true);releaseMicIfIdle();return}display();let t=script.turns[idx];if(t.who==='beat'){let seconds=beatSeconds(t);status(`Beat — ${seconds} second${seconds===1?'':'s'}…`);beatTimer=setTimeout(()=>{beatTimer=null;idx++;next()},seconds*1000);return}if(t.who==='them'){status('Playing reader…');if(!t.audio){status('Reader recording missing — skipping');idx++;setTimeout(next,250);return}playReaderLine(t);return}else if(useEngineFor(t)){listenWithEngine(t)}else{partsNeeded=lineParts(t.text);partsHeard=0;status(partsNeeded>1?`Listening for your line… (part 1 of ${partsNeeded})`:'Listening for your line…');heard=false;speechAt=0;lastVoice=0;listen()}}
 // Plays one reader line. Back-to-back reader lines use the script's Reader spacing:
 // a pause after this line ends, or (negative) starting the next line before this one ends.
-function playReaderLine(t){
-  const url=URL.createObjectURL(t.audio);const audio=new Audio(url);
-  activeAudio=audio;playingAudios.add(audio);
+async function playReaderLine(t){
+  const context=audioCtx;
   const following=script.turns[firstPlayable(idx+1)];
   const spacing=following?.who==='them'&&following.audio?readerSpacing():0;
   let advanced=false;
-  const advance=()=>{if(advanced||!playing)return;advanced=true;clearTimeout(gapTimer);gapTimer=null;idx++;next()};
+  const isCurrent=()=>playing&&audioCtx===context;
+  const advance=()=>{if(advanced||!isCurrent())return;advanced=true;clearTimeout(gapTimer);gapTimer=null;idx++;next()};
+  const onEnded=()=>{
+    if(advanced||!isCurrent())return;
+    if(spacing>0)gapTimer=setTimeout(advance,spacing*1000);
+    else advance();
+  };
+  if(autoTrimRecordings()){
+    const decoded=decodeReaderTake(t.audio,context);
+    if(following?.who==='them'&&following.audio)decodeReaderTake(following.audio,context);
+    const buffer=await decoded;
+    if(!isCurrent())return;
+    if(buffer){
+      let bounds=readerTrimBounds.get(t.audio);
+      if(!bounds){bounds=findReaderTrim(buffer);readerTrimBounds.set(t.audio,bounds)}
+      const source=context.createBufferSource();
+      source.buffer=buffer;
+      source.connect(context.destination);
+      source.onended=()=>{source.disconnect();onEnded()};
+      const duration=bounds.end-bounds.start;
+      source.start(0,bounds.start,duration);
+      if(spacing<0)gapTimer=setTimeout(advance,Math.max(0,duration+spacing)*1000);
+      return;
+    }
+  }
+  const url=URL.createObjectURL(t.audio);const audio=new Audio(url);
+  activeAudio=audio;playingAudios.add(audio);
   const cleanup=()=>{URL.revokeObjectURL(url);playingAudios.delete(audio);if(activeAudio===audio)activeAudio=null};
-  audio.onended=()=>{cleanup();if(spacing>0&&!advanced&&playing)gapTimer=setTimeout(advance,spacing*1000);else advance()};
+  audio.onended=()=>{cleanup();onEnded()};
   audio.onerror=()=>{cleanup();advance()};
   audio.play().then(async()=>{
-    if(spacing>=0)return;
+    if(spacing>=0||!isCurrent())return;
     const duration=await audioDuration(t.audio).catch(()=>null);
-    if(duration&&playing&&!advanced)gapTimer=setTimeout(advance,Math.max(0,duration-audio.currentTime+spacing)*1000);
-  }).catch(e=>{status('Playback failed: '+e.message);stop()});
+    if(duration&&isCurrent()&&!advanced)gapTimer=setTimeout(advance,Math.max(0,duration-audio.currentTime+spacing)*1000);
+  }).catch(e=>{cleanup();if(isCurrent()){stop();status('Playback failed: '+e.message)}});
 }
 function listen(){if(!playing)return;let a=new Float32Array(analyser.fftSize);analyser.getFloatTimeDomainData(a);let sum=0;for(let v of a)sum+=v*v;let rms=Math.sqrt(sum/a.length),now=performance.now();const threshold=Math.max(.022,noiseFloor*2.8);if(rms>threshold){if(!speechAt)speechAt=now;if(now-speechAt>120){if(!heard)status(partsNeeded>1?`Speaking… (part ${partsHeard+1} of ${partsNeeded})`:'Speaking…');heard=true;lastVoice=now}}else{speechAt=0;if(!heard)noiseFloor=noiseFloor*.98+rms*.02;if(heard&&now-lastVoice>850){
   partsHeard++;
   if(partsHeard<partsNeeded){heard=false;status(`Keep going… (part ${partsHeard+1} of ${partsNeeded})`)}
   else{idx++;next();return}
 }}raf=requestAnimationFrame(listen)}
-function stop(done=false){playing=false;cancelAnimationFrame(raf);stopEngineSession();if(beatTimer!==null){clearTimeout(beatTimer);beatTimer=null}if(gapTimer!==null){clearTimeout(gapTimer);gapTimer=null}playingAudios.forEach(a=>a.pause());playingAudios.clear();activeAudio=null;/* Keep microphone permission/stream alive until explicitly released. */if(audioCtx){audioCtx.close();audioCtx=null}setTransport(false);if(!done&&$('status'))status('Stopped')}
+function stop(done=false){playing=false;cancelAnimationFrame(raf);stopEngineSession();if(beatTimer!==null){clearTimeout(beatTimer);beatTimer=null}if(gapTimer!==null){clearTimeout(gapTimer);gapTimer=null}playingAudios.forEach(a=>a.pause());playingAudios.clear();activeAudio=null;decodedReaderTakes.clear();/* Keep microphone permission/stream alive until explicitly released. */if(audioCtx){audioCtx.close();audioCtx=null}setTransport(false);if(!done&&$('status'))status('Stopped')}
