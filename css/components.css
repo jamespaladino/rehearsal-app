@@ -256,18 +256,6 @@
 }
 
 /* Scene headings and action are context, not spoken: smaller than the lines. */
-.prompter-line[data-who="heading"] .prompter-text {
-  font-size: 14px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-}
-
-.prompter-line[data-who="action"] .prompter-text {
-  font-size: clamp(16px, 2vw, 20px);
-  font-weight: 400;
-}
-
 @media (prefers-reduced-motion: reduce) {
   .prompter-line {
     transition: none;
@@ -443,35 +431,38 @@
 }
 
 .import-warning {
-  margin-bottom: 16px;
-}
-
-.import-section {
-  margin-bottom: 32px;
-}
-
-.import-section > .muted {
-  margin: 0 0 12px;
-  font-size: 13px;
-}
-
-.import-section-title {
-  display: block;
-  margin: 0 0 6px;
-  font-size: 16px;
-  font-weight: 500;
+  margin-bottom: 20px;
 }
 
 #importTitle {
   max-width: 480px;
 }
 
+/* Script name and You: stacked on small screens, two columns from 768px (shadcn's md),
+   like shadcn's "grid grid-cols-2 gap-4" inside a FieldGroup. Gap matches FieldGroup. */
+.import-fields-row {
+  display: grid;
+  gap: 20px;
+}
+
+@media (min-width: 768px) {
+  .import-fields-row {
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+}
+
+/* Blocks legend with Undo and the All / Review toggle beside it. */
 .import-section-head {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+
+.import-section-head > .field-legend {
+  margin: 0;
 }
 
 .import-table-wrap {

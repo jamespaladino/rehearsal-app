@@ -657,6 +657,10 @@ async function startImport(file){
 function renderImportSummary(review){
   const r=review.result;
   $('importUndo').classList.toggle('hidden',!review.canUndo);
+  // Above the table: how many blocks still need review (hidden when none do).
+  const toReview=r.blocks.filter(b=>b.review).length;
+  $('importReviewAlert').classList.toggle('hidden',!toReview);
+  $('importReviewAlertTitle').textContent=toReview===1?'1 block needs review':`${toReview} blocks need review`;
   $('importWarnings').replaceChildren(...r.warnings.map(w=>{const a=el('div');a.className='alert import-warning';a.setAttribute('role','alert');const d=el('div',w);d.className='alert-description';a.append(d);return a}));
 }
 function openImportPane(fileName){
@@ -1128,7 +1132,8 @@ function setScenesOpen(open){
 const scenesVisible=()=>$('playPane').classList.contains('scenes-visible');
 mobileQuery.addEventListener('change',()=>{if(!$('playPane').classList.contains('hidden'))setScenesOpen(mobileQuery.matches?false:scenesPreferred)});
 function firstPlayable(from){let i=from;while(i<sceneRange.end&&!isPlayable(script.turns[i]))i++;return i}
-// Teleprompter: every block of the scene, with the current one cued in the middle of the screen.
+// Teleprompter: the scene's spoken lines only (character and dialogue; no scene headings, action
+// or beats), with the current one cued in the middle of the screen. Beats still pause rehearsal.
 function renderPrompter(){
   // Alert when reader lines in this scene have no recording (they're skipped in rehearsal).
   const missing=script.turns.slice(sceneRange.start,sceneRange.end).filter(t=>t.who==='them'&&!t.audio).length;
@@ -1136,11 +1141,12 @@ function renderPrompter(){
   $('playAlertTitle').textContent=missing===1?"1 reader line in this scene hasn't been recorded":missing+" reader lines in this scene haven't been recorded";
   const list=$('prompter');list.replaceChildren();
   script.turns.slice(sceneRange.start,sceneRange.end).forEach((t,k)=>{
+    if(t.who!=='me'&&t.who!=='them')return;
     const line=el('li');line.className='prompter-line';line.dataset.who=t.who;line.dataset.index=sceneRange.start+k;
     const who=t.who==='me'?script.meCharacter:t.who==='them'?(t.character||'Reader'):'';
     const name=el('div',who&&who+cueSuffix(t));name.className='prompter-character';
     if(t.who==='them'&&!t.audio){const flag=el('span');flag.className='prompter-flag';flag.dataset.tooltip='Not recorded';flag.setAttribute('aria-label','Not recorded');flag.append(icon('circle-exclamation-point'));name.append(flag);line.dataset.unrecorded=''}
-    const text=el('div',t.who==='beat'?'Beat.':(t.text||''));text.className='prompter-text';
+    const text=el('div',t.text||'');text.className='prompter-text';
     line.append(name,text);list.append(line);
   });
 }

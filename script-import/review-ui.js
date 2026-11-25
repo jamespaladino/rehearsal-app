@@ -40,8 +40,9 @@ export function describe(result) {
  *         filter?: shadcn ToggleGroup with <button data-filter="all"> and <button data-filter="review">,
  *         confidence?: false to leave out the confidence column (the table head must match),
  *         onChange?: (review) => void }
- * Every row can be retyped or deleted; rows that need review show their controls all the time
- * (plus Mark correct), other rows on hover or keyboard focus (see review.css).
+ * Every row can be retyped or deleted. Rows that need review show their controls all the time,
+ * and their type picker starts on "Choose type" so the user has to pick one (even the guessed
+ * type) to clear the review. Other rows show controls on hover or keyboard focus (see review.css).
  */
 export function createImportReview(els) {
   let result = null;
@@ -82,7 +83,20 @@ export function createImportReview(els) {
     if (!me || !result.characters.some((c) => c.name === me)) me = guessMyCharacter(result);
     renderCharacters();
     renderBlocks();
+    renderReviewCount();
     els.onChange?.(review);
+  }
+
+  // The Review toggle shows how many blocks still need review: "Review 3". With nothing to
+  // review it's plain "Review".
+  function renderReviewCount() {
+    const btn = els.filter?.querySelector('[data-filter="review"]');
+    if (!btn) return;
+    const n = result.blocks.filter((b) => b.review).length;
+    btn.replaceChildren('Review');
+    if (!n) { btn.removeAttribute('aria-label'); return; }
+    btn.append(el('span', String(n), 'toggle-count'));
+    btn.setAttribute('aria-label', `Review, ${n} ${n === 1 ? 'block needs' : 'blocks need'} review`);
   }
 
   // "You": a shadcn NativeSelect (css/shadcn.css) listing every character, best guess first chosen.
@@ -132,17 +146,27 @@ export function createImportReview(els) {
       const typeCell = el('td', '', 'type');
       const select = document.createElement('select');
       select.setAttribute('aria-label', `Type of block ${b.id}`);
+      // A block that needs review has no type chosen yet: the user must pick one.
+      if (b.review) {
+        const placeholder = el('option', 'Choose type');
+        placeholder.value = '';
+        placeholder.disabled = true;
+        placeholder.selected = true;
+        select.append(placeholder);
+        select.required = true;
+      }
       for (const t of BLOCK_TYPES) {
         const o = el('option', TYPE_LABEL[t]);
         o.value = t;
-        o.selected = t === b.type;
+        o.selected = !b.review && t === b.type;
         select.append(o);
       }
-      select.onchange = () => apply(retypeBlock(result, b.id, select.value));
+      // Picking the guessed type confirms it as is (retyping a character to character would
+      // drop its extensions); any other type retypes the block.
+      select.onchange = () => apply(select.value === b.type ? acceptBlock(result, b.id) : retypeBlock(result, b.id, select.value));
       typeCell.append(nativeSelect(select, 'sm'));
       const actions = el('td', '', 'actions');
-      if (b.review) actions.append(iconButton('check', `Mark block ${b.id} correct`, 'Mark correct', () => apply(acceptBlock(result, b.id))));
-      actions.append(iconButton('trash', `Delete block ${b.id}`, 'Delete', () => apply(deleteBlock(result, b.id)), 'destructive'));
+      actions.append(iconButton('trash', `Delete block ${b.id}`, 'Delete', () => apply(deleteBlock(result, b.id))));
       tr.append(idCell, el('td', b.page ?? '–', 'num'), ...(els.confidence === false ? [] : [conf]), textCell, typeCell, actions);
       rows.push(tr);
     }
@@ -183,8 +207,9 @@ function nativeSelect(select, size) {
   return wrap;
 }
 
-function iconButton(name, label, tip, onClick, variant) {
-  const b = el('button', '', 'btn btn-ghost btn-icon btn-sm' + (variant === 'destructive' ? ' btn-icon-destructive' : ''));
+// shadcn Button, destructive variant, icon-sm size (28px, like the small type picker beside it).
+function iconButton(name, label, tip, onClick) {
+  const b = el('button', '', 'btn btn-destructive btn-icon-sm');
   b.type = 'button';
   b.setAttribute('aria-label', label);
   b.title = tip;

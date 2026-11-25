@@ -6,6 +6,12 @@
   font-weight: 500;
 }
 
+/* The Review toggle's count (set by renderReviewCount in review-ui.js). */
+.toggle-count {
+  color: var(--muted-foreground);
+  font-variant-numeric: tabular-nums;
+}
+
 /* Undo and the All / Review toggle, beside the Blocks heading. */
 .import-tools {
   display: flex;
@@ -19,15 +25,17 @@
   max-width: 480px;
 }
 
+/* No row lines; rows highlight on hover (shadcn TableRow: hover:bg-muted/50). Cells are
+   separate, not collapsed, so a row's highlight can have rounded ends. */
 .import-blocks {
   width: 100%;
-  border-collapse: collapse;
+  border-collapse: separate;
+  border-spacing: 0;
   font-size: 13px;
 }
 
 .import-blocks th {
   padding: 6px 8px;
-  border-bottom: 1px solid var(--border);
   color: var(--muted-foreground);
   font-weight: 500;
   text-align: left;
@@ -35,12 +43,30 @@
 
 .import-blocks td {
   padding: 6px 8px;
-  border-bottom: 1px solid var(--border);
+  line-height: 20px;
   vertical-align: top;
+}
+
+.import-blocks td:first-child {
+  border-radius: var(--radius-md) 0 0 var(--radius-md);
+}
+
+.import-blocks td:last-child {
+  border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 
 .import-blocks tr.needs-review td {
   background: color-mix(in oklch, var(--destructive) 7%, transparent);
+}
+
+@media (hover: hover) {
+  .import-blocks tbody tr:hover td {
+    background: color-mix(in oklch, var(--muted) 50%, transparent);
+  }
+
+  .import-blocks tbody tr.needs-review:hover td {
+    background: color-mix(in oklch, var(--destructive) 12%, transparent);
+  }
 }
 
 .import-blocks .num {
@@ -49,13 +75,18 @@
   font-variant-numeric: tabular-nums;
 }
 
+/* Type picker and delete button: 4px apart, both 28px (NativeSelect sm, Button icon-sm).
+   Both columns shrink to their contents so the gap stays 4px. */
 .import-blocks .type {
+  width: 1%;
+  padding-right: 0;
   white-space: nowrap;
 }
 
 /* Type picker: a small shadcn NativeSelect on every row. Fix buttons: always on rows that need
    review, on hover or keyboard focus elsewhere. */
 .import-blocks .type .native-select {
+  width: max-content; /* as wide as its longest type, in a column sized to fit */
   margin: -4px 0; /* text lines up with the other cells */
 }
 
@@ -64,10 +95,11 @@
 }
 
 .import-blocks .actions {
+  width: 1%;
   padding-top: 2px;
   padding-bottom: 2px;
+  padding-left: 4px;
   white-space: nowrap;
-  text-align: right;
 }
 
 tr:not(.needs-review) .actions .btn {
@@ -92,18 +124,6 @@ tr:not(.needs-review):focus-within .actions .btn,
   }
 }
 
-.import-blocks .actions .btn {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  padding: 0;
-  justify-content: center;
-}
-
-.btn-icon-destructive:hover {
-  color: var(--destructive);
-}
-
 .sr-only {
   position: absolute;
   width: 1px;
@@ -122,25 +142,34 @@ tr:not(.needs-review):focus-within .actions .btn,
 .conf-mid { color: oklch(0.65 0.15 70); }
 .conf-low { color: var(--destructive); }
 
-/* Screenplay-style indents, so the layout reads like the page. */
+/* Screenplay-style indents, so the layout reads like the page. The text is set in a column as
+   wide as a script page (60 characters), so transitions sit at the page's right edge rather
+   than the table's. Same 20px line height as the other cells, so each row's text lines up
+   with its number and type picker. */
 .block-text {
   font-family: var(--font-screenplay);
-  font-size: 13px;
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.block-text > div:first-child {
+  max-width: 60ch;
 }
 
 .block-text.type-scene_heading { font-weight: 700; }
 .block-text.type-character > div:first-child { padding-left: 13ch; }
 .block-text.type-parenthetical > div:first-child { padding-left: 9ch; }
-.block-text.type-dialogue > div:first-child { padding-left: 6ch; max-width: 42ch; }
+.block-text.type-dialogue > div:first-child { padding-left: 6ch; max-width: 48ch; }
 .block-text.type-transition > div:first-child { text-align: right; }
 
 .block-notes {
   display: flex;
   flex-wrap: wrap;
   gap: 4px 8px;
-  margin-top: 4px;
+  margin-top: 2px;
   font-family: var(--font-sans);
   font-size: 12px;
+  line-height: 16px;
 }
 
 
@@ -156,22 +185,38 @@ tr:not(.needs-review):focus-within .actions .btn,
     grid-template-columns: auto minmax(0, 1fr) auto auto;
     align-items: center;
     column-gap: 8px;
-    padding: 8px 0;
-    border-bottom: 1px solid var(--border);
+    padding: 8px;
+    border-radius: var(--radius-md);
   }
 
   .import-blocks td {
     padding: 2px 0;
-    border-bottom: 0;
+  }
+
+  /* The row (a grid here) carries the background, not its cells. */
+  .import-blocks tbody tr td,
+  .import-blocks tbody tr:hover td,
+  .import-blocks tbody tr.needs-review td,
+  .import-blocks tbody tr.needs-review:hover td {
+    background: transparent;
   }
 
   .import-blocks tr.needs-review {
     background: color-mix(in oklch, var(--destructive) 7%, transparent);
   }
+}
 
-  .import-blocks tr.needs-review td {
-    background: transparent;
+@media (max-width: 640px) and (hover: hover) {
+  .import-blocks tbody tr:hover {
+    background: color-mix(in oklch, var(--muted) 50%, transparent);
   }
+
+  .import-blocks tbody tr.needs-review:hover {
+    background: color-mix(in oklch, var(--destructive) 12%, transparent);
+  }
+}
+
+@media (max-width: 640px) {
 
   .import-blocks td:nth-child(2) {
     display: none; /* page number */

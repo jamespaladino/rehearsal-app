@@ -34,8 +34,8 @@ character with nothing after it is always highlighted. The **All / Review** togg
 every block and just the flagged ones.
 
 Fix blocks before saving:
-- **Change a type:** pick it from the dropdown.
-- **Mark correct:** press ✓.
+- **Change a type:** pick it from the dropdown. Flagged rows start on "Choose type": pick a
+  type (the right one may be the one it guessed) to clear the flag.
 - **Delete:** press 🗑.
 
 Flagged rows show these controls all the time; other rows show them when you hover or tab to

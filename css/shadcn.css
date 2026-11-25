@@ -16,6 +16,8 @@
  *   Alert             https://ui.shadcn.com/r/styles/base-nova/alert.json
  *   Switch            https://ui.shadcn.com/r/styles/base-nova/switch.json
  *   NativeSelect      https://ui.shadcn.com/r/styles/base-nova/native-select.json
+ *   Field             https://ui.shadcn.com/r/styles/base-nova/field.json
+ *   Label             https://ui.shadcn.com/r/styles/base-nova/label.json
  *
  * Tailwind's hover: variant only applies on devices that can hover, so hover rules
  * below are wrapped in @media (hover: hover) the same way.
@@ -1054,6 +1056,121 @@ button.sidebar-group-label:focus-visible {
 
 .alert-destructive > .alert-description {
   color: color-mix(in oklch, var(--destructive) 90%, transparent);
+}
+
+/* ======================================================================== */
+/* Field (vertical orientation)                                              */
+/*                                                                           */
+/*   <div class="field-group">                                               */
+/*     <div class="field">                                                   */
+/*       <label class="field-label" for="x">Label</label>                    */
+/*       <p class="field-description">Optional description.</p>              */
+/*       <input id="x">                                                      */
+/*     </div>                                                                */
+/*     <fieldset class="field-set">                                          */
+/*       <legend class="field-legend">Legend</legend>                        */
+/*       <p class="field-description">…</p> …                                */
+/*     </fieldset>                                                           */
+/*   </div>                                                                  */
+/*   Invalid field: data-invalid="true" on .field.                           */
+/* ======================================================================== */
+
+.field-set {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.field-legend {
+  margin-bottom: 6px;
+  padding: 0;
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 24px;
+}
+
+.field-legend[data-variant="label"] {
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  width: 100%;
+}
+
+.field-group > .field-group {
+  gap: 16px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+}
+
+.field > * {
+  width: 100%;
+}
+
+.field > .sr-only {
+  width: auto;
+}
+
+.field[data-invalid="true"] {
+  color: var(--destructive);
+}
+
+/* FieldLabel (shadcn Label + field-label classes). margin: 0 stands in for Tailwind's reset,
+   overriding the global label margin in css/base.css. */
+.field-label {
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.375;
+  user-select: none;
+}
+
+.field-description {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+}
+
+.field-legend + .field-description {
+  margin-top: -6px;
+}
+
+.field-description:nth-last-child(2) {
+  margin-top: -4px;
+}
+
+.field-description:last-child {
+  margin-top: 0;
+}
+
+.field-description > a {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+@media (hover: hover) {
+  .field-description > a:hover {
+    color: var(--primary);
+  }
 }
 
 /* ======================================================================== */
