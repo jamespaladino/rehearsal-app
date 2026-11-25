@@ -30,8 +30,8 @@ open <http://localhost:8000/script-import/>.
 
 Choose or drop a file to see every block with its type and confidence; rows that need review are
 highlighted (the reasons are in each block's `flags`, printed by the CLI, not shown as badges). A
-character with nothing after it is always highlighted. Tick
-"Only blocks to review" to see just the flagged ones.
+character with nothing after it is always highlighted. The **All / Review** toggle switches between
+every block and just the flagged ones.
 
 Fix blocks before saving:
 - **Change a type:** pick it from the dropdown.

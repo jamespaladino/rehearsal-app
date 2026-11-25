@@ -6,30 +6,11 @@
   font-weight: 500;
 }
 
-/* Undo and the review filter, beside the Blocks heading. */
+/* Undo and the All / Review toggle, beside the Blocks heading. */
 .import-tools {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.import-filter {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-/* The checkbox keeps its natural size (the app styles inputs as full-width fields). */
-.import-filter input {
-  flex: none;
-  width: auto;
-  height: auto;
-  margin: 0;
-}
-
-.import-filter {
-  white-space: nowrap;
 }
 
 /* "You": the character select fills the column, up to a comfortable width. */

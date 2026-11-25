@@ -612,11 +612,10 @@ async function startImport(file){
   $('importStatus').textContent=`Reading ${file.name}…`;
   try{
     const ui=await loadImportUi();
-    importReview||=ui.createImportReview({characters:$('importCharacters'),selectId:'importMe',blocks:$('importBlocks'),onlyReview:$('importOnlyReview'),onChange:renderImportSummary});
+    importReview||=ui.createImportReview({characters:$('importCharacters'),selectId:'importMe',blocks:$('importBlocks'),filter:$('importFilter'),onChange:renderImportSummary});
     const result=await ui.readScriptFile(file);
     if($('importPane').classList.contains('hidden'))return; // exited while reading
     $('importTitle').value=result.title||file.name.replace(/\.[^.]+$/,'');
-    $('importOnlyReview').checked=false;
     $('importStatus').textContent='';$('importContent').classList.remove('hidden');
     importReview.load(result);
     $('importConfirm').disabled=!result.blocks.length;

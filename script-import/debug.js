@@ -9,7 +9,7 @@ const review = createImportReview({
   characters: $('characters'),
   labelledBy: 'youTitle',
   blocks: $('blocks'),
-  onlyReview: $('onlyReview'),
+  filter: $('filter'),
   onChange: renderSummary,
 });
 

@@ -228,7 +228,10 @@
               <h2 id="importBlocksTitle" class="import-section-title">Blocks</h2>
               <div class="import-tools">
                 <button id="importUndo" class="btn btn-ghost btn-sm hidden" type="button"><i data-lucide="undo-2" data-icon="inline-start"></i>Undo</button>
-                <label class="import-filter"><input id="importOnlyReview" type="checkbox"> Only blocks to review</label>
+                <div id="importFilter" class="toggle-group" data-spacing="0" role="group" aria-label="Show blocks">
+                  <button class="toggle toggle-outline" type="button" data-filter="all" aria-pressed="true">All</button>
+                  <button class="toggle toggle-outline" type="button" data-filter="review" aria-pressed="false">Review</button>
+                </div>
               </div>
             </div>
             <p class="muted">Highlighted rows need a look: pick the right type, mark it correct, or delete it. Any row can be changed.</p>

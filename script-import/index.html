@@ -50,7 +50,10 @@
         <div id="summary"></div>
         <div class="import-tools">
           <button id="undo" class="btn btn-outline btn-sm hidden" type="button"><i data-lucide="undo-2" data-icon="inline-start"></i>Undo</button>
-          <label class="import-filter"><input id="onlyReview" type="checkbox"> Only blocks to review</label>
+          <div id="filter" class="toggle-group" data-spacing="0" role="group" aria-label="Show blocks">
+            <button class="toggle toggle-outline" type="button" data-filter="all" aria-pressed="true">All</button>
+            <button class="toggle toggle-outline" type="button" data-filter="review" aria-pressed="false">Review</button>
+          </div>
         </div>
       </div>
       <div id="warnings"></div>

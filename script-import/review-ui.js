@@ -2,7 +2,7 @@
 // (script-import/index.html). DOM only: parsing lives in src/.
 //
 //   const result = await readScriptFile(file);
-//   const review = createImportReview({ characters, blocks, onlyReview, onChange });
+//   const review = createImportReview({ characters, blocks, filter, onChange });
 //   review.load(result);            // renders the character list and the block table
 //   review.toScript({ title });     // Rehearsal script, using the chosen character and every edit
 
@@ -36,7 +36,9 @@ export function describe(result) {
 }
 
 /**
- * els: { characters: Element, selectId?: string, labelledBy?: string, blocks: <tbody>, onlyReview?: <input type=checkbox>, onChange?: (review) => void }
+ * els: { characters: Element, selectId?: string, labelledBy?: string, blocks: <tbody>,
+ *         filter?: shadcn ToggleGroup with <button data-filter="all"> and <button data-filter="review">,
+ *         onChange?: (review) => void }
  * Every row can be retyped or deleted; rows that need review show their controls all the time
  * (plus Mark correct), other rows on hover or keyboard focus (see review.css).
  */
@@ -44,6 +46,7 @@ export function createImportReview(els) {
   let result = null;
   let history = [];
   let me = null;
+  let onlyReview = false; // the All / Review toggle
 
   const review = {
     get result() { return result; },
@@ -53,6 +56,7 @@ export function createImportReview(els) {
       result = next;
       history = [];
       me = guessMyCharacter(next);
+      setFilter('all');
       render();
     },
     undo() {
@@ -101,7 +105,7 @@ export function createImportReview(els) {
   }
 
   function renderBlocks() {
-    const only = !!els.onlyReview?.checked;
+    const only = onlyReview;
     const rows = [];
     for (const b of result.blocks) {
       if (only && !b.review) continue;
@@ -151,7 +155,17 @@ export function createImportReview(els) {
     els.blocks.replaceChildren(...rows);
   }
 
-  if (els.onlyReview) els.onlyReview.addEventListener('change', () => result && renderBlocks());
+  // All / Review: a shadcn ToggleGroup where exactly one item is pressed.
+  function setFilter(value) {
+    onlyReview = value === 'review';
+    els.filter?.querySelectorAll('[data-filter]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.filter === value)));
+  }
+  els.filter?.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-filter]');
+    if (!b) return;
+    setFilter(b.dataset.filter);
+    if (result) renderBlocks();
+  });
   return review;
 }
 
