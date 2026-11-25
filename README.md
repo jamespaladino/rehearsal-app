@@ -41,6 +41,7 @@ them. **Import** creates the script and opens it; exiting asks first. It needs a
 **Settings** sits under Tests at the top of the sidebar. Choices are saved in this browser (`localStorage`).
 
 - **Audio:** the microphone's status with **Connect microphone** / **Release microphone**. The microphone uses the browser's default processing (echo cancellation, noise suppression and automatic gain control all on).
+- **Storage:** whether this browser has agreed to keep the app's data, and how much it uses. On iPhone, Safari clears a site's data after 7 days without a visit, so add the app to the home screen (Share > Add to Home Screen) and open it from there. The home-screen app has its own storage, separate from the Safari tab. `manifest.webmanifest` and `icons/` make it installable.
 - **Appearance:** a Theme dropdown with System, Light or Dark. System follows the device and updates when it changes.
 
 The microphone is released when you stop a reader recording, and in play mode when a scene ends or you press Stop.
