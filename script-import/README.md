@@ -78,7 +78,9 @@ Put real scripts in `script-import/fixtures/real/` (git-ignored); see `fixtures/
 `toRehearsalScript(result, { meCharacter, title })` (`src/convert.js`) turns that into the app's
 own script model. Speeches become `me`/`them` turns. A `(beat)` in the middle of a speech becomes
 the app's inline `(beat)` pause; one at the start or end becomes a beat block. Other parentheticals
-and extensions are kept on the turn as metadata, so the speech engines never try to hear them.
+are kept on the turn as metadata, so the speech engines never try to hear them. Extensions (V.O., O.S.,
+CONT'D) are kept on the turn too, and the app shows them after the character's name as in the
+script (editable in the character field); the line still belongs to the bare name.
 
 ## How the PDF parser works
 

@@ -116,10 +116,11 @@ export function createImportReview(els) {
       if (b.review) tr.className = 'needs-review';
       const conf = el('td', b.confidence.toFixed(2), 'conf ' + (b.confidence < 0.6 ? 'conf-low' : b.confidence < 0.85 ? 'conf-mid' : 'conf-high'));
       const textCell = el('td', '', `block-text type-${b.type}`);
-      textCell.append(el('div', b.text));
+      // Character names keep their extensions, as in the script: BEN (O.S.) (CONT'D).
+      const extensions = b.type === 'character' && b.meta.extensions?.length ? ' ' + b.meta.extensions.map((e) => `(${e})`).join(' ') : '';
+      textCell.append(el('div', b.text + extensions));
       const notes = [];
-      if (b.meta.character && b.type !== 'character') notes.push(b.meta.character);
-      if (b.type === 'character' && b.meta.extensions?.length) notes.push(b.meta.extensions.join(' '));
+      // The speaker isn't shown: the character row sits just above its dialogue.
       if (b.meta.sceneNumber) notes.push(`scene ${b.meta.sceneNumber}`);
       if (b.meta.dual) notes.push(`dual: ${b.meta.dual}`);
       if (b.meta.revised) notes.push('revised');

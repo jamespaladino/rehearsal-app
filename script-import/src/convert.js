@@ -11,7 +11,8 @@
 //     - a (beat) between two parts of a speech -> the inline "(beat)" pause marker Rehearsal already uses
 //     - a (beat) before the first or after the last part -> a separate 2-second beat turn
 //     - other parentheticals -> turn.parentheticals (shown nowhere yet, never spoken)
-//     - extensions (V.O., O.S., CONT'D) -> turn.extensions
+//     - extensions (V.O., O.S., CONT'D) -> turn.extensions (the app shows them after the name, as in
+//       the script; the turn still belongs to the bare name)
 //   dual dialogue -> the two speeches in order (left, then right)
 //   dialogue with no character -> action, so nothing is lost
 

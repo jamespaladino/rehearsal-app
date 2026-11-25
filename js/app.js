@@ -812,6 +812,15 @@ function normalizeCharacters(){
   script.turns.filter(t=>t.who==='me').forEach(t=>t.character=script.meCharacter);
   script.otherCharacters=[...new Set(script.turns.filter(t=>t.who==='them').map(t=>(t.character||'').trim().toUpperCase()).filter(Boolean))];
 }
+// Character extensions (V.O., O.S., CONT'D) stay on the line, shown after the name as in the
+// script; the line still belongs to the bare name (you vs reader, the character list).
+function cueSuffix(t){return extensionText(t.extensions)}
+function extensionText(list){return list?.length?' '+list.map(e=>`(${e})`).join(' '):''}
+function splitCue(value){
+  let name=value.trim().toUpperCase();const extensions=[];let m;
+  while((m=name.match(/\s*\(([^()]*)\)\s*$/))){if(m[1].trim())extensions.unshift(m[1].trim());name=name.slice(0,m.index).trim()}
+  return {name,extensions};
+}
 function render(){
   normalizeCharacters();
   hideTip();const root=$('turns');const savedScroll=window.scrollY;root.replaceChildren();openBlockMenu=null;
@@ -840,22 +849,23 @@ function render(){
       // The block's committed character: your character for your lines, the reader's otherwise.
       const current=()=>t.who==='me'?script.meCharacter:(t.character||'');
       character.placeholder='Character name…';
-      character.value=current();
+      character.value=current()+cueSuffix(t);
       character.setAttribute('aria-label',t.who==='me'?'Character name (you)':'Character name');
       const choices=el('div');choices.className='dropdown-menu character-choices hidden';
       // Assign this block's character. Your character's name makes it your line; any other
       // name makes it a reader line. An empty name puts the previous one back.
       const commit=(focusDialogue=false,nextFocus=null)=>{
-        const name=character.value.trim().toUpperCase();
-        if(!name){character.value=current();return}
-        character.value=name;
+        const {name,extensions}=splitCue(character.value);
+        if(!name){character.value=current()+cueSuffix(t);return}
+        if(extensions.length)t.extensions=extensions;else delete t.extensions;
+        character.value=name+cueSuffix(t);
         if(name===script.meCharacter){if(t.who!=='me')t.audio=null;t.who='me';t.character=name}
         else{t.who='them';t.character=name}
         queueSave(true);
         if(nextFocus)renderKeepingFocus(nextFocus);else render();
         if(focusDialogue){const next=$('turns').children[i]?.querySelector('textarea.dialogue');next?.focus({preventScroll:true});}
       };
-      const changed=()=>character.value.trim().toUpperCase()!==current();
+      const changed=()=>character.value.trim().toUpperCase()!==current()+cueSuffix(t);
       // Dropdown: every character (yours marked "(me)", the current one checked), narrowed while
       // typing; then "Rename" for the block's current character. Up/Down move through every
       // item in the list while it's showing; Enter picks the character or runs the action.
@@ -863,7 +873,7 @@ function render(){
       const items=()=>[...choices.querySelectorAll('.dropdown-menu-item')];
       const highlight=()=>items().forEach((o,k)=>o.toggleAttribute('data-highlighted',k===activeChoice));
       const drawChoices=()=>{
-        const typed=character.value.trim().toUpperCase(),name=current(),filtering=!!typed&&typed!==name;
+        const typed=splitCue(character.value).name,name=current(),filtering=!!typed&&typed!==name;
         const names=[...new Set([script.meCharacter,...script.otherCharacters])].filter(n=>n&&(!filtering||n.includes(typed)));
         choices.replaceChildren();
         for(const n of names){
@@ -872,7 +882,7 @@ function render(){
           if(n===script.meCharacter){const hint=el('span','(me)');hint.className='me-hint';option.append(hint)}
           if(n===name&&!filtering)option.append(icon('check'));
           option.onmousedown=e=>e.preventDefault();
-          option.onclick=()=>{character.value=n;choices.classList.add('hidden');commit(true)};
+          option.onclick=()=>{character.value=n+extensionText(splitCue(character.value).extensions);choices.classList.add('hidden');commit(true)};
           choices.append(option);
         }
         activeChoice=filtering&&names.length?0:-1;highlight();
@@ -888,8 +898,8 @@ function render(){
       // While typing, Enter/Tab take the highlighted suggestion.
       // The highlighted item, if the list is showing.
       const highlighted=()=>choices.classList.contains('hidden')?null:items()[activeChoice]||null;
-      // Enter/Tab take a highlighted character name.
-      const takeHighlighted=()=>{const o=highlighted();if(o?.classList.contains('character-option'))character.value=o.firstChild.textContent};
+      // Enter/Tab take a highlighted character name, keeping any extensions typed in the field.
+      const takeHighlighted=()=>{const o=highlighted();if(o?.classList.contains('character-option'))character.value=o.firstChild.textContent+extensionText(splitCue(character.value).extensions)};
       character.onfocus=drawChoices;
       character.oninput=()=>{
         const pos=character.selectionStart;
@@ -911,7 +921,7 @@ function render(){
           if(o&&!o.classList.contains('character-option')){o.click();return} // an action, e.g. Rename
           takeHighlighted();choices.classList.add('hidden');commit(true);return;
         }
-        if(e.key==='Escape'){character.value=current();choices.classList.add('hidden');character.blur();return}
+        if(e.key==='Escape'){character.value=current()+cueSuffix(t);choices.classList.add('hidden');character.blur();return}
         if(e.key==='Tab'){
           e.preventDefault();takeHighlighted();choices.classList.add('hidden');
           tabFromCharacter(character,i,e.shiftKey,changed,commit);return;
@@ -1101,7 +1111,7 @@ function renderPrompter(){
   script.turns.slice(sceneRange.start,sceneRange.end).forEach((t,k)=>{
     const line=el('li');line.className='prompter-line';line.dataset.who=t.who;line.dataset.index=sceneRange.start+k;
     const who=t.who==='me'?script.meCharacter:t.who==='them'?(t.character||'Reader'):'';
-    const name=el('div',who);name.className='prompter-character';
+    const name=el('div',who&&who+cueSuffix(t));name.className='prompter-character';
     if(t.who==='them'&&!t.audio){const flag=el('span');flag.className='prompter-flag';flag.dataset.tooltip='Not recorded';flag.setAttribute('aria-label','Not recorded');flag.append(icon('circle-exclamation-point'));name.append(flag);line.dataset.unrecorded=''}
     const text=el('div',t.who==='beat'?'Beat.':(t.text||''));text.className='prompter-text';
     line.append(name,text);list.append(line);
