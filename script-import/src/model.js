@@ -121,3 +121,22 @@ export function characterList(blocks) {
     .sort((a, b) => b.speeches - a.speeches || a.first - b.first)
     .map(({ name, speeches, extensions }) => ({ name, speeches, extensions: [...extensions] }));
 }
+
+/**
+ * Best guess at which character the user plays: one literally named ME or YOU (scripts written
+ * for self-taping often use these), otherwise whoever has the most dialogue by word count
+ * (then most speeches, then first to appear). Null when there are no characters.
+ */
+export function guessMyCharacter(result) {
+  const names = result.characters.map((c) => c.name);
+  const named = names.find((n) => n === 'ME' || n === 'YOU');
+  if (named) return named;
+  const words = new Map(names.map((n) => [n, 0]));
+  for (const b of result.blocks) {
+    if (b.type === 'dialogue' && words.has(b.meta.character)) {
+      words.set(b.meta.character, words.get(b.meta.character) + b.text.split(/\s+/).filter(Boolean).length);
+    }
+  }
+  // characters is already ordered by speeches, then first appearance; a stable sort keeps that on ties.
+  return [...result.characters].sort((a, b) => words.get(b.name) - words.get(a.name))[0]?.name || null;
+}

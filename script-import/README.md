@@ -19,7 +19,9 @@ Node with a note; everything else, including the classifier and page-break stitc
 **In the app:** run `python3 speech-lab/serve.py` from the repository root, open
 <http://localhost:8000/> and choose **Import** in the sidebar.
 1. The file picker opens. Choosing a file opens the import pane, like the teleprompter's.
-2. In the pane: the script name, then your character, then the blocks.
+2. In the pane: the script name, then **You** (the character you play), then the blocks. **You**
+   is preselected with a best guess: a character named ME or YOU, otherwise whoever has the most
+   dialogue by word count.
 3. **Import** creates the script and opens it. The close button or Escape exits, after you
    confirm.
 
@@ -69,7 +71,8 @@ Put real scripts in `script-import/fixtures/real/` (git-ignored); see `fixtures/
     - `dual` (`left` or `right`)
     - `sceneNumber`
     - `revised`
-- `characters`: unique names, most speeches first, for the "my character" choice.
+- `characters`: unique names, most speeches first, for the "You" choice.
+  `guessMyCharacter(result)` picks the default.
 - `warnings`: document-level problems, such as scanned pages.
 
 `toRehearsalScript(result, { meCharacter, title })` (`src/convert.js`) turns that into the app's

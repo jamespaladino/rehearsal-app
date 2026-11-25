@@ -15,8 +15,10 @@
 //   dual dialogue -> the two speeches in order (left, then right)
 //   dialogue with no character -> action, so nothing is lost
 
+import { guessMyCharacter } from './model.js';
+
 export function toRehearsalScript(result, { title, meCharacter, id } = {}) {
-  const me = (meCharacter || result.characters[0]?.name || 'ME').toUpperCase();
+  const me = (meCharacter || guessMyCharacter(result) || 'ME').toUpperCase();
   const turns = [];
   let speech = null; // { turn, parts: [], pendingBeat: false, leadingBeat: false }
 

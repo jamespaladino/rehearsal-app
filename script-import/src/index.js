@@ -14,7 +14,7 @@ import { parseFdx } from './fdx.js';
 export { parseLayout, RULESETS, parseFountain, parseFdx };
 export { toRehearsalScript } from './convert.js';
 export { retypeBlock, acceptBlock, deleteBlock } from './edit.js';
-export { BLOCK_TYPES, FLAGS, REVIEW_THRESHOLD } from './model.js';
+export { BLOCK_TYPES, FLAGS, REVIEW_THRESHOLD, guessMyCharacter } from './model.js';
 
 /** 'pdf' | 'fdx' | 'fountain', from the bytes first and the file name second. */
 export function detectFormat(name = '', data) {

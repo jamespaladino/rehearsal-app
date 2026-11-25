@@ -6,7 +6,7 @@
 //   review.load(result);            // renders the character list and the block table
 //   review.toScript({ title });     // Rehearsal script, using the chosen character and every edit
 
-import { importScript, toRehearsalScript, retypeBlock, acceptBlock, deleteBlock, BLOCK_TYPES, FLAGS } from './src/index.js';
+import { importScript, toRehearsalScript, retypeBlock, acceptBlock, deleteBlock, guessMyCharacter, BLOCK_TYPES, FLAGS } from './src/index.js';
 
 const PDFJS = new URL('../vendor/pdfjs-4.10.38/pdf.min.mjs', import.meta.url).href;
 const PDF_WORKER = new URL('../vendor/pdfjs-4.10.38/pdf.worker.min.mjs', import.meta.url).href;
@@ -36,7 +36,7 @@ export function describe(result) {
 }
 
 /**
- * els: { characters: Element, blocks: <tbody>, onlyReview?: <input type=checkbox>, onChange?: (review) => void }
+ * els: { characters: Element, selectId?: string, labelledBy?: string, blocks: <tbody>, onlyReview?: <input type=checkbox>, onChange?: (review) => void }
  * Every row can be retyped or deleted; rows that need review show their controls all the time
  * (plus Mark correct), other rows on hover or keyboard focus (see review.css).
  */
@@ -44,7 +44,6 @@ export function createImportReview(els) {
   let result = null;
   let history = [];
   let me = null;
-  const radioName = `me-${Math.random().toString(36).slice(2, 8)}`;
 
   const review = {
     get result() { return result; },
@@ -53,7 +52,7 @@ export function createImportReview(els) {
     load(next) {
       result = next;
       history = [];
-      me = next.characters[0]?.name || null;
+      me = guessMyCharacter(next);
       render();
     },
     undo() {
@@ -75,67 +74,38 @@ export function createImportReview(els) {
 
   function render() {
     if (!result) return;
-    if (me && !result.characters.some((c) => c.name === me)) me = result.characters[0]?.name || null;
+    if (!me || !result.characters.some((c) => c.name === me)) me = guessMyCharacter(result);
     renderCharacters();
     renderBlocks();
     els.onChange?.(review);
   }
 
-  // shadcn RadioGroup (css/shadcn.css): radio buttons with a Label each, arrow keys to move,
-  // and Tab landing on the chosen character (roving tabindex), as Base UI's RadioGroup does.
+  // "You": a shadcn NativeSelect (css/shadcn.css) listing every character, best guess first chosen.
   function renderCharacters() {
     const box = els.characters;
-    box.classList.add('radio-group');
-    box.setAttribute('role', 'radiogroup');
     if (!result.characters.length) {
       box.replaceChildren(el('p', 'No characters found.', 'muted'));
       return;
     }
-    box.replaceChildren(...result.characters.map((c, i) => {
-      const row = el('div', '', 'import-character');
-      const item = el('button', '', 'radio-group-item');
-      item.type = 'button';
-      item.id = `${radioName}-${i}`;
-      item.setAttribute('role', 'radio');
-      item.value = c.name;
-      const checked = c.name === me;
-      item.setAttribute('aria-checked', String(checked));
-      item.toggleAttribute('data-checked', checked);
-      item.tabIndex = checked ? 0 : -1;
-      item.append(el('span', '', 'radio-group-indicator'));
-      item.onclick = () => choose(c.name);
-      const label = el('label', c.name, 'label');
-      label.htmlFor = item.id;
-      row.append(item, label, el('span', `${c.speeches} speech${c.speeches === 1 ? '' : 'es'}`, 'muted'));
-      return row;
-    }));
-  }
-
-  function choose(name, focus = false) {
-    me = name;
-    for (const item of els.characters.querySelectorAll('.radio-group-item')) {
-      const on = item.value === name;
-      item.setAttribute('aria-checked', String(on));
-      item.toggleAttribute('data-checked', on);
-      item.tabIndex = on ? 0 : -1;
-      if (on && focus) item.focus();
+    const wrap = el('div', '', 'native-select');
+    const select = document.createElement('select');
+    if (els.selectId) select.id = els.selectId;
+    if (els.labelledBy) select.setAttribute('aria-labelledby', els.labelledBy);
+    for (const c of result.characters) {
+      const o = el('option', `${c.name} · ${c.speeches} speech${c.speeches === 1 ? '' : 'es'}`);
+      o.value = c.name;
+      o.selected = c.name === me;
+      select.append(o);
     }
-    els.onChange?.(review);
-  }
-
-  els.characters.addEventListener('keydown', (e) => {
-    const items = [...els.characters.querySelectorAll('.radio-group-item')];
-    const at = items.indexOf(document.activeElement);
-    if (at < 0) return;
-    const step = { ArrowDown: 1, ArrowRight: 1, ArrowUp: -1, ArrowLeft: -1 }[e.key];
-    if (step) {
-      e.preventDefault();
-      choose(items[(at + step + items.length) % items.length].value, true);
-    } else if (e.key === 'Home' || e.key === 'End') {
-      e.preventDefault();
-      choose(items[e.key === 'Home' ? 0 : items.length - 1].value, true);
+    select.onchange = () => { me = select.value; els.onChange?.(review); };
+    wrap.append(select);
+    if (window.icon) {
+      const chevron = window.icon('chevron-down');
+      chevron.classList.add('native-select-icon');
+      wrap.append(chevron);
     }
-  });
+    box.replaceChildren(wrap);
+  }
 
   function renderBlocks() {
     const only = !!els.onlyReview?.checked;

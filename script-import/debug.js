@@ -7,6 +7,7 @@ let fileName = '';
 
 const review = createImportReview({
   characters: $('characters'),
+  labelledBy: 'youTitle',
   blocks: $('blocks'),
   onlyReview: $('onlyReview'),
   onChange: renderSummary,

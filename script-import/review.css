@@ -13,17 +13,6 @@
   cursor: pointer;
 }
 
-/* One character per row: radio, name (shadcn Label), number of speeches at the end. */
-.import-character {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.import-character .label {
-  cursor: pointer;
-}
-
 /* The checkbox keeps its natural size (the app styles inputs as full-width fields). */
 .import-filter input {
   flex: none;
@@ -36,14 +25,10 @@
   white-space: nowrap;
 }
 
-/* A little more room than the RadioGroup default (8px): these are tap targets on phones. */
-.import-characters {
-  gap: 12px;
-}
-
-.import-character .muted {
-  margin-left: auto;
-  font-size: 12px;
+/* "You": the character select fills the column, up to a comfortable width. */
+.import-characters .native-select {
+  width: 100%;
+  max-width: 480px;
 }
 
 .import-blocks {
