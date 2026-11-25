@@ -143,7 +143,7 @@ export function createImportReview(els) {
       const actions = el('td', '', 'actions');
       if (b.review) actions.append(iconButton('check', `Mark block ${b.id} correct`, 'Mark correct', () => apply(acceptBlock(result, b.id))));
       actions.append(iconButton('trash', `Delete block ${b.id}`, 'Delete', () => apply(deleteBlock(result, b.id)), 'destructive'));
-      tr.append(idCell, el('td', b.page ?? '–', 'num'), typeCell, conf, textCell, actions);
+      tr.append(idCell, el('td', b.page ?? '–', 'num'), conf, textCell, typeCell, actions);
       rows.push(tr);
     }
     if (!rows.length) {
@@ -159,9 +159,6 @@ export function createImportReview(els) {
   if (els.onlyReview) els.onlyReview.addEventListener('change', () => result && renderBlocks());
   return review;
 }
-
-/** The block table's <thead>, for pages that build the table in markup. */
-export const TABLE_HEAD = '<tr><th>#</th><th>Page</th><th>Type</th><th>Conf.</th><th>Text</th><th><span class="sr-only">Actions</span></th></tr>';
 
 function iconButton(name, label, tip, onClick, variant) {
   const b = el('button', '', 'btn btn-ghost btn-icon btn-sm' + (variant === 'destructive' ? ' btn-icon-destructive' : ''));

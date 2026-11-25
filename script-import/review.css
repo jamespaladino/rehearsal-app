@@ -213,7 +213,7 @@ tr:not(.needs-review):focus-within .actions .btn,
 }
 
 /* Narrow screens: each block is two lines instead of a table row. Number, type, confidence and
-   actions on top; the text full width below, with smaller screenplay indents. */
+   actions on top (whatever the column order); the text full width below, with smaller indents. */
 @media (max-width: 640px) {
   .import-blocks thead {
     display: none;
@@ -248,6 +248,16 @@ tr:not(.needs-review):focus-within .actions .btn,
   .import-blocks td.block-text {
     grid-row: 2;
     grid-column: 1 / -1;
+  }
+
+  .import-blocks td.type {
+    grid-row: 1;
+    grid-column: 2;
+  }
+
+  .import-blocks td.conf {
+    grid-row: 1;
+    grid-column: 3;
   }
 
   .import-blocks td.actions {
