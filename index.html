@@ -4,6 +4,12 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Rehearsal V1</title>
+  <!-- Home-screen install: the installed app keeps its scripts and recordings (see Storage in Settings). -->
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+  <meta name="apple-mobile-web-app-title" content="Rehearsal">
+  <meta name="theme-color" content="#f9f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#0f0f0f" media="(prefers-color-scheme: dark)">
 
   <link rel="stylesheet" href="css/tokens.css">
   <link rel="stylesheet" href="css/base.css">
@@ -101,6 +107,17 @@
               <div class="settings-row-text"><span class="settings-row-label">Microphone</span><span id="micSettingsStatus" class="muted">Not connected</span></div>
               <button id="connectMic" class="btn btn-outline btn-sm" type="button"><i data-lucide="mic" data-icon="inline-start"></i>Connect microphone</button>
               <button id="releaseMic" class="btn btn-outline btn-sm hidden" type="button"><i data-lucide="mic-off" data-icon="inline-start"></i>Release microphone</button>
+            </div>
+          </div>
+        </section>
+        <section class="card" aria-labelledby="storageSettingsTitle">
+          <div class="card-header">
+            <h2 id="storageSettingsTitle" class="card-title">Storage</h2>
+            <p class="muted">Scripts and recordings are saved in this browser on this device only.</p>
+          </div>
+          <div class="card-content settings-rows">
+            <div class="settings-row">
+              <div class="settings-row-text"><span class="settings-row-label">Kept on this device</span><span id="storageStatus" class="muted">Checking…</span></div>
             </div>
           </div>
         </section>

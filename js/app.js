@@ -102,6 +102,23 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('themeMenu').cla
 $('connectMic').onclick=async()=>{try{await getMicrophone()}catch(e){alert('Microphone unavailable: '+e.message)}};
 $('releaseMic').onclick=()=>releaseMicrophone();
 window.addEventListener('pagehide',()=>{if(stream)stream.getTracks().forEach(t=>t.stop())});
+// Storage: ask the browser not to clear our data, and show whether it agreed (Settings > Storage).
+// iPhone Safari clears a site's data after 7 days without a visit; the home-screen app is exempt.
+const installed=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+async function updateStorageStatus(){
+  const out=$('storageStatus');if(!out)return;
+  let kept=false,used='';
+  try{if(navigator.storage?.persist)kept=await navigator.storage.persisted()||await navigator.storage.persist()}catch(e){}
+  try{const est=await navigator.storage?.estimate?.();if(est?.usage!=null)used=` ${(est.usage/1048576).toFixed(1)} MB used.`}catch(e){}
+  let text;
+  if(installed())text=kept?'Yes. This home-screen app keeps your data.':'Yes. Home-screen apps keep their data.';
+  else if(kept)text='Yes. This browser has agreed to keep your data.';
+  else if(isIOS())text='Not guaranteed. Safari may clear it after 7 days without a visit. Use Share > Add to Home Screen and open the app from there. Recordings made here won\'t carry over to it.';
+  else text='Not guaranteed. The browser may clear it if the device runs low on space.';
+  out.textContent=text+used;
+}
+updateStorageStatus();
 const req=indexedDB.open('rehearsal-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('scripts',{keyPath:'id'});req.onsuccess=async()=>{db=req.result;try{const scripts=await getAll();const lastId=localStorage.getItem("rehearsal-last-opened");if(lastId==='tests'){await openTests();return}if(lastId==='settings'){await openSettings();return}const target=scripts.find(s=>s.id===lastId)||scripts[0];if(target)await openScript(target);else await library()}catch(e){console.error("Could not restore last script",e);await library()}};req.onerror=()=>alert('Local storage unavailable. Try a modern browser.');
 const store=(mode='readonly')=>db.transaction('scripts',mode).objectStore('scripts');const getAll=()=>new Promise((ok,no)=>{let r=store().getAll();r.onsuccess=()=>ok(r.result);r.onerror=no});const put=s=>new Promise((ok,no)=>{let r=store('readwrite').put(s);r.onsuccess=ok;r.onerror=no});const del=id=>new Promise((ok,no)=>{let r=store('readwrite').delete(id);r.onsuccess=ok;r.onerror=no});
 function el(tag,text){let x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x}
@@ -588,7 +605,7 @@ async function openPage(name){
   try{localStorage.setItem('rehearsal-last-opened',name)}catch(e){}
   await library();
 }
-const openTests=()=>openPage('tests'),openSettings=()=>openPage('settings');
+const openTests=()=>openPage('tests'),openSettings=()=>{updateStorageStatus();return openPage('settings')};
 $('openTests').onclick=openTests;$('openSettings').onclick=openSettings;
 
 // ---- Import flow ----------------------------------------------------------
