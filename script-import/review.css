@@ -72,25 +72,14 @@
   white-space: nowrap;
 }
 
-/* Type picker and fix buttons. Quiet (reads as plain text) except on rows that need review
-   and on the row under the pointer or keyboard focus. */
-.type-select {
-  box-sizing: border-box;
-  height: 28px;
+/* Type picker: a small shadcn NativeSelect on every row. Fix buttons: always on rows that need
+   review, on hover or keyboard focus elsewhere. */
+.import-blocks .type .native-select {
   margin: -4px 0; /* text lines up with the other cells */
-  padding: 0 6px;
-  border: 1px solid var(--input);
-  border-radius: var(--radius-md);
-  background: var(--input-surface);
-  color: var(--foreground);
-  font: inherit;
-  font-size: 13px;
 }
 
-.type-select:focus-visible {
-  outline: none;
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px var(--focus-ring);
+.import-blocks .type select {
+  font-size: 13px;
 }
 
 .import-blocks .actions {
@@ -100,33 +89,14 @@
   text-align: right;
 }
 
-tr:not(.needs-review) .type-select {
-  border-color: transparent;
-  background: transparent;
-  appearance: none;
-  padding-left: 0;
-}
-
 tr:not(.needs-review) .actions .btn {
   opacity: 0;
 }
 
 @media (hover: hover) {
-  tr:not(.needs-review):hover .type-select {
-    border-color: var(--input);
-    padding-left: 6px;
-    appearance: auto;
-  }
-
   tr:not(.needs-review):hover .actions .btn {
     opacity: 1;
   }
-}
-
-tr:not(.needs-review):focus-within .type-select {
-  border-color: var(--input);
-  padding-left: 6px;
-  appearance: auto;
 }
 
 tr:not(.needs-review):focus-within .actions .btn,
@@ -250,7 +220,7 @@ tr:not(.needs-review):focus-within .actions .btn,
     grid-column: 1 / -1;
   }
 
-  .type-select {
+  .import-blocks .type .native-select {
     margin: 0;
   }
 

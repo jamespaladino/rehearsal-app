@@ -87,7 +87,6 @@ export function createImportReview(els) {
       box.replaceChildren(el('p', 'No characters found.', 'muted'));
       return;
     }
-    const wrap = el('div', '', 'native-select');
     const select = document.createElement('select');
     if (els.selectId) select.id = els.selectId;
     if (els.labelledBy) select.setAttribute('aria-labelledby', els.labelledBy);
@@ -98,13 +97,7 @@ export function createImportReview(els) {
       select.append(o);
     }
     select.onchange = () => { me = select.value; els.onChange?.(review); };
-    wrap.append(select);
-    if (window.icon) {
-      const chevron = window.icon('chevron-down');
-      chevron.classList.add('native-select-icon');
-      wrap.append(chevron);
-    }
-    box.replaceChildren(wrap);
+    box.replaceChildren(nativeSelect(select));
   }
 
   function renderBlocks() {
@@ -133,7 +126,6 @@ export function createImportReview(els) {
       const idCell = el('td', String(b.id), 'num');
       const typeCell = el('td', '', 'type');
       const select = document.createElement('select');
-      select.className = 'type-select';
       select.setAttribute('aria-label', `Type of block ${b.id}`);
       for (const t of BLOCK_TYPES) {
         const o = el('option', TYPE_LABEL[t]);
@@ -142,7 +134,7 @@ export function createImportReview(els) {
         select.append(o);
       }
       select.onchange = () => apply(retypeBlock(result, b.id, select.value));
-      typeCell.append(select);
+      typeCell.append(nativeSelect(select, 'sm'));
       const actions = el('td', '', 'actions');
       if (b.review) actions.append(iconButton('check', `Mark block ${b.id} correct`, 'Mark correct', () => apply(acceptBlock(result, b.id))));
       actions.append(iconButton('trash', `Delete block ${b.id}`, 'Delete', () => apply(deleteBlock(result, b.id)), 'destructive'));
@@ -161,6 +153,19 @@ export function createImportReview(els) {
 
   if (els.onlyReview) els.onlyReview.addEventListener('change', () => result && renderBlocks());
   return review;
+}
+
+/** shadcn NativeSelect (css/shadcn.css): the select in a wrapper with a chevron. size: 'sm' or default. */
+function nativeSelect(select, size) {
+  const wrap = el('div', '', 'native-select');
+  if (size) wrap.dataset.size = size;
+  wrap.append(select);
+  if (window.icon) {
+    const chevron = window.icon('chevron-down');
+    chevron.classList.add('native-select-icon');
+    wrap.append(chevron);
+  }
+  return wrap;
 }
 
 function iconButton(name, label, tip, onClick, variant) {
