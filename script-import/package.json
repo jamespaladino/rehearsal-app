@@ -1,0 +1,11 @@
+{
+  "name": "rehearsal-script-import",
+  "private": true,
+  "description": "On-device screenplay importer (PDF, Fountain, Final Draft) for Rehearsal. No dependencies.",
+  "type": "module",
+  "scripts": {
+    "test": "node tests/run.js",
+    "import": "node cli.js",
+    "fixtures": "node fixtures/make-fixtures.js"
+  }
+}
