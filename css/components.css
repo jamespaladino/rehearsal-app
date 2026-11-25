@@ -399,3 +399,94 @@
   min-width: 180px;
   overflow: visible;
 }
+
+/* ---- Import flow pane (opened after choosing a file from the sidebar's Import) ---- */
+/* Same frame as the play pane: header, scrolling body, floating bar docked at the bottom. */
+
+.import-pane-title {
+  display: flex;
+  align-items: baseline;
+  gap: 10px;
+  min-width: 0;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.import-pane-title .muted {
+  font-weight: 400;
+}
+
+.import-pane-main {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  min-height: 0;
+  overflow-y: auto;
+}
+
+.import-pane-body {
+  box-sizing: border-box;
+  flex: 1;
+  width: 100%;
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 28px var(--main-gutter) 32px;
+}
+
+.import-status:empty {
+  display: none;
+}
+
+.import-warning {
+  margin-bottom: 16px;
+}
+
+.import-section {
+  margin-bottom: 32px;
+}
+
+.import-section > .muted {
+  margin: 0 0 12px;
+  font-size: 13px;
+}
+
+.import-section-title {
+  display: block;
+  margin: 0 0 6px;
+  font-size: 16px;
+  font-weight: 500;
+}
+
+#importTitle {
+  max-width: 480px;
+}
+
+.import-section-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.import-pane .import-characters {
+  max-width: 480px;
+}
+
+.import-table-wrap {
+  overflow-x: auto;
+}
+
+.import-dock {
+  max-width: 900px;
+}
+
+.import-dock .play-meta {
+  color: var(--muted-foreground);
+}
+
+.import-dock .play-meta span + span::before {
+  content: "·";
+  margin-right: 8px;
+  color: var(--muted-foreground);
+}

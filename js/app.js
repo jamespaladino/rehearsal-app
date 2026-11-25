@@ -102,7 +102,7 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!$('themeMenu').cla
 $('connectMic').onclick=async()=>{try{await getMicrophone()}catch(e){alert('Microphone unavailable: '+e.message)}};
 $('releaseMic').onclick=()=>releaseMicrophone();
 window.addEventListener('pagehide',()=>{if(stream)stream.getTracks().forEach(t=>t.stop())});
-const req=indexedDB.open('rehearsal-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('scripts',{keyPath:'id'});req.onsuccess=async()=>{db=req.result;try{const scripts=await getAll();const lastId=localStorage.getItem("rehearsal-last-opened");if(lastId==='import'){await openImport();return}if(lastId==='tests'){await openTests();return}if(lastId==='settings'){await openSettings();return}const target=scripts.find(s=>s.id===lastId)||scripts[0];if(target)await openScript(target);else await library()}catch(e){console.error("Could not restore last script",e);await library()}};req.onerror=()=>alert('Local storage unavailable. Try a modern browser.');
+const req=indexedDB.open('rehearsal-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('scripts',{keyPath:'id'});req.onsuccess=async()=>{db=req.result;try{const scripts=await getAll();const lastId=localStorage.getItem("rehearsal-last-opened");if(lastId==='tests'){await openTests();return}if(lastId==='settings'){await openSettings();return}const target=scripts.find(s=>s.id===lastId)||scripts[0];if(target)await openScript(target);else await library()}catch(e){console.error("Could not restore last script",e);await library()}};req.onerror=()=>alert('Local storage unavailable. Try a modern browser.');
 const store=(mode='readonly')=>db.transaction('scripts',mode).objectStore('scripts');const getAll=()=>new Promise((ok,no)=>{let r=store().getAll();r.onsuccess=()=>ok(r.result);r.onerror=no});const put=s=>new Promise((ok,no)=>{let r=store('readwrite').put(s);r.onsuccess=ok;r.onerror=no});const del=id=>new Promise((ok,no)=>{let r=store('readwrite').delete(id);r.onsuccess=ok;r.onerror=no});
 function el(tag,text){let x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x}
 // shadcn DropdownMenuItem. variant: undefined (default) or 'destructive'; iconName: optional Lucide icon.
@@ -419,8 +419,9 @@ function openModal(type,s){
     rename:{title:'Rename script',message:'Choose a new name for this script.',label:'Script name',value:s.title||'',confirm:'Save'},
     character:{title:'Rename character',message:'Every line by '+s.name+' will use the new name.',label:'Character name',value:s.name,confirm:'Save'},
     delete:{title:'Delete script?',message:`Delete “${s.title||'Untitled'}” and all its recordings? This cannot be undone.`,confirm:'Delete'},
+    discardImport:{title:'Exit import?',message:'This script hasn’t been imported yet. Your changes will be lost.',confirm:'Exit'},
   }[type];
-  const hasField=type!=='delete';
+  const hasField=type!=='delete'&&type!=='discardImport';
   $('modalTitle').textContent=text.title;$('modalMessage').textContent=text.message;
   $('renameFields').classList.toggle('hidden',!hasField);$('renameInput').required=hasField;
   $('renameLabel').textContent=text.label||'';$('renameInput').value=text.value||'';
@@ -433,7 +434,7 @@ function openModal(type,s){
 $('modalCancel').onclick=closeModal;
 $('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modalAction){e.preventDefault();closeModal()}});
-$('modalForm').onsubmit=async e=>{e.preventDefault();if(!modalAction)return;const {type,id}=modalAction;const btn=$('modalConfirm');btn.disabled=true;try{if(type==='character'){const name=$('renameInput').value.trim().toUpperCase();if(!name){$('modalError').textContent='Enter a character name.';return}const oldName=modalAction.name;closeModal();renameCharacter(oldName,name);return}if(type==='rename'){const title=$('renameInput').value.trim();if(!title){$('modalError').textContent='Enter a script name.';return}const r=store().get(id);const saved=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});if(!saved)throw new Error('Script no longer exists');saved.title=title;await put(saved);if(script?.id===id){script.title=title;$('title').value=title;$('scriptHeading').textContent=title;updateScriptHeader()}}else{if(script?.id===id){clearTimeout(saveTimer);script=null;}await saveChain;await del(id);try{if(localStorage.getItem("rehearsal-last-opened")===id)localStorage.removeItem("rehearsal-last-opened")}catch(e){}if(!script){stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader()}}closeModal();await library()}catch(err){$('modalError').textContent=err.message||'Could not save changes.';$('renameFields').classList.remove('hidden')}finally{btn.disabled=false}};
+$('modalForm').onsubmit=async e=>{e.preventDefault();if(!modalAction)return;const {type,id}=modalAction;if(type==='discardImport'){closeModal();closeImportPane();return}const btn=$('modalConfirm');btn.disabled=true;try{if(type==='character'){const name=$('renameInput').value.trim().toUpperCase();if(!name){$('modalError').textContent='Enter a character name.';return}const oldName=modalAction.name;closeModal();renameCharacter(oldName,name);return}if(type==='rename'){const title=$('renameInput').value.trim();if(!title){$('modalError').textContent='Enter a script name.';return}const r=store().get(id);const saved=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});if(!saved)throw new Error('Script no longer exists');saved.title=title;await put(saved);if(script?.id===id){script.title=title;$('title').value=title;$('scriptHeading').textContent=title;updateScriptHeader()}}else{if(script?.id===id){clearTimeout(saveTimer);script=null;}await saveChain;await del(id);try{if(localStorage.getItem("rehearsal-last-opened")===id)localStorage.removeItem("rehearsal-last-opened")}catch(e){}if(!script){stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader()}}closeModal();await library()}catch(err){$('modalError').textContent=err.message||'Could not save changes.';$('renameFields').classList.remove('hidden')}finally{btn.disabled=false}};
 let activeMenu=null;
 function closeMenu(){if(activeMenu){activeMenu.classList.add('hidden');activeMenu.previousElementSibling?.setAttribute('aria-expanded','false');activeMenu=null}}
 document.addEventListener('click',()=>closeMenu());
@@ -560,9 +561,8 @@ async function openScript(s){showView(null);await flushSave();$('playButton').cl
 // the current script closes, the sidebar row is selected, and it's remembered as last opened.
 // Tests is the Speech Recognition Lab (speech-lab/); it loads on first open and stays alive
 // (models, takes) while you switch to scripts and back.
-// Import and Tests are pages from their own folders, shown in an iframe (src loaded on first open).
+// Tests is a page from its own folder, shown in an iframe (src loaded on first open).
 const PAGES={
-  import:{view:'importView',row:'openImport',title:'Import',frame:'importFrame',src:'script-import/?embed',needsServer:'importNeedsServer'},
   tests:{view:'testsView',row:'openTests',title:'Tests',frame:'testsFrame',src:'speech-lab/?embed',needsServer:'testsNeedsServer'},
   settings:{view:'settingsView',row:'openSettings',title:'Settings'},
 };
@@ -588,15 +588,85 @@ async function openPage(name){
   try{localStorage.setItem('rehearsal-last-opened',name)}catch(e){}
   await library();
 }
-const openImport=()=>openPage('import'),openTests=()=>openPage('tests'),openSettings=()=>openPage('settings');
-$('openImport').onclick=openImport;$('openTests').onclick=openTests;$('openSettings').onclick=openSettings;
-// The importer (in its iframe) saves scripts straight to IndexedDB, then tells the app:
-// 'rehearsal:script-saved' refreshes the sidebar; 'rehearsal:open-script' opens the new script.
-window.addEventListener('message',async e=>{
-  if(e.origin!==location.origin||!e.data||typeof e.data.type!=='string')return;
-  if(e.data.type==='rehearsal:script-saved')await library();
-  if(e.data.type==='rehearsal:open-script'){const s=(await getAll()).find(x=>x.id===e.data.id);if(s)await openScript(s)}
-});
+const openTests=()=>openPage('tests'),openSettings=()=>openPage('settings');
+$('openTests').onclick=openTests;$('openSettings').onclick=openSettings;
+
+// ---- Import flow ----------------------------------------------------------
+// Import in the sidebar opens the file picker. Choosing a file opens the import pane (a full-page
+// pane like the teleprompter's): name the script, pick your character, review the blocks. Import
+// saves it and opens the script; exiting asks first. The importer is script-import/ (ES modules,
+// loaded on first use); review-ui.js renders the character list and the block table.
+let importUi=null,importReview=null,importBusy=false;
+async function loadImportUi(){
+  if(!importUi)importUi=await import(new URL('script-import/review-ui.js',document.baseURI).href);
+  return importUi;
+}
+$('openImport').onclick=()=>{
+  closeMobileSidebar();
+  if(location.protocol==='file:'){alert('Importing needs a local server. From the repository root, run python3 speech-lab/serve.py, then open http://localhost:8000/');return}
+  $('importFile').value='';$('importFile').click();
+};
+$('importFile').onchange=e=>{const file=e.target.files[0];if(file)startImport(file)};
+async function startImport(file){
+  openImportPane(file.name);
+  $('importStatus').textContent=`Reading ${file.name}…`;
+  try{
+    const ui=await loadImportUi();
+    importReview||=ui.createImportReview({characters:$('importCharacters'),blocks:$('importBlocks'),onlyReview:$('importOnlyReview'),onChange:renderImportSummary});
+    const result=await ui.readScriptFile(file);
+    if($('importPane').classList.contains('hidden'))return; // exited while reading
+    $('importTitle').value=result.title||file.name.replace(/\.[^.]+$/,'');
+    $('importOnlyReview').checked=false;
+    $('importStatus').textContent='';$('importContent').classList.remove('hidden');
+    importReview.load(result);
+    $('importConfirm').disabled=!result.blocks.length;
+    $('importTitle').focus({preventScroll:true});
+  }catch(err){console.error(err);$('importStatus').textContent=`Couldn't read ${file.name}: ${err.message}`}
+}
+function renderImportSummary(review){
+  const r=review.result;
+  const parts=[el('span',importUi.describe(r))];
+  if(r.stats.review){const n=el('span',`${r.stats.review} to review`);n.className='review-count';parts.push(n)}
+  if(r.edits)parts.push(el('span',`${r.edits} edit${r.edits===1?'':'s'}`));
+  $('importSummary').replaceChildren(...parts);
+  $('importUndo').classList.toggle('hidden',!review.canUndo);
+  $('importWarnings').replaceChildren(...r.warnings.map(w=>{const a=el('div');a.className='alert import-warning';a.setAttribute('role','alert');const d=el('div',w);d.className='alert-description';a.append(d);return a}));
+}
+function openImportPane(fileName){
+  closeMenu();hideTip();
+  $('importFileName').textContent=fileName;
+  $('importContent').classList.add('hidden');$('importWarnings').replaceChildren();
+  $('importSummary').replaceChildren();$('importUndo').classList.add('hidden');$('importConfirm').disabled=true;
+  $('importPane').classList.remove('hidden');document.body.style.overflow='hidden';
+  $('importPane').querySelector('.import-pane-main').scrollTop=0;
+  $('closeImport').focus({preventScroll:true});
+}
+function closeImportPane(){
+  $('importPane').classList.add('hidden');
+  if($('playPane').classList.contains('hidden'))document.body.style.overflow='';
+}
+// Nothing is saved until Import, so leaving asks first once a file has been read.
+function requestExitImport(){
+  if(importBusy)return;
+  if($('importContent').classList.contains('hidden')){closeImportPane();return}
+  openModal('discardImport',{});
+}
+$('closeImport').onclick=requestExitImport;
+$('importUndo').onclick=()=>importReview?.undo();
+$('importConfirm').onclick=async()=>{
+  if(!importReview?.result||importBusy)return;
+  importBusy=true;$('importConfirm').disabled=true;
+  try{
+    const s=importReview.toScript({title:$('importTitle').value.trim()});
+    s.lastUsed=Date.now();
+    await put(s);
+    closeImportPane();
+    await openScript(s);
+  }catch(err){alert('Could not import: '+err.message)}
+  finally{importBusy=false;$('importConfirm').disabled=false}
+};
+// Escape asks to exit (after an open dialog has handled its own Escape).
+document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!e.defaultPrevented&&!modalAction&&!$('importPane').classList.contains('hidden')){e.preventDefault();requestExitImport()}});
 function showHome(){stop();$('scriptHeading').textContent=script.title||'Untitled script';$('scriptHome').classList.remove('hidden');$('workspace').classList.add('hidden')}
 function enterMode(m){$('scriptHome').classList.add('hidden');$('workspace').classList.remove('hidden');setMode(m)}
 $('home').onclick=()=>{script.title=$('title').value.trim()||'Untitled script';showHome()};$('enterRecord').onclick=()=>enterMode('record');$('enterPlay').onclick=()=>enterMode('play');

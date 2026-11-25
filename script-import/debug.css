@@ -13,14 +13,6 @@ body {
   padding: 0 var(--main-gutter);
 }
 
-:root[data-embed] .import-header {
-  display: none;
-}
-
-:root[data-embed] .import-main {
-  padding-top: 0;
-}
-
 .import-header strong {
   margin-right: 8px;
 }
@@ -70,36 +62,10 @@ body {
   margin-bottom: 12px;
 }
 
-.review-count {
-  color: var(--destructive);
-  font-weight: 500;
-}
-
 .import-tools {
   display: flex;
   align-items: center;
   gap: 12px;
-}
-
-.import-filter,
-.import-character {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-}
-
-/* Radios and checkboxes keep their natural size (the app styles inputs as full-width fields). */
-.import-filter input,
-.import-character input {
-  flex: none;
-  width: auto;
-  height: auto;
-  margin: 0;
-}
-
-.import-filter {
-  white-space: nowrap;
 }
 
 .import-warning {
@@ -117,17 +83,6 @@ body {
   .import-columns {
     grid-template-columns: minmax(0, 1fr);
   }
-}
-
-.import-characters {
-  display: grid;
-  gap: 8px;
-  margin-bottom: 16px;
-}
-
-.import-character .muted {
-  margin-left: auto;
-  font-size: 12px;
 }
 
 .import-label {
@@ -149,177 +104,6 @@ body {
   overflow-x: auto;
 }
 
-.import-blocks {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13px;
-}
-
-.import-blocks th {
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--border);
-  color: var(--muted-foreground);
-  font-weight: 500;
-  text-align: left;
-}
-
-.import-blocks td {
-  padding: 6px 8px;
-  border-bottom: 1px solid var(--border);
-  vertical-align: top;
-}
-
-.import-blocks tr.needs-review td {
-  background: color-mix(in oklch, var(--destructive) 7%, transparent);
-}
-
-.import-blocks .num {
-  white-space: nowrap;
-  color: var(--muted-foreground);
-  font-variant-numeric: tabular-nums;
-}
-
-.import-blocks .type {
-  white-space: nowrap;
-}
-
-/* Type picker and fix buttons. Quiet (reads as plain text) except on rows that need review
-   and on the row under the pointer or keyboard focus. */
-.type-select {
-  box-sizing: border-box;
-  height: 28px;
-  margin: -4px 0; /* text lines up with the other cells */
-  padding: 0 6px;
-  border: 1px solid var(--input);
-  border-radius: var(--radius-md);
-  background: var(--input-surface);
-  color: var(--foreground);
-  font: inherit;
-  font-size: 13px;
-}
-
-.type-select:focus-visible {
-  outline: none;
-  border-color: var(--ring);
-  box-shadow: 0 0 0 3px var(--focus-ring);
-}
-
-.import-blocks .actions {
-  padding-top: 2px;
-  padding-bottom: 2px;
-  white-space: nowrap;
-  text-align: right;
-}
-
-tr:not(.needs-review) .type-select {
-  border-color: transparent;
-  background: transparent;
-  appearance: none;
-  padding-left: 0;
-}
-
-tr:not(.needs-review) .actions .btn {
-  opacity: 0;
-}
-
-@media (hover: hover) {
-  tr:not(.needs-review):hover .type-select {
-    border-color: var(--input);
-    padding-left: 6px;
-    appearance: auto;
-  }
-
-  tr:not(.needs-review):hover .actions .btn {
-    opacity: 1;
-  }
-}
-
-tr:not(.needs-review):focus-within .type-select {
-  border-color: var(--input);
-  padding-left: 6px;
-  appearance: auto;
-}
-
-tr:not(.needs-review):focus-within .actions .btn,
-.import-blocks .actions .btn:focus-visible {
-  opacity: 1;
-}
-
-/* Touch screens have no hover: keep the controls faintly visible. */
-@media (hover: none) {
-  tr:not(.needs-review) .actions .btn {
-    opacity: 0.6;
-  }
-}
-
-.import-blocks .actions .btn {
-  width: 28px;
-  height: 28px;
-  min-width: 28px;
-  padding: 0;
-  justify-content: center;
-}
-
-.btn-icon-destructive:hover {
-  color: var(--destructive);
-}
-
-.sr-only {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-}
-
-.conf {
-  font-variant-numeric: tabular-nums;
-  font-weight: 500;
-}
-
-.conf-high { color: color-mix(in oklch, var(--foreground) 70%, transparent); }
-.conf-mid { color: oklch(0.65 0.15 70); }
-.conf-low { color: var(--destructive); }
-
-/* Screenplay-style indents, so the layout reads like the page. */
-.block-text {
-  font-family: var(--font-screenplay);
-  font-size: 13px;
-}
-
-.block-text.type-scene_heading { font-weight: 700; }
-.block-text.type-character > div:first-child { padding-left: 13ch; }
-.block-text.type-parenthetical > div:first-child { padding-left: 9ch; }
-.block-text.type-dialogue > div:first-child { padding-left: 6ch; max-width: 42ch; }
-.block-text.type-transition > div:first-child { text-align: right; }
-
-.block-notes {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 8px;
-  margin-top: 4px;
-  font-family: var(--font-sans);
-  font-size: 12px;
-}
-
-.flag {
-  padding: 0 6px;
-  border-radius: 999px;
-  background: var(--muted);
-}
-
-.flag-review {
-  background: color-mix(in oklch, var(--destructive) 15%, transparent);
-  color: var(--destructive);
-}
-
-.review-dot {
-  display: inline-block;
-  width: 7px;
-  height: 7px;
-  margin-right: 5px;
-  border-radius: 999px;
-  background: var(--destructive);
-  vertical-align: 1px;
+.import-characters {
+  margin-bottom: 16px;
 }

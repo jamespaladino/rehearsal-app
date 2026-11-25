@@ -10,13 +10,12 @@
   <link rel="stylesheet" href="../css/tokens.css">
   <link rel="stylesheet" href="../css/base.css">
   <link rel="stylesheet" href="../css/shadcn.css">
+  <link rel="stylesheet" href="review.css">
   <link rel="stylesheet" href="debug.css">
 
   <script>
     // Saved theme: 'light', 'dark' or 'system', shared with the main app.
     try { const t = localStorage.getItem('rehearsal-theme'); if (t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches)) document.documentElement.dataset.theme = 'dark'; } catch (e) {}
-    // ?embed: shown inside Rehearsal's Import page, which supplies the header.
-    if (new URLSearchParams(location.search).has('embed')) document.documentElement.dataset.embed = '';
   </script>
   <script src="../vendor/lucide/lucide.min.js" defer></script>
   <script src="../js/icons.js" defer></script>
@@ -26,7 +25,7 @@
   <header class="import-header">
     <div>
       <strong>Script import</strong>
-      <span class="muted">Debug view · PDF, Fountain, Final Draft · on this device</span>
+      <span class="muted">Debug view · PDF, Fountain, Final Draft · on this device · the app's Import uses the same review</span>
     </div>
     <a class="btn btn-ghost" href="../"><i data-lucide="arrow-left" data-icon="inline-start"></i>Rehearsal</a>
   </header>

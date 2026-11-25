@@ -16,13 +16,15 @@ node script-import/tests/run.js stitch     # only tests whose file or name conta
 The end-to-end PDF tests (`tests/pdf.test.js`) need Node 20+ for pdf.js and are skipped on older
 Node with a note; everything else, including the classifier and page-break stitching, runs on 16.
 
-**Debug view in the browser** (PDFs work here on any machine):
+**In the app:** run `python3 speech-lab/serve.py` from the repository root, open
+<http://localhost:8000/> and choose **Import** in the sidebar.
+1. The file picker opens. Choosing a file opens the import pane, like the teleprompter's.
+2. In the pane: the script name, then your character, then the blocks.
+3. **Import** creates the script and opens it. The close button or Escape exits, after you
+   confirm.
 
-```sh
-python3 speech-lab/serve.py                 # from the repository root
-# open http://localhost:8000/ and choose Import in the sidebar,
-# or open http://localhost:8000/script-import/ on its own
-```
+**Debug view in the browser** (the same review on a standalone page; PDFs work here on any machine):
+open <http://localhost:8000/script-import/>.
 
 Choose or drop a file to see every block with its type, confidence, metadata and flags. Tick
 "Only blocks to review" to see just the flagged ones.
@@ -36,8 +38,7 @@ Flagged rows show these controls all the time; other rows show them when you hov
 them, because the real mistake can sit on an unflagged row (a cue read as action leaves the
 dialogue under it flagged). Edits recompute speakers, the character list and the review count.
 **Undo** steps back. Pick your character and press **Save to
-Rehearsal** to create a new script in the app. Inside the app, the sidebar updates straight away and
-**Open it** opens the new script.
+Rehearsal** to create a new script, then open it from the link.
 
 **Debug view on the command line:**
 
@@ -117,7 +118,8 @@ ctx) }`, so a stage-play ruleset can be added beside `rulesets/screenplay.js`.
 | `tests/` | `run.js` (a tiny harness for Node 16+) and the `*.test.js` files |
 | `test-support/synthetic.js` | Builds synthetic screenplay pages and minimal PDFs for tests and fixtures |
 | `fixtures/` | Synthetic fixtures and the generator; `real/` for your own scripts |
-| `index.html`, `debug.js`, `debug.css` | Browser debug view |
+| `review-ui.js`, `review.css` | The review UI (character list, block table, edit controls, Undo), shared by the app's import pane and the debug view |
+| `index.html`, `debug.js`, `debug.css` | Standalone browser debug view |
 | `cli.js`, `node-pdfjs.js` | Command-line debug view |
 
 pdf.js 4.10.38 (Apache-2.0) is vendored in `vendor/pdfjs-4.10.38/`. There are no other
@@ -147,5 +149,6 @@ dependencies.
   - Parentheticals other than beats are stored but not shown.
   - Reader lines arrive without recordings.
 - **Node.** The CLI and the PDF tests need Node 20+, because of pdf.js 4.
-- **The Import page is the debug view.** It's opened from the sidebar for now; a proper import flow (pick a
-  file, confirm the character, review flagged blocks) would replace it.
+- **Review is basic.** Types can be changed, confirmed or deleted, but block text can't be edited
+  and blocks can't be split, merged or reordered before importing. Do that in the editor after
+  importing.

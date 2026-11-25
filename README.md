@@ -30,9 +30,10 @@ The engines are loaded on demand from `speech-lab/js/rehearsal-engine.js`, the s
 
 `script-import/` turns a screenplay PDF, Fountain or Final Draft file into typed blocks
 (scene heading, action, character, parenthetical, dialogue, transition) with a confidence for each,
-entirely on the device. Choose **Import** at the top of the sidebar (or open `/script-import/` on its own)
-to import a file, inspect every block, and save it as a new script. It needs a local server like Tests
-(`python3 speech-lab/serve.py`). Tests:
+entirely on the device. Choose **Import** at the top of the sidebar and pick a file. An import pane opens:
+name the script, choose your character, and review the blocks. You can retype, confirm or delete any of
+them. **Import** creates the script and opens it; exiting asks first. It needs a local server like Tests
+(`python3 speech-lab/serve.py`). A standalone debug view is at `/script-import/`. Tests:
 `node script-import/tests/run.js`. Details and known limitations: [script-import/README.md](script-import/README.md).
 
 ## Settings

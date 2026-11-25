@@ -11,6 +11,7 @@
   <link rel="stylesheet" href="css/layout.css">
   <link rel="stylesheet" href="css/components.css">
   <link rel="stylesheet" href="css/editor.css">
+  <link rel="stylesheet" href="script-import/review.css">
 
   <script src="vendor/lucide/lucide.min.js" defer></script>
   <script src="js/icons.js" defer></script>
@@ -29,6 +30,7 @@
       <ul class="sidebar-menu sidebar-pages">
         <li class="sidebar-menu-item">
           <button id="openImport" class="sidebar-menu-button" type="button"><i data-lucide="arrow-down-to-line"></i><span>Import</span></button>
+          <input id="importFile" type="file" accept=".pdf,.fountain,.spmd,.fdx,.txt,application/pdf" hidden>
         </li>
         <li class="sidebar-menu-item">
           <button id="openTests" class="sidebar-menu-button" type="button"><i data-lucide="flask-conical"></i><span>Tests</span></button>
@@ -77,15 +79,6 @@
           <button id="playButton" class="btn btn-default hidden" type="button" aria-label="Start" data-tooltip="Start"><i data-lucide="play" data-icon="inline-start"></i>Start</button>
         </div>
       </header>
-
-      <!-- Import: the script importer's debug view (script-import/), loaded on first open and kept alive. -->
-      <section id="importView" class="tests-view hidden" aria-label="Import">
-        <iframe id="importFrame" title="Script import"></iframe>
-        <div id="importNeedsServer" class="tests-needs-server hidden">
-          <h2>Import needs a local server</h2>
-          <p class="muted">The importer's modules won't load from a file opened on disk. From the repository root, run <code>python3 speech-lab/serve.py</code>, then open <code>http://localhost:8000/</code>.</p>
-        </div>
-      </section>
 
       <!-- Tests: the Speech Recognition Lab (speech-lab/), loaded on first open and kept alive. -->
       <section id="testsView" class="tests-view hidden" aria-label="Tests">
@@ -201,6 +194,56 @@
         </nav>
       </aside>
       <div id="playScenesBackdrop" class="sidebar-backdrop hidden"></div>
+    </div>
+  </div>
+
+  <!-- Import flow: opens after a file is chosen from the sidebar's Import. -->
+  <div id="importPane" class="play-pane import-pane hidden" role="dialog" aria-modal="true" aria-labelledby="importPaneTitle">
+    <header class="play-pane-header">
+      <div class="import-pane-title">
+        <span id="importPaneTitle">Import</span>
+        <span id="importFileName" class="muted truncate"></span>
+      </div>
+      <div class="play-pane-actions">
+        <button id="closeImport" class="btn btn-ghost btn-icon" type="button" aria-label="Exit import" data-tooltip="Exit import"><i data-lucide="x"></i></button>
+      </div>
+    </header>
+    <div class="import-pane-main">
+      <div class="import-pane-body">
+        <p id="importStatus" class="muted import-status" role="status"></p>
+        <div id="importContent" class="hidden">
+          <div id="importWarnings"></div>
+          <section class="import-section">
+            <label for="importTitle" class="import-section-title">Script name</label>
+            <input id="importTitle" maxlength="200" autocomplete="off">
+          </section>
+          <section class="import-section" aria-labelledby="importCharactersTitle">
+            <h2 id="importCharactersTitle" class="import-section-title">Your character</h2>
+            <p class="muted">The character you'll play. Everyone else is read by the reader.</p>
+            <div id="importCharacters" class="import-characters" role="radiogroup" aria-labelledby="importCharactersTitle"></div>
+          </section>
+          <section class="import-section" aria-labelledby="importBlocksTitle">
+            <div class="import-section-head">
+              <h2 id="importBlocksTitle" class="import-section-title">Blocks</h2>
+              <label class="import-filter"><input id="importOnlyReview" type="checkbox"> Only blocks to review</label>
+            </div>
+            <p class="muted">Rows marked <span class="review-dot" aria-hidden="true"></span> need a look: pick the right type, mark it correct, or delete it. Any row can be changed.</p>
+            <div class="import-table-wrap">
+              <table class="import-blocks">
+                <thead><tr><th>#</th><th>Page</th><th>Type</th><th>Conf.</th><th>Text</th><th><span class="sr-only">Actions</span></th></tr></thead>
+                <tbody id="importBlocks"></tbody>
+              </table>
+            </div>
+          </section>
+        </div>
+      </div>
+      <div class="play-dock import-dock">
+        <div class="play-bar">
+          <p id="importSummary" class="play-meta"></p>
+          <button id="importUndo" class="btn btn-ghost hidden" type="button"><i data-lucide="undo-2" data-icon="inline-start"></i>Undo</button>
+          <button id="importConfirm" class="btn btn-default" type="button" disabled><i data-lucide="arrow-down-to-line" data-icon="inline-start"></i>Import</button>
+        </div>
+      </div>
     </div>
   </div>
 
