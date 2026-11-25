@@ -64,10 +64,12 @@ function stripTitlePage(rows, pages) {
   }).length;
   const coverWords = texts.some((t) => /\b(?:written by|screenplay by|story by|teleplay by|draft|copyright)\b|^by$|©/i.test(t));
   if (!coverWords && centred < first.length * 0.6) return { title: null, rows };
-  // Title: the first centred line that isn't "by ..." / a date / contact detail.
+  // Title: the first centred line below the header area that isn't "by ...", a date or contact
+  // details (a running header on the cover isn't the title).
+  const isCentred = (r) => Math.abs((r.segments[0].x + r.segments[r.segments.length - 1].right) / 2 - width / 2) < 0.6 * IN;
   const titleRow = first.find((r) => {
     const t = rowText(r);
-    return t.length > 1 && !/^(?:by|written by|screenplay by)\b/i.test(t) && !/@|\d{3}.*\d{4}/.test(t);
+    return r.y > 0.92 * IN && isCentred(r) && t.length > 1 && !/^(?:by|written by|screenplay by)\b/i.test(t) && !/@|\d{3}.*\d{4}/.test(t);
   });
   return { title: titleRow ? rowText(titleRow).replace(/^["“]|["”]$/g, '') : null, rows: rows.filter((r) => r.page !== 1) };
 }
