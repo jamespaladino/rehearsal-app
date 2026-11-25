@@ -10,6 +10,8 @@ Open `index.html` in a modern browser (Chrome, Edge, Safari or Firefox). Opening
 
 The microphone only works on `file://` or `http://localhost`. If you host the app anywhere else, serve it over HTTPS.
 
+**GitHub Pages:** `.github/workflows/pages.yml` deploys `main` on every push. The speech runtimes and models aren't in git, so the workflow downloads and verifies them with `speech-lab/setup.py` before publishing. In the repository's Settings > Pages, set Source to "GitHub Actions".
+
 ## Line detection in play mode
 
 The **line detection** menu in the play bar (next to the settings button; it shows the current mode, and is icon-only on phones) chooses how the app decides you've finished a line. These choices are saved for this device, not per script. The settings button keeps Reader spacing.

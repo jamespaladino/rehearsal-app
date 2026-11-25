@@ -1,0 +1,54 @@
+# Deploys the app to GitHub Pages with the Speech Lab's runtimes and models included.
+# Those files are git-ignored (about 100 MB), so this downloads them with speech-lab/setup.py,
+# which checks every file against the SHA-256 in speech-lab/pins.json, then publishes the site.
+# Requires Settings > Pages > Build and deployment > Source: "GitHub Actions".
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      # Downloads are cached between runs; the key changes whenever pins.json does.
+      - uses: actions/cache@v4
+        with:
+          path: speech-lab/.cache
+          key: speech-lab-downloads-${{ hashFiles('speech-lab/pins.json') }}
+
+      - name: Download and verify speech runtimes and models
+        run: python3 speech-lab/setup.py --no-samples
+
+      - name: Assemble site
+        run: |
+          mkdir _site
+          rsync -a --exclude='.git' --exclude='.github' --exclude='.cache' --exclude='.DS_Store' --exclude='_site' ./ _site/
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
