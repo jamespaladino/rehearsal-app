@@ -171,8 +171,12 @@
   background: var(--page-bg);
 }
 
-.storage-diagnostics {
-  margin: 16px var(--main-gutter);
+/* Same width and padding as the embedded Audio (.lab-main) and Import (.import-main) pages. */
+.tests-panel {
+  box-sizing: border-box;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 20px var(--main-gutter) 48px;
 }
 
 .storage-diagnostics .row {

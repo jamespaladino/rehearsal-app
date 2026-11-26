@@ -1336,7 +1336,7 @@ function render(){
       const record=el('button');record.type='button';record.className='btn btn-ghost btn-icon';const recordLabel=t.audio?'Rerecord audio':'Record audio';record.setAttribute('aria-label',recordLabel);setTip(record,recordLabel);
       record.replaceChildren(icon('mic'));
       record.onclick=()=>recordLine(i,record);controls.append(record);
-      if(t.audio){const listen=el('button');listen.type='button';listen.className='btn btn-ghost btn-icon';setTip(listen,'Listen');listen.setAttribute('aria-label','Listen');listen.replaceChildren(icon('play'));listen.onclick=()=>{const url=URL.createObjectURL(t.audio);const a=new Audio(url);a.onended=()=>URL.revokeObjectURL(url);a.onerror=()=>URL.revokeObjectURL(url);a.play()};controls.append(listen)}div.append(controls);
+      if(t.audio){const listen=el('button');listen.type='button';listen.className='btn btn-ghost btn-icon';setTip(listen,'Listen');listen.setAttribute('aria-label','Listen');listen.replaceChildren(icon('play'));listen.onclick=()=>{const url=URL.createObjectURL(t.audio);const a=new Audio(url);const fail=message=>{URL.revokeObjectURL(url);alert(`Couldn't play this recording (${t.audio.size} bytes, ${t.audio.type||'unknown format'}). ${message||''}`.trim())};a.onended=()=>URL.revokeObjectURL(url);a.onerror=()=>fail(a.error?.message);a.play().catch(e=>{if(!a.error)fail(e.message)})};controls.append(listen)}div.append(controls);
     }
     root.append(div);if(field){field.style.height='auto';field.style.height=Math.max(field.classList.contains('dialogue')?46:0,field.scrollHeight)+'px'}
   });

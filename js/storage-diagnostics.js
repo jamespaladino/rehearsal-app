@@ -47,6 +47,40 @@
     };
   }
 
+  // Each script recording, saved and in memory: which line it's on, and whether its bytes can
+  // actually be read and decoded (a stored size alone doesn't prove the audio is still there).
+  async function checkRecording(audio) {
+    let data;
+    try { data = await audio.arrayBuffer(); }
+    catch (error) { return `read failed (${describeError(error)})`; }
+    if (!data.byteLength) return 'read returned 0 bytes';
+    const Context = window.AudioContext || window.webkitAudioContext;
+    const context = new Context();
+    try { return `decodes, ${(await context.decodeAudioData(data)).duration.toFixed(1)} s`; }
+    catch (error) { return `read ${data.byteLength} bytes, decode failed (${describeError(error)})`; }
+    finally { context.close(); }
+  }
+
+  async function recordingDetails() {
+    const lines = [];
+    const describe = async (label, scripts) => {
+      for (const saved of scripts) {
+        for (const [index, turn] of (saved.turns || []).entries()) {
+          if (!turn.audio) continue;
+          const who = turn.who === 'them' ? `reader ${turn.character || ''}`.trim() : `who=${turn.who}`;
+          const size = turn.audio.size ?? 'no size';
+          const type = turn.audio.type || 'no type';
+          lines.push(`  ${label} "${saved.title || 'Untitled'}" block ${index + 1} (${who}): ${size} bytes · ${type} · ${await checkRecording(turn.audio)}`);
+        }
+        const unrecorded = (saved.turns || []).filter(turn => turn.who === 'them' && !turn.audio).length;
+        lines.push(`  ${label} "${saved.title || 'Untitled'}": ${unrecorded} reader lines without audio`);
+      }
+    };
+    await describe('Saved', await getAll());
+    if (typeof script !== 'undefined' && script) await describe('Open', [script]);
+    return lines.length ? lines.join('\n') : '  None';
+  }
+
   async function recordSample() {
     const microphone = await navigator.mediaDevices.getUserMedia({ audio: true });
     try {
@@ -86,6 +120,7 @@
       readResult(() => navigator.storage?.persisted?.()),
       readResult(() => navigator.storage?.estimate?.()),
     ]);
+    const details = await readResult(recordingDetails);
     showSample(sample?.audio);
     const savedAt = sample?.savedAt || marker?.savedAt;
     const baseline = sample?.inventory || marker?.inventory;
@@ -100,6 +135,7 @@
       savedAt && `Test saved: ${new Date(savedAt).toLocaleString()}`,
       inventory.error ? `Script database: Read failed (${inventory.error})`
         : `Script database: ${inventory.scripts} scripts · ${inventory.recordings} recordings · ${inventory.bytes} bytes · ${inventory.empty} empty recordings`,
+      `Script recordings:\n${details?.error ? `  Check failed (${details.error})` : details}`,
       baseline && !baseline.error && `When test was saved: ${baseline.scripts} scripts · ${baseline.recordings} recordings · ${baseline.bytes} bytes`,
       `Persistent storage: ${persisted?.error || (persisted === undefined ? 'Unavailable' : persisted ? 'Granted' : 'Not granted')}`,
       estimate?.quota != null && `Estimated storage: ${estimate.usage} of ${estimate.quota} bytes used`,

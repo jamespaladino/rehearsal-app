@@ -24,7 +24,8 @@ body {
 .import-main {
   display: grid;
   gap: 16px;
-  max-width: 1200px;
+  box-sizing: border-box;
+  max-width: 1120px;
   margin: 0 auto;
   padding: 8px var(--main-gutter) 48px;
 }
