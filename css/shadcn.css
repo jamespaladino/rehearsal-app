@@ -663,19 +663,19 @@ button.sidebar-group-label:focus-visible {
   height: 16px;
 }
 
-/* showOnHover: on desktop the action only appears while its row is hovered or focused,
-   or while its menu is open. Touch screens (under 768px) always show it. */
+/* Reveal row actions on hover, keyboard focus, or while the menu is open.
+   Keep them visible on devices without hover so they can be tapped. */
 .sidebar-menu-button[data-active] ~ .sidebar-menu-action[data-show-on-hover] {
   color: var(--sidebar-accent-foreground);
 }
 
-@media (min-width: 768px) {
+@media (hover: hover) {
   .sidebar-menu-action[data-show-on-hover] {
     opacity: 0;
   }
 
   .sidebar-menu-item:hover > .sidebar-menu-action[data-show-on-hover],
-  .sidebar-menu-item:focus-within > .sidebar-menu-action[data-show-on-hover],
+  .sidebar-menu-item:has(> :focus-visible) > .sidebar-menu-action[data-show-on-hover],
   .sidebar-menu-action[data-show-on-hover][aria-expanded="true"] {
     opacity: 1;
   }
@@ -696,6 +696,7 @@ button.sidebar-group-label:focus-visible {
 
 @media (hover: hover) {
   .sidebar-menu-button:hover,
+  .sidebar-menu-item:has(> .sidebar-menu-action:hover) > .sidebar-menu-button,
   .sidebar-menu-action:hover {
     background: var(--sidebar-accent);
     color: var(--sidebar-accent-foreground);

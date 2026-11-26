@@ -86,6 +86,10 @@
         </div>
 
         <div class="header-right">
+          <div id="scriptHistory" class="script-history hidden" role="group" aria-label="Script edit history">
+            <button id="undoScript" class="btn btn-ghost btn-icon" type="button" aria-label="Undo" data-tooltip="Undo" disabled><i data-lucide="undo-2"></i></button>
+            <button id="redoScript" class="btn btn-ghost btn-icon" type="button" aria-label="Redo" data-tooltip="Redo" disabled><i data-lucide="redo-2"></i></button>
+          </div>
           <button id="playButton" class="btn btn-default hidden" type="button" aria-label="Start" data-tooltip="Start"><i data-lucide="play" data-icon="inline-start"></i>Start</button>
         </div>
       </header>
@@ -124,7 +128,7 @@
                   <span class="muted"><span id="micSettingsStatus" class="mic-status">Not connected</span>&nbsp;· The microphone turns on when you press Start or Record, and off when you stop.</span>
                 </div>
                 <button id="connectMic" class="btn btn-outline btn-sm" type="button" aria-label="Connect microphone"><i data-lucide="mic" data-icon="inline-start"></i>Connect</button>
-                <button id="releaseMic" class="btn btn-outline btn-sm hidden" type="button"><i data-lucide="mic-off" data-icon="inline-start"></i>Release microphone</button>
+                <button id="releaseMic" class="btn btn-outline btn-sm hidden" type="button" aria-label="Release microphone"><i data-lucide="mic-off" data-icon="inline-start"></i>Release</button>
               </div>
             </div>
           </div>
@@ -182,6 +186,14 @@
         </div>
       </main>
     </div>
+  </div>
+
+  <div id="mobileEditBar" class="mobile-edit-bar hidden" role="group" aria-label="Script editing controls">
+    <button id="mobileInsert" class="btn btn-ghost btn-icon" type="button" aria-label="Insert" aria-haspopup="true" aria-expanded="false"><i data-lucide="plus"></i></button>
+    <button id="mobileTurnInto" class="btn btn-ghost btn-icon" type="button" aria-label="Turn into" aria-haspopup="true" aria-expanded="false"><i data-lucide="repeat"></i></button>
+    <button id="mobileMoveUp" class="btn btn-ghost btn-icon" type="button" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
+    <button id="mobileMoveDown" class="btn btn-ghost btn-icon" type="button" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
+    <button id="mobileDeleteBlock" class="btn btn-ghost btn-icon" type="button" aria-label="Delete block"><i data-lucide="trash"></i></button>
   </div>
 
   <div id="playPane" class="play-pane hidden" role="dialog" aria-modal="true" aria-labelledby="playScriptTitle playSceneTitle">

@@ -299,6 +299,11 @@
   margin-left: auto;
 }
 
+.script-history {
+  display: flex;
+  gap: 2px;
+}
+
 .editor {
   max-width: 920px;
   margin: 0 auto;

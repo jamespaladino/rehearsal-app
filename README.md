@@ -42,7 +42,7 @@ them. **Import** creates the script and opens it; exiting asks first. It needs a
 
 - **General**
   - **Theme:** a dropdown with System, Light or Dark. System follows the device and updates when it changes.
-  - **Microphone:** the microphone's status with **Connect** / **Release microphone**. The microphone uses the browser's default processing (echo cancellation, noise suppression and automatic gain control all on).
+  - **Microphone:** the microphone's status with **Connect** / **Release**. The microphone uses the browser's default processing (echo cancellation, noise suppression and automatic gain control all on).
 - **Install:** installs the app to open in its own window. In Chrome and Edge, an **Install** button shows the browser's install prompt. Safari (iPhone: Share > Add to Home Screen; Mac: File > Add to Dock) and other browsers get instructions instead, and an installed app says so.
 - **Storage:** whether this browser has agreed to keep the app's data, and how much it uses. On iPhone, Safari clears a site's data after 7 days without a visit, so add the app to the home screen (Share > Add to Home Screen) and open it from there. The home-screen app has its own storage, separate from the Safari tab. `manifest.webmanifest` and `icons/` make it installable.
 

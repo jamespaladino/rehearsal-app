@@ -416,8 +416,11 @@ const BLOCK_TYPES=[
   {label:'Action',icon:'pilcrow',is:t=>t.who==='action',apply:t=>{t.who='action'}},
 ];
 // onChange(becameLine): becameLine is true when a non-dialogue block was turned into a line.
-function turnIntoSubmenu(t,onChange){
-  return dropdownSubmenu('repeat','Turn into',BLOCK_TYPES.map(type=>({label:type.label,icon:type.icon,checked:type.is(t),onSelect:()=>{const was=isLine(t);type.apply(t);onChange(!was&&isLine(t))}})));
+function turnIntoOptions(t,onChange){
+  return BLOCK_TYPES.map(type=>({label:type.label,icon:type.icon,checked:type.is(t),onSelect:()=>{
+    if(type.is(t))return;
+    rememberScriptEdit();type.apply(t);onChange(isLine(t));
+  }}));
 }
 // Tooltips: any element with data-tooltip shows one on mouse hover or keyboard focus.
 const tooltip=el('div');tooltip.className='tooltip';tooltip.setAttribute('aria-hidden','true');document.body.append(tooltip);
@@ -459,6 +462,44 @@ async function flushSave(){
   if(script){const snapshot=structuredClone(script);saveChain=saveChain.catch(()=>{}).then(()=>put(snapshot));}
   await saveChain;
 }
+
+const SCRIPT_HISTORY_LIMIT=50;
+const scriptUndo=[],scriptRedo=[];
+let historyScriptId=null,typingField=null,typingTime=0;
+function updateScriptHistoryButtons(){
+  const id=script?.id??null;
+  if(historyScriptId!==id){
+    historyScriptId=id;scriptUndo.length=0;scriptRedo.length=0;typingField=null;
+  }
+  $('scriptHistory').classList.toggle('hidden',!script);
+  $('undoScript').disabled=!!recorder||!scriptUndo.length;
+  $('redoScript').disabled=!!recorder||!scriptRedo.length;
+}
+function snapshotScriptEdit(){
+  // Turn fields are replaced on edit. Keep immutable audio blobs shared across snapshots.
+  const {title,meCharacter,turns}=script;
+  return {title,meCharacter,turns:turns.map(turn=>({...turn}))};
+}
+function rememberScriptEdit(field=null){
+  const now=performance.now();
+  if(!field||field!==typingField||now-typingTime>400){
+    scriptUndo.push(snapshotScriptEdit());
+    if(scriptUndo.length>SCRIPT_HISTORY_LIMIT)scriptUndo.shift();
+  }
+  typingField=field;typingTime=now;scriptRedo.length=0;
+  updateScriptHistoryButtons();
+}
+function restoreScriptEdit(from,to){
+  if(!script||recorder||!from.length)return;
+  if(!$('scriptHistory').closest('#mobileEditBar'))leaveScriptField();
+  if(!from.length)return;
+  to.push(snapshotScriptEdit());
+  Object.assign(script,from.pop());typingField=null;
+  $('title').value=script.title;$('scriptHeading').textContent=script.title;
+  updateScriptHeader();render();queueSave(true);
+}
+$('undoScript').onclick=()=>restoreScriptEdit(scriptUndo,scriptRedo);
+$('redoScript').onclick=()=>restoreScriptEdit(scriptRedo,scriptUndo);
 
 const UNTITLED_SCRIPT='Untitled script';
 const DEFAULT_ACTOR_NAME='YOU';
@@ -514,7 +555,7 @@ function openModal(type,s){
 $('modalCancel').onclick=closeModal;
 $('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal()});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&modalAction){e.preventDefault();closeModal()}});
-$('modalForm').onsubmit=async e=>{e.preventDefault();if(!modalAction)return;const {type,id}=modalAction;if(type==='discardImport'){closeModal();closeImportPane();return}if(type==='clearStorage'){await clearStorage();return}const btn=$('modalConfirm');btn.disabled=true;try{if(type==='character'){const name=$('renameInput').value.trim().toUpperCase();if(!name){$('modalError').textContent='Enter a character name.';return}const oldName=modalAction.name;closeModal();renameCharacter(oldName,name);return}if(type==='rename'){const title=$('renameInput').value.trim();if(!title){$('modalError').textContent='Enter a script name.';return}const r=store().get(id);const saved=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});if(!saved)throw new Error('Script no longer exists');saved.title=title;await put(saved);if(script?.id===id){script.title=title;$('title').value=title;$('scriptHeading').textContent=title;updateScriptHeader()}}else{if(script?.id===id){clearTimeout(saveTimer);script=null;}await saveChain;await del(id);try{if(localStorage.getItem("rehearsal-last-opened")===id)localStorage.removeItem("rehearsal-last-opened")}catch(e){}if(!script){stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader()}}closeModal();await library()}catch(err){$('modalError').textContent=err.message||'Could not save changes.';$('renameFields').classList.remove('hidden')}finally{btn.disabled=false}};
+$('modalForm').onsubmit=async e=>{e.preventDefault();if(!modalAction)return;const {type,id}=modalAction;if(type==='discardImport'){closeModal();closeImportPane();return}if(type==='clearStorage'){await clearStorage();return}const btn=$('modalConfirm');btn.disabled=true;try{if(type==='character'){const name=$('renameInput').value.trim().toUpperCase();if(!name){$('modalError').textContent='Enter a character name.';return}const oldName=modalAction.name;closeModal();renameCharacter(oldName,name);return}if(type==='rename'){const title=$('renameInput').value.trim();if(!title){$('modalError').textContent='Enter a script name.';return}if(script?.id===id){await renameOpenScript(title)}else{const r=store().get(id);const saved=await new Promise((resolve,reject)=>{r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error)});if(!saved)throw new Error('Script no longer exists');saved.title=title;await put(saved)}}else{if(script?.id===id){clearTimeout(saveTimer);script=null;}await saveChain;await del(id);try{if(localStorage.getItem("rehearsal-last-opened")===id)localStorage.removeItem("rehearsal-last-opened")}catch(e){}if(!script){stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');updateScriptHeader()}}closeModal();await library()}catch(err){$('modalError').textContent=err.message||'Could not save changes.';$('renameFields').classList.remove('hidden')}finally{btn.disabled=false}};
 let activeMenu=null;
 function closeMenu(){if(activeMenu){activeMenu.classList.add('hidden');activeMenu.previousElementSibling?.setAttribute('aria-expanded','false');activeMenu=null}}
 document.addEventListener('click',()=>closeMenu());
@@ -628,6 +669,7 @@ async function togglePin(id){
   await library();
 }
 function updateScriptHeader(){
+  updateScriptHistoryButtons();
   $('topScriptTitleText').textContent=script?(script.title||'Untitled script'):'';
   $('titleDropdownWrap').classList.toggle('hidden',!script);
   closeTitleDropdown();
@@ -653,14 +695,18 @@ $('topScriptTitle').onclick=e=>{
 };
 $('titleDropdown').onclick=e=>e.stopPropagation();
 $('quickRenameCancel').onclick=closeTitleDropdown;
+async function renameOpenScript(title){
+  if(script.title!==title)rememberScriptEdit();
+  script.title=title;$('title').value=title;$('scriptHeading').textContent=title;
+  await flushSave();updateScriptHeader();
+}
 $('titleDropdown').onsubmit=async e=>{
   e.preventDefault();if(!script)return;
   const name=$('quickRenameInput').value.trim();
   if(!name){$('quickRenameError').textContent='Enter a script name.';return}
   const button=$('titleDropdown').querySelector('[type="submit"]');button.disabled=true;
   try{
-    script.title=name;$('title').value=name;
-    await flushSave();updateScriptHeader();await library();
+    await renameOpenScript(name);await library();
   }catch(err){$('quickRenameError').textContent=err.message||'Could not rename script.'}
   finally{button.disabled=false}
 };
@@ -873,6 +919,7 @@ $('playDetectionMenu').onclick=e=>e.stopPropagation();
 document.addEventListener('click',()=>setPlayDetection(false));
 function newDialogueLine(){return {who:'them',character:'',text:'',audio:null}}
 function addDialogueLine(index=script.turns.length){
+  rememberScriptEdit();
   script.turns.splice(index,0,newDialogueLine());
   render();queueSave(true);
   focusCharacter(index);
@@ -884,6 +931,7 @@ function focusCharacter(index){
 }
 // Scene headings ('heading') and action ('action') are full-width text blocks.
 function addTextBlock(index,who){
+  rememberScriptEdit();
   script.turns.splice(index,0,{who,text:''});
   render();queueSave(true);
   focusBlockText(index);
@@ -891,6 +939,69 @@ function addTextBlock(index,who){
 // Script typing: Tab / Shift+Tab move between text fields (character, dialogue, scene
 // heading, action) and skip the block buttons. Outside the script, the usual tab order applies.
 const SCRIPT_FIELDS='.character, .dialogue, .block-text';
+const mobileEditBar=$('mobileEditBar');
+const renderedBlocks=new WeakMap();
+let mobileEditorField=null;
+
+function positionMobileEditBar(){
+  const viewport=window.visualViewport;
+  const inset=viewport?document.documentElement.clientHeight-viewport.height-viewport.offsetTop:0;
+  mobileEditBar.style.setProperty('--keyboard-inset',Math.max(0,inset)+'px');
+}
+function syncMobileEditBar(){
+  const active=document.activeElement;
+  const field=active?.matches('#turns :is('+SCRIPT_FIELDS+')')?active:
+    mobileEditBar.contains(active)&&mobileEditorField?.isConnected?mobileEditorField:null;
+  const visible=!!(mobileQuery.matches&&field&&script&&!field.closest('.hidden')&&
+    $('playPane').classList.contains('hidden')&&$('importPane').classList.contains('hidden'));
+  if(openBlockMenu?.mobile&&(!visible||field.closest('.turn')!==openBlockMenu.origin))closeBlockMenu();
+  mobileEditorField=visible?field:null;
+  mobileEditBar.classList.toggle('hidden',!visible);
+  const history=$('scriptHistory');
+  if(visible){
+    if(history.parentElement!==mobileEditBar)mobileEditBar.append(history);
+    const block=field.closest('.turn');
+    $('mobileMoveUp').disabled=!block.previousElementSibling;
+    $('mobileMoveDown').disabled=!block.nextElementSibling;
+    positionMobileEditBar();
+  }else if(history.parentElement===mobileEditBar)$('playButton').before(history);
+}
+document.addEventListener('focusin',syncMobileEditBar);
+document.addEventListener('focusout',()=>queueMicrotask(syncMobileEditBar));
+mobileQuery.addEventListener('change',syncMobileEditBar);
+window.visualViewport?.addEventListener('resize',positionMobileEditBar);
+window.visualViewport?.addEventListener('scroll',positionMobileEditBar);
+mobileEditBar.addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault()});
+$('turns').addEventListener('mousedown',e=>{
+  if(mobileEditorField&&e.target.closest('.record-controls button'))e.preventDefault();
+});
+function activeMobileBlock(){
+  return renderedBlocks.get(mobileEditorField?.closest('.turn'));
+}
+$('mobileInsert').onclick=e=>activeMobileBlock()?.openInsert(e.currentTarget);
+$('mobileTurnInto').onclick=e=>activeMobileBlock()?.openTurnInto(e.currentTarget);
+$('mobileMoveUp').onclick=()=>activeMobileBlock()?.move(-1);
+$('mobileMoveDown').onclick=()=>activeMobileBlock()?.move(1);
+$('mobileDeleteBlock').onclick=()=>activeMobileBlock()?.remove();
+function closeBlockMenu(){
+  if(!openBlockMenu)return;
+  const {menu,origin,trigger}=openBlockMenu;
+  menu.classList.add('hidden');
+  if(menu.parentElement!==origin)origin.append(menu);
+  trigger.setAttribute('aria-expanded','false');
+  openBlockMenu=null;
+}
+function showBlockMenu(menu,origin,trigger,fill){
+  const wasOpen=openBlockMenu?.trigger===trigger;
+  closeBlockMenu();
+  if(wasOpen)return;
+  menu.replaceChildren();fill();
+  const mobile=mobileEditBar.contains(trigger);
+  if(mobile)mobileEditBar.append(menu);
+  menu.classList.remove('hidden');
+  trigger.setAttribute('aria-expanded','true');
+  openBlockMenu={menu,origin,trigger,mobile};
+}
 function tabbableElements(){
   return [...document.querySelectorAll('button, input, textarea, select, a[href], [tabindex]')].filter(el=>
     el.tabIndex>=0&&!el.disabled&&el.getClientRects().length&&!(el.closest('#turns')&&!el.matches(SCRIPT_FIELDS)));
@@ -955,6 +1066,7 @@ function leaveScriptField(){if(document.activeElement?.closest?.('#turns'))docum
 function renameCharacter(oldName,newName){
   if(!newName||oldName===newName)return;
   leaveScriptField();
+  rememberScriptEdit();
   if(oldName===script.meCharacter)script.meCharacter=newName;
   else script.turns.forEach(x=>{if(x.who==='them'&&(x.character||'').toUpperCase()===oldName){x.character=newName;if(newName===script.meCharacter)x.who='me'}});
   queueSave(true);render();
@@ -983,7 +1095,14 @@ function splitCue(value){
 }
 function render(){
   normalizeCharacters();
-  hideTip();const root=$('turns');const savedScroll=window.scrollY;root.replaceChildren();openBlockMenu=null;
+  const root=$('turns');
+  const focused=mobileEditorField?.isConnected?mobileEditorField:null;
+  const focusedBlock=focused?.closest('.turn');
+  const focusedIndex=focusedBlock?[...root.children].indexOf(focusedBlock):-1;
+  const focusedTurn=renderedBlocks.get(focusedBlock)?.turn;
+  const focusedKind=focused&&['.character','.dialogue','.block-text'].find(selector=>focused.matches(selector));
+  const savedScroll=window.scrollY;
+  hideTip();closeBlockMenu();root.replaceChildren();
   script.turns.forEach((t,i)=>{
     const div=el('div');div.className='turn'+(t.who==='beat'?' beat':'');div.dataset.who=t.who;
     const tools=el('div');tools.className='margin-tools';
@@ -991,17 +1110,35 @@ function render(){
     const dots=el('button');dots.type='button';dots.className='btn btn-ghost btn-icon';dots.setAttribute('aria-haspopup','true');dots.append(icon('grip-vertical'));setTip(dots,'Options');dots.setAttribute('aria-label','Options');dots.setAttribute('aria-expanded','false');
     const menu=el('div');menu.className='dropdown-menu block-menu hidden';
     const menuItem=(name,fn,variant,iconName)=>{const b=dropdownItem(name,fn,variant,iconName);menu.append(b);return b};
-    const insert=(who)=>{if(who==='line'){addDialogueLine(i+1);return}if(who==='heading'||who==='action'){addTextBlock(i+1,who);return}script.turns.splice(i+1,0,{who:'beat',text:'',duration:2});render();queueSave(true)};
-    add.onclick=e=>{e.stopPropagation();const was=menu.classList.contains('hidden');document.querySelectorAll('.block-menu').forEach(m=>m.classList.add('hidden'));menu.replaceChildren();menuItem('Line',()=>insert('line'),undefined,'text-align-start');menuItem('Beat',()=>insert('beat'),undefined,'gap-vertical');menuItem('Scene heading',()=>insert('heading'),undefined,'clapperboard');menuItem('Action',()=>insert('action'),undefined,'pilcrow');menu.classList.toggle('hidden',!was);resetBlockMenuButtons();add.setAttribute('aria-expanded',String(was))};
-    dots.onclick=e=>{e.stopPropagation();const was=menu.classList.contains('hidden');document.querySelectorAll('.block-menu').forEach(m=>m.classList.add('hidden'));menu.replaceChildren();
-      if(t.who==='beat'){menu.append(beatDurationSubmenu(t,n=>{t.duration=n;render();queueSave(true)}),dropdownSeparator())}
-      menu.append(turnIntoSubmenu(t,becameLine=>{render();queueSave(true);if(becameLine)focusCharacter(i)}),dropdownSeparator());
-      const up=menuItem('Move up',()=>{[script.turns[i-1],script.turns[i]]=[script.turns[i],script.turns[i-1]];render();queueSave(true)},undefined,'arrow-up');up.disabled=i===0;
-      const down=menuItem('Move down',()=>{[script.turns[i+1],script.turns[i]]=[script.turns[i],script.turns[i+1]];render();queueSave(true)},undefined,'arrow-down');down.disabled=i===script.turns.length-1;
-      menu.append(dropdownSeparator());
-      menuItem('Delete block',()=>{script.turns.splice(i,1);render();queueSave(true)},'destructive','trash');
-      menu.classList.toggle('hidden',!was);resetBlockMenuButtons();dots.setAttribute('aria-expanded',String(was));
+    const insert=(who)=>{if(who==='line'){addDialogueLine(i+1);return}if(who==='heading'||who==='action'){addTextBlock(i+1,who);return}rememberScriptEdit();script.turns.splice(i+1,0,{who:'beat',text:'',duration:2});render();queueSave(true)};
+    const openInsert=trigger=>showBlockMenu(menu,div,trigger,()=>{
+      menuItem('Line',()=>insert('line'),undefined,'text-align-start');
+      menuItem('Beat',()=>insert('beat'),undefined,'gap-vertical');
+      menuItem('Scene heading',()=>insert('heading'),undefined,'clapperboard');
+      menuItem('Action',()=>insert('action'),undefined,'pilcrow');
+    });
+    const onTypeChange=becameLine=>{render();queueSave(true);if(becameLine)focusCharacter(i)};
+    const openTurnInto=trigger=>showBlockMenu(menu,div,trigger,()=>{
+      menu.append(...turnIntoOptions(t,onTypeChange).map(dropdownRadioItem));
+    });
+    const move=delta=>{
+      const next=i+delta;
+      if(next<0||next>=script.turns.length)return;
+      rememberScriptEdit();
+      [script.turns[i],script.turns[next]]=[script.turns[next],script.turns[i]];
+      render();queueSave(true);
     };
+    const remove=()=>{rememberScriptEdit();script.turns.splice(i,1);render();queueSave(true)};
+    renderedBlocks.set(div,{turn:t,openInsert,openTurnInto,move,remove});
+    add.onclick=e=>{e.stopPropagation();openInsert(add)};
+    dots.onclick=e=>{e.stopPropagation();showBlockMenu(menu,div,dots,()=>{
+      if(t.who==='beat'){menu.append(beatDurationSubmenu(t,n=>{if(n===beatSeconds(t))return;rememberScriptEdit();t.duration=n;render();queueSave(true)}),dropdownSeparator())}
+      menu.append(dropdownSubmenu('repeat','Turn into',turnIntoOptions(t,onTypeChange)),dropdownSeparator());
+      const up=menuItem('Move up',()=>move(-1),undefined,'arrow-up');up.disabled=i===0;
+      const down=menuItem('Move down',()=>move(1),undefined,'arrow-down');down.disabled=i===script.turns.length-1;
+      menu.append(dropdownSeparator());
+      menuItem('Delete block',remove,'destructive','trash');
+    })};
     tools.append(add,dots);div.append(tools,menu);
     if(t.who==='me'||t.who==='them'){
       const picker=el('div');picker.className='character-picker';
@@ -1017,6 +1154,7 @@ function render(){
       const commit=(focusDialogue=false,nextFocus=null)=>{
         const {name,extensions}=splitCue(character.value);
         if(!name){character.value=current()+cueSuffix(t);return}
+        if(changed())rememberScriptEdit();
         if(extensions.length)t.extensions=extensions;else delete t.extensions;
         character.value=name+cueSuffix(t);
         if(name===script.meCharacter){if(t.who!=='me')t.audio=null;t.who='me';t.character=name}
@@ -1101,7 +1239,7 @@ function render(){
     }
     let field=null;
     if(t.who==='me'||t.who==='them'){
-      field=el('textarea');field.className='dialogue';field.placeholder='Dialogue…';field.value=t.text||'';field.setAttribute('aria-label','Dialogue');field.oninput=()=>{t.text=field.value;field.style.height='auto';field.style.height=field.scrollHeight+'px';queueSave()};
+      field=el('textarea');field.className='dialogue';field.placeholder='Dialogue…';field.value=t.text||'';field.setAttribute('aria-label','Dialogue');field.oninput=()=>{rememberScriptEdit(field);t.text=field.value;field.style.height='auto';field.style.height=field.scrollHeight+'px';queueSave()};
       field.onkeydown=e=>{
         if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
           e.preventDefault();
@@ -1118,6 +1256,7 @@ function render(){
       field.value=t.text||'';
       field.oninput=()=>{
         if(heading){const pos=field.selectionStart;field.value=field.value.toUpperCase();field.setSelectionRange(pos,pos)}
+        if(field.value!==(t.text||''))rememberScriptEdit(field);
         t.text=field.value;field.style.height='auto';field.style.height=field.scrollHeight+'px';queueSave();
       };
       // Enter: heading moves on to its action (adding one if needed); action moves on to a new dialogue line.
@@ -1138,24 +1277,42 @@ function render(){
     }
     root.append(div);if(field){field.style.height='auto';field.style.height=Math.max(field.classList.contains('dialogue')?46:0,field.scrollHeight)+'px'}
   });
+  if(focusedKind&&focusedIndex>=0){
+    const currentIndex=script.turns.indexOf(focusedTurn);
+    const index=currentIndex>=0?currentIndex:Math.min(focusedIndex,root.children.length-1);
+    const block=root.children[index];
+    const nextField=block?.querySelector(focusedKind)||block?.querySelector(SCRIPT_FIELDS);
+    if(nextField){
+      nextField.focus({preventScroll:true});
+      nextField.setSelectionRange(focused.selectionStart,focused.selectionEnd);
+    }
+  }
+  syncMobileEditBar();
   if(Math.abs(window.scrollY-savedScroll)>2)window.scrollTo({top:savedScroll,behavior:'instant'});
 }
-document.addEventListener('click',e=>{if(!e.target.closest('.margin-tools')&&!e.target.closest('.block-menu')){document.querySelectorAll('.block-menu').forEach(m=>m.classList.add('hidden'));resetBlockMenuButtons()}})
-function resetBlockMenuButtons(){document.querySelectorAll('.margin-tools [aria-expanded]').forEach(b=>b.setAttribute('aria-expanded','false'))};
+document.addEventListener('click',e=>{if(!e.target.closest('.margin-tools, .block-menu, .mobile-edit-bar'))closeBlockMenu()});
 async function recordLine(i,button){
   if(recorder){if(recorder.state!=='inactive')recorder.stop();return}
   try{
     // Track the block itself, not its position, so moves/deletes during recording can't misplace audio.
     const turn=script.turns[i];
-    const mic=await getMicrophone();chunks=[];
-    const currentRecorder=new MediaRecorder(mic);recorder=currentRecorder;
+    const mic=await getMicrophone();
+    if(!turn||!script?.turns.includes(turn)||turn.who!=='them'){releaseMicIfIdle();return}
+    if(recorder)return;
+    chunks=[];
+    const currentRecorder=new MediaRecorder(mic);
     currentRecorder.ondataavailable=e=>{if(e.data.size)chunks.push(e.data)};
     currentRecorder.onstop=()=>{
-      if(turn&&turn.who==='them'&&script?.turns?.includes(turn))turn.audio=new Blob(chunks,{type:currentRecorder.mimeType});
-      recorder=null;render();queueSave(true);
+      recorder=null;
+      if(turn.who==='them'&&script?.turns.includes(turn)){
+        rememberScriptEdit();
+        turn.audio=new Blob(chunks,{type:currentRecorder.mimeType});
+        render();queueSave(true);
+      }else updateScriptHistoryButtons();
       releaseMicIfIdle();
     };
-    currentRecorder.start();button.classList.add('recording');button.classList.replace('btn-ghost','btn-destructive');setTip(button,'Stop recording');button.setAttribute('aria-label','Stop recording');button.replaceChildren(icon('square')); 
+    currentRecorder.start();recorder=currentRecorder;updateScriptHistoryButtons();
+    button.classList.add('recording');button.classList.replace('btn-ghost','btn-destructive');setTip(button,'Stop recording');button.setAttribute('aria-label','Stop recording');button.replaceChildren(icon('square'));
   }catch(e){alert('Microphone unavailable: '+e.message)}
 }
 function status(s){$('status').textContent=s}

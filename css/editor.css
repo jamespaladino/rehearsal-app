@@ -249,9 +249,46 @@
   }
 }
 
-/* Mobile: no "+" menu (Enter adds the next block; "Turn into" changes its type). */
+.mobile-edit-bar {
+  position: fixed;
+  right: 0;
+  bottom: var(--keyboard-inset, 0px);
+  left: 0;
+  z-index: 45;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px max(8px, env(safe-area-inset-right))
+    4px max(8px, env(safe-area-inset-left));
+  border-top: 1px solid var(--border);
+  background: var(--page-bg);
+}
+
+.mobile-edit-bar .btn-icon {
+  width: clamp(36px, calc((100vw - 28px) / 7), 44px);
+  height: 44px;
+  transition-property: background-color, color, opacity, transform;
+}
+
+.mobile-edit-bar .script-history {
+  margin-inline-start: auto;
+}
+
+.mobile-edit-bar > .block-menu {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 8px;
+  overflow: visible;
+}
+
 @media (max-width: 767px) {
-  .screenplay .block-add {
+  /* The inline controls remain usable when the keyboard bar is closed. */
+  .screenplay .block-add,
+  body:has(.mobile-edit-bar:not(.hidden)) .screenplay .margin-tools {
     display: none;
+  }
+
+  body:has(.mobile-edit-bar:not(.hidden)) .app-main {
+    padding-bottom: 60px;
   }
 }
