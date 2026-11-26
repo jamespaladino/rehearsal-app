@@ -28,7 +28,7 @@ export class SherpaAdapter extends Adapter {
     const ready = new Promise((resolve, reject) => {
       this.worker.onmessage = (e) => {
         const m = e.data;
-        if (m.type === 'progress') onProgress({ stage: m.stage, fraction: m.total ? m.loaded / m.total : null });
+        if (m.type === 'progress') onProgress({ stage: m.stage, fraction: m.total ? m.loaded / m.total : null, downloading: m.downloading });
         else if (m.type === 'ready') resolve(m);
         else if (m.type === 'error') {
           console.error('[sherpa-onnx worker]', m.error);

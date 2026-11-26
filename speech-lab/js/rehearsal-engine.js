@@ -12,7 +12,7 @@ import { Chunker, MODEL_RATE, openMicrophone } from './audio.js';
 import { autoCue, tokenize, findCue, TranscriptState } from './cue.js';
 
 const ADAPTERS = { sherpa: SherpaAdapter, vosk: VoskAdapter };
-const loaded = new Map(); // engine id -> Promise<adapter>, so a model loads once per page
+const loaded = new Map(); // A model loads once per page, even if rehearsal is restarted mid-download.
 
 let pinsPromise = null;
 const pins = () => (pinsPromise ||= fetch(new URL('../pins.json', import.meta.url)).then((r) => {
@@ -20,19 +20,32 @@ const pins = () => (pinsPromise ||= fetch(new URL('../pins.json', import.meta.ur
   return r.json();
 }));
 
-// Loads (once) and returns the engine. onProgress({stage, fraction|null}).
-export function loadEngine(id, onProgress = () => {}) {
+// Loads (once) and returns the engine. onProgress({stage, fraction, downloading}).
+export function loadEngine(id, onProgress) {
   if (!ADAPTERS[id]) return Promise.reject(new Error(`Unknown engine: ${id}`));
-  if (!loaded.has(id)) {
-    const p = pins().then(async (pinned) => {
+  let load = loaded.get(id);
+  if (!load) {
+    load = { progress: null, listeners: new Set() };
+    load.promise = pins().then(async (pinned) => {
       const adapter = new ADAPTERS[id](pinned);
-      await adapter.load(onProgress);
+      await adapter.load(progress => {
+        load.progress = progress;
+        for (const listener of load.listeners) listener(progress);
+      });
       return adapter;
+    }).catch(error => {
+      loaded.delete(id); // allow a retry after a failure
+      throw error;
+    }).finally(() => {
+      load.progress = null;
+      load.listeners.clear();
     });
-    p.catch(() => loaded.delete(id)); // allow a retry after a failure
-    loaded.set(id, p);
+    loaded.set(id, load);
   }
-  return loaded.get(id);
+  if (!onProgress) return load.promise;
+  load.listeners.add(onProgress);
+  if (load.progress) onProgress(load.progress);
+  return load.promise.finally(() => load.listeners.delete(onProgress));
 }
 
 // Number of words in a line, using the same normalisation as cue matching.

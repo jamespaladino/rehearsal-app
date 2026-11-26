@@ -86,16 +86,6 @@
   gap: 2px;
 }
 
-.sidebar-search {
-  margin-bottom: 8px;
-}
-
-.sidebar-search-empty {
-  margin: 0;
-  padding: 4px 8px;
-  font-size: 14px;
-}
-
 /* Script-row menus: placed against the window by placeMenu() in js/app.js so the
    scrolling list doesn't clip them. */
 .sidebar .script-menu {

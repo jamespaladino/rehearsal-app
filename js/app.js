@@ -85,7 +85,7 @@ function releaseMicrophone(){
 // asks for it again (no prompt once allowed). Unlike releaseMicrophone() it doesn't call stop()
 // again, and it leaves the mic alone while a recording or a run is still going.
 function releaseMicIfIdle(){
-  if(playing||(recorder&&recorder.state!=='inactive'))return;
+  if(playStart||playing||(recorder&&recorder.state!=='inactive'))return;
   if(stream){stream.getTracks().forEach(t=>t.stop());stream=null}
   updateMicState();
 }
@@ -622,7 +622,7 @@ function sidebarSection(name,label,rows){
   group.append(trigger,list);
   return group;
 }
-function scriptRow(s,pinnedIndex=null){
+function scriptRow(s,reorderable=false){
   const name=s.title||'Untitled script';
   const item=el('li');item.className='sidebar-menu-item';
   const open=el('button');open.type='button';open.className='sidebar-menu-button';
@@ -636,13 +636,7 @@ function scriptRow(s,pinnedIndex=null){
   menu.append(
     dropdownItem(isPinned(s)?'Unpin':'Pin',()=>{closeMenu();togglePin(s.id)},undefined,isPinned(s)?'pin-off':'pin'),
     dropdownItem('Rename',()=>{closeMenu();openModal('rename',s)},undefined,'pen'));
-  if(pinnedIndex!==null&&pinnedOrder.length>1){
-    item.dataset.pinnedScriptId=s.id;
-    const up=dropdownItem('Move up',()=>movePinnedScript(s.id,pinnedIndex-1),undefined,'arrow-up');
-    const down=dropdownItem('Move down',()=>movePinnedScript(s.id,pinnedIndex+1),undefined,'arrow-down');
-    up.disabled=pinnedIndex===0;down.disabled=pinnedIndex===pinnedOrder.length-1;
-    menu.append(dropdownSeparator(),up,down);
-  }
+  if(reorderable)item.dataset.pinnedScriptId=s.id;
   menu.append(dropdownSeparator(),dropdownItem('Delete',()=>{closeMenu();openModal('delete',s)},'destructive','trash'));
   menu.onclick=e=>e.stopPropagation();
   toggle.onclick=e=>{e.stopPropagation();const wasOpen=!menu.classList.contains('hidden');closeMenu();if(!wasOpen){menu.classList.remove('hidden');placeMenu(menu,toggle);toggle.setAttribute('aria-expanded','true');activeMenu=menu}};
@@ -650,29 +644,199 @@ function scriptRow(s,pinnedIndex=null){
   return item;
 }
 const scriptSearch=$('scriptSearch'),scriptSearchToggle=$('toggleScriptSearch');
+const searchDialog=$('scriptSearchDialog'),searchResults=$('scriptSearchResults'),searchStatus=$('scriptSearchStatus');
 const searchUsesMeta=/Mac|iPhone|iPad|iPod/.test(navigator.platform);
+let searchRequest=null,searchScripts=[],searchItems=[],searchIndex=-1;
+let searchHighlights=[],searchHighlightObserver=null;
 scriptSearchToggle.dataset.tooltipShortcut=searchUsesMeta?'⌘ K':'Ctrl K';
 scriptSearchToggle.setAttribute('aria-keyshortcuts',searchUsesMeta?'Meta+K':'Control+K');
-function setScriptSearch(open){
-  scriptSearch.classList.toggle('hidden',!open);
-  scriptSearchToggle.setAttribute('aria-expanded',String(open));
-  if(open){scriptSearch.focus();return}
-  scriptSearch.value='';
-  scriptSearchToggle.focus();
-  if(db)library();
+function resizeSearchDialog(){
+  if(searchDialog.open&&window.visualViewport){
+    searchDialog.style.setProperty('--command-viewport-height',window.visualViewport.height+'px');
+  }
 }
-scriptSearchToggle.onclick=()=>setScriptSearch(scriptSearch.classList.contains('hidden'));
-scriptSearch.oninput=()=>{if(db)library()};
+function highlightSearchItem(index,scroll=false){
+  if(index===searchIndex)return;
+  searchItems[searchIndex]?.setAttribute('aria-selected','false');
+  searchIndex=index;
+  const item=searchItems[index];
+  if(!item){scriptSearch.removeAttribute('aria-activedescendant');return}
+  item.setAttribute('aria-selected','true');
+  scriptSearch.setAttribute('aria-activedescendant',item.id);
+  if(scroll)item.scrollIntoView({block:'nearest'});
+}
+function scriptSearchPattern(query,flags){
+  return new RegExp(query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&').replace(/ /g,'\\s+'),flags);
+}
+function scriptSearchMatches(query){
+  if(!query)return searchScripts.map(s=>({s}));
+  const pattern=scriptSearchPattern(query,'iu');
+  const titles=searchScripts.filter(s=>pattern.test(s.title||'Untitled script')).map(s=>({s}));
+  const blocks=[];
+  for(const s of searchScripts){
+    s.turns.forEach((turn,blockIndex)=>{
+      const speaker=(turn.who==='me'?s.meCharacter:turn.who==='them'?turn.character:'')||'';
+      const body=(turn.text||'').replace(/\s+/g,' ').trim();
+      const cueMatch=pattern.exec(speaker);
+      const match=cueMatch||pattern.exec(body);
+      if(!match)return;
+      const prefix=speaker?speaker+' · ':'';
+      const text=prefix+body;
+      const offset=match.index+(cueMatch?0:prefix.length);
+      const start=Math.max(0,offset-24),end=offset+match[0].length;
+      const limit=Math.min(text.length,end+64);
+      const excerpt=[
+        (start?'…':'')+text.slice(start,offset),
+        match[0],
+        text.slice(end,limit)+(limit<text.length?'…':''),
+      ];
+      blocks.push({s,blockIndex,excerpt});
+    });
+  }
+  return [...titles,...blocks];
+}
+function clearSearchHighlight(){
+  searchHighlightObserver?.disconnect();searchHighlightObserver=null;
+  for(const highlight of searchHighlights)highlight.remove();
+  searchHighlights=[];
+}
+document.addEventListener('click',clearSearchHighlight,true);
+$('turns').addEventListener('input',clearSearchHighlight,true);
+
+function highlightSearchText(block,query){
+  clearSearchHighlight();
+  const pattern=scriptSearchPattern(query,'giu');
+  const layout=[];
+  for(const field of block.querySelectorAll('textarea, .character')){
+    const matches=[...field.value.matchAll(pattern)];
+    if(!matches.length)continue;
+    const highlight=el('div');
+    highlight.className='script-search-highlight';
+    highlight.setAttribute('aria-hidden','true');
+    const style=getComputedStyle(field);
+    for(const property of ['fontFamily','fontSize','fontWeight','fontStyle','lineHeight','letterSpacing',
+      'wordSpacing','textAlign','textTransform','direction','padding','overflowWrap','tabSize']){
+      highlight.style[property]=style[property];
+    }
+    highlight.style.whiteSpace=field.tagName==='INPUT'?'pre':style.whiteSpace;
+    let cursor=0;
+    for(const match of matches){
+      highlight.append(field.value.slice(cursor,match.index),el('mark',match[0]));
+      cursor=match.index+match[0].length;
+    }
+    highlight.append(field.value.slice(cursor));
+    field.before(highlight);
+    searchHighlights.push(highlight);
+    layout.push({field,highlight});
+  }
+  if(!layout.length)return null;
+  const position=()=>{
+    for(const {field,highlight} of layout){
+      const bounds=field.getBoundingClientRect();
+      const parent=field.parentElement.getBoundingClientRect();
+      highlight.style.left=bounds.left-parent.left+'px';
+      highlight.style.top=bounds.top-parent.top+'px';
+      highlight.style.width=bounds.width+'px';
+      highlight.style.height=bounds.height+'px';
+    }
+  };
+  position();
+  searchHighlightObserver=new ResizeObserver(position);
+  for(const {field} of layout)searchHighlightObserver.observe(field);
+  return searchHighlights[0].querySelector('mark');
+}
+async function openSearchMatch(s,blockIndex,query){
+  searchDialog.close();closeMobileSidebar();
+  await openScript(s);
+  if(script?.id!==s.id||blockIndex===undefined)return;
+  const block=$('turns').children[blockIndex];
+  if(!block)return;
+  block.tabIndex=-1;
+  block.focus({preventScroll:true});
+  const bounds=highlightSearchText(block,query)?.getClientRects()[0];
+  if(bounds){
+    const viewport=window.visualViewport;
+    const center=(viewport?.offsetTop??0)+(viewport?.height??innerHeight)/2;
+    window.scrollBy({top:bounds.top+bounds.height/2-center,behavior:'instant'});
+  }else block.scrollIntoView({block:'center',behavior:'instant'});
+}
+function renderSearchResults(message){
+  const query=scriptSearch.value.trim().replace(/\s+/g,' ');
+  const matches=scriptSearchMatches(query);
+  highlightSearchItem(-1);
+  searchItems=matches.map(({s,blockIndex,excerpt},index)=>{
+    const item=el('div');
+    item.id='script-search-result-'+index;item.className='command-item';item.dataset.slot='command-item';
+    item.setAttribute('role','option');item.setAttribute('aria-selected','false');
+    const text=el('span');text.className='command-item-text';
+    const title=el('span',s.title||'Untitled script');title.className='truncate';text.append(title);
+    if(excerpt){
+      const detail=el('span');detail.className='command-item-detail truncate';
+      detail.append(excerpt[0],el('mark',excerpt[1]),excerpt[2]);
+      text.append(detail);
+    }
+    item.append(icon(isPinned(s)?'pin':'file-text'),text);
+    item.onpointermove=e=>{if(e.pointerType!=='touch')highlightSearchItem(index)};
+    item.onmousedown=e=>e.preventDefault();
+    item.onclick=()=>openSearchMatch(s,blockIndex,query);
+    return item;
+  });
+  searchResults.replaceChildren(...searchItems);
+  if(searchItems.length)highlightSearchItem(0);
+  searchStatus.classList.toggle('hidden',!!searchItems.length);
+  searchStatus.textContent=searchItems.length?'':message||(query?'No matching scripts.':'No scripts yet.');
+}
+async function openScriptSearch(){
+  if(searchDialog.open)return;
+  closeMenu();closeBlockMenu();hideTip();
+  searchScripts=[];scriptSearch.value='';
+  const request=searchRequest={};
+  renderSearchResults('Loading scripts…');
+  searchDialog.showModal();resizeSearchDialog();
+  scriptSearchToggle.setAttribute('aria-expanded','true');
+  scriptSearch.setAttribute('aria-expanded','true');
+  const isCurrent=()=>searchDialog.open&&searchRequest===request;
+  try{
+    const scripts=(await getAll()).map(s=>s.id===script?.id?script:s).sort((a,b)=>(b.lastUsed||0)-(a.lastUsed||0));
+    if(!isCurrent())return;
+    searchScripts=[...orderPinned(scripts.filter(isPinned)),...scripts.filter(s=>!isPinned(s))];
+    searchRequest=null;renderSearchResults();
+  }catch(e){
+    if(!isCurrent())return;
+    searchRequest=null;renderSearchResults('Couldn’t load scripts.');
+  }
+}
+scriptSearchToggle.onclick=openScriptSearch;
+$('closeScriptSearch').onclick=()=>searchDialog.close();
+searchDialog.onclick=e=>{if(e.target===searchDialog)searchDialog.close()};
+searchDialog.onclose=()=>{
+  if(searchDialog.open)return;
+  searchRequest=null;
+  scriptSearchToggle.setAttribute('aria-expanded','false');
+  scriptSearch.setAttribute('aria-expanded','false');
+};
+searchDialog.onkeydown=e=>{
+  if(e.key==='Escape'){e.preventDefault();e.stopPropagation();searchDialog.close()}
+};
+window.visualViewport?.addEventListener('resize',resizeSearchDialog);
+scriptSearch.oninput=()=>renderSearchResults(searchRequest?'Loading scripts…':undefined);
 scriptSearch.onkeydown=e=>{
-  if(e.key!=='Escape')return;
-  e.preventDefault();e.stopPropagation();setScriptSearch(false);
+  if(e.isComposing||!searchItems.length)return;
+  if(e.key==='Enter'){
+    e.preventDefault();searchItems[searchIndex]?.click();return;
+  }
+  if(e.key!=='ArrowDown'&&e.key!=='ArrowUp')return;
+  e.preventDefault();
+  const step=e.key==='ArrowDown'?1:-1;
+  highlightSearchItem((searchIndex+step+searchItems.length)%searchItems.length,true);
 };
 document.addEventListener('keydown',e=>{
   const modifier=searchUsesMeta?e.metaKey&&!e.ctrlKey:e.ctrlKey&&!e.metaKey;
   if(e.defaultPrevented||e.isComposing||e.altKey||e.shiftKey||!modifier||e.key.toLowerCase()!=='k')return;
   if(modalAction||!$('playPane').classList.contains('hidden')||!$('importPane').classList.contains('hidden'))return;
   e.preventDefault();
-  setSidebar(true);setScriptSearch(true);
+  if(searchDialog.open)searchDialog.close();
+  else openScriptSearch();
 });
 async function library(){
   closeMenu();
@@ -681,22 +845,8 @@ async function library(){
   if(reorderDrag?.sidebar){refreshLibraryAfterDrag=true;return}
   $('emptyLibrary').classList.toggle('hidden',!!(script||currentPage||scripts.length));
   const pinned=orderPinned(scripts.filter(isPinned)),recents=scripts.filter(s=>!isPinned(s));
-  const query=scriptSearch.value.trim().toLowerCase();
-  if(query){
-    const matches=scripts.filter(s=>(s.title||'Untitled').toLowerCase().includes(query));
-    const results=el(matches.length?'ul':'p');
-    if(matches.length){
-      results.className='sidebar-menu';
-      results.append(...matches.map(s=>scriptRow(s)));
-    }else{
-      results.className='sidebar-search-empty muted';
-      results.textContent='No matching scripts.';
-    }
-    $('library').replaceChildren(results);
-    return;
-  }
   const sections=[];
-  if(pinned.length)sections.push(sidebarSection('pinned','Pinned',pinned.map(scriptRow)));
+  if(pinned.length)sections.push(sidebarSection('pinned','Pinned',pinned.map(s=>scriptRow(s,pinned.length>1))));
   if(recents.length)sections.push(sidebarSection('recents','Recents',recents.map(s=>scriptRow(s))));
   $('library').replaceChildren(...sections);
 }
@@ -936,7 +1086,7 @@ $('openTests').onclick=openTests;$('openSettings').onclick=openSettings;
 // pane like the teleprompter's): name the script, pick your character, review the blocks. Import
 // saves it and opens the script; exiting asks first. The importer is script-import/ (ES modules,
 // loaded on first use); review-ui.js renders the character list and the block table.
-let importUi=null,importReview=null,importBusy=false;
+let importUi=null,importReview=null,importBusy=false,importRead=null;
 async function loadImportUi(){
   if(!importUi)importUi=await import(new URL('script-import/review-ui.js',document.baseURI).href);
   return importUi;
@@ -950,20 +1100,30 @@ $('emptyNewScript').onclick=()=>$('newScript').click();
 $('emptyImportScript').onclick=()=>$('openImport').click();
 $('importFile').onchange=e=>{const file=e.target.files[0];if(file)startImport(file)};
 async function startImport(file){
+  const read=importRead={};
   if(isBlankNewScript(script))await returnToLibrary();
+  if(importRead!==read)return;
   openImportPane(file.name);
   $('importStatus').textContent=`Reading ${file.name}…`;
+  $('importReadState').classList.remove('hidden');
+  $('importProgress').classList.remove('hidden');
   try{
     const ui=await loadImportUi();
+    if(importRead!==read)return;
     importReview||=ui.createImportReview({characters:$('importCharacters'),selectId:'importMe',blocks:$('importBlocks'),filter:$('importFilter'),confidence:false,onChange:renderImportSummary});
     const result=await ui.readScriptFile(file);
-    if($('importPane').classList.contains('hidden'))return; // exited while reading
+    if(importRead!==read)return;
     $('importTitle').value=result.title||file.name.replace(/\.[^.]+$/,'');
-    $('importStatus').textContent='';$('importContent').classList.remove('hidden');
     importReview.load(result);
+    $('importReadState').classList.add('hidden');$('importContent').classList.remove('hidden');
     $('importConfirm').disabled=!result.blocks.length;
     $('importTitle').focus({preventScroll:true});
-  }catch(err){console.error(err);$('importStatus').textContent=`Couldn't read ${file.name}: ${err.message}`}
+  }catch(err){
+    if(importRead!==read)return;
+    console.error(err);$('importStatus').textContent=`Couldn't read ${file.name}: ${err.message}`;
+  }finally{
+    if(importRead===read){importRead=null;$('importProgress').classList.add('hidden')}
+  }
 }
 function renderImportSummary(review){
   const r=review.result;
@@ -984,6 +1144,7 @@ function openImportPane(fileName){
   $('cancelImport').focus({preventScroll:true});
 }
 function closeImportPane(){
+  importRead=null;
   $('importPane').classList.add('hidden');
   if($('playPane').classList.contains('hidden'))document.body.style.overflow='';
 }
@@ -1424,6 +1585,7 @@ function preserveTypedPunctuation(event,previous){
 }
 function render(){
   normalizeCharacters();
+  clearSearchHighlight();
   const root=$('turns');
   const focused=mobileEditorField?.isConnected?mobileEditorField:null;
   const focusedBlock=focused?.closest('.turn');
@@ -1662,28 +1824,35 @@ async function recordLine(i,button){
 }
 function status(s){$('status').textContent=s}
 // Speech-engine line detection for the current play session (null = voice activity).
-let engineSession=null,engineModule=null,engineListen=null;
+let playStart=null,engineSession=null,engineModule=null,engineListen=null;
 const PAUSE_MARKERS=/\(\s*(?:then|beat)\s*\)/gi;
 const spokenText=text=>(text||'').replace(PAUSE_MARKERS,' ');
 const lastWords=(text,n=8)=>{const w=text.trim().split(/\s+/);return (w.length>n?'… ':'')+w.slice(-n).join(' ')};
 const detectionLabel=id=>({vosk:'Vosk',sherpa:'Sherpa-ONNX'}[id]||id);
 // Loads the chosen engine and attaches it to the microphone. Falls back to voice activity on failure.
-async function startEngineSession(mic){
-  const id=lineDetection();
-  if(id==='vad')return;
+async function startEngineSession(mic,id,isCurrent){
+  if(id==='vad')return null;
   const name=detectionLabel(id);
   try{
-    status(`Loading ${name}…`);
     // import() resolves against this script (js/), so build the URL from the page instead.
     engineModule=await import(new URL('speech-lab/js/rehearsal-engine.js',document.baseURI).href);
-    await engineModule.loadEngine(id,({stage,fraction})=>status(`${name}: ${stage}${fraction==null?'…':` ${Math.round(fraction*100)}%`}`));
-    engineSession=await engineModule.startSession(id,mic);
+    if(!isCurrent())return null;
+    await engineModule.loadEngine(id,({stage,fraction,downloading})=>{
+      if(!isCurrent())return;
+      setTransport(downloading?'loading':'idle');
+      status(`${name}: ${stage}${fraction==null?'…':` ${Math.round(fraction*100)}%`}`);
+    });
+    if(!isCurrent())return null;
+    setTransport('idle');
+    return await engineModule.startSession(id,mic);
   }catch(e){
+    if(!isCurrent())return null;
+    setTransport('idle');
     console.error('Speech engine unavailable',e);
-    engineSession=null;
     const hint=location.protocol==='file:'?'Open the app through python3 speech-lab/serve.py.':'Run python3 speech-lab/setup.py.';
     status(`${name} unavailable — using voice activity. ${hint}`);
     await new Promise(r=>setTimeout(r,2500));
+    return null;
   }
 }
 function stopEngineSession(){
@@ -1791,13 +1960,41 @@ function display(instant=false){
   const playable=script.turns.slice(sceneRange.start,sceneRange.end).filter(isPlayable);
   $('progress').textContent=isPlayable(t)?`Line ${playable.indexOf(t)+1} of ${playable.length}`:'';
 }
-// Show Start when idle and Stop while playing, keeping keyboard focus on whichever is visible.
-function setTransport(isPlaying){
-  const hadFocus=document.activeElement===$('start')||document.activeElement===$('stop');
-  $('start').classList.toggle('hidden',isPlaying);$('stop').classList.toggle('hidden',!isPlaying);
-  if(hadFocus)$(isPlaying?'stop':'start').focus({preventScroll:true});
+// Keep keyboard focus on the visible transport button as the state changes.
+const transportButtons={idle:$('start'),loading:$('playLoading'),playing:$('stop')};
+function setTransport(state){
+  const buttons=Object.values(transportButtons),current=transportButtons[state];
+  if(!current.classList.contains('hidden'))return;
+  const hadFocus=buttons.includes(document.activeElement);
+  for(const button of buttons)button.classList.toggle('hidden',button!==current);
+  if(hadFocus)current.focus({preventScroll:true});
 }
-$('start').onclick=async()=>{if(!script.turns.slice(sceneRange.start,sceneRange.end).some(isPlayable))return alert('This scene has no lines yet');try{const mic=await getMicrophone();audioCtx=new AudioContext();await audioCtx.resume();let source=audioCtx.createMediaStreamSource(mic);analyser=audioCtx.createAnalyser();analyser.fftSize=2048;source.connect(analyser);await startEngineSession(mic);if(!audioCtx){stopEngineSession();return}playing=true;idx=firstPlayable(sceneRange.start);setTransport(true);next()}catch(e){alert('Microphone unavailable: '+e.message);stop()}};$('stop').onclick=()=>{stop();releaseMicIfIdle()};
+$('start').onclick=async()=>{
+  if(!script||playStart||playing)return;
+  if(!script.turns.slice(sceneRange.start,sceneRange.end).some(isPlayable))return alert('This scene has no lines yet');
+  const engine=lineDetection();
+  const attempt=playStart={};
+  const isCurrent=()=>playStart===attempt;
+  let context;
+  try{
+    const mic=await getMicrophone();
+    if(!isCurrent()){releaseMicIfIdle();return}
+    context=audioCtx=new AudioContext();
+    await context.resume();
+    if(!isCurrent())return;
+    const source=context.createMediaStreamSource(mic);
+    analyser=context.createAnalyser();analyser.fftSize=2048;source.connect(analyser);
+    const session=await startEngineSession(mic,engine,isCurrent);
+    if(!isCurrent()){session?.close();return}
+    engineSession=session;playStart=null;playing=true;
+    idx=firstPlayable(sceneRange.start);setTransport('playing');next();
+  }catch(e){
+    if(isCurrent()||context&&audioCtx===context){
+      stop();releaseMicIfIdle();alert('Could not start rehearsal: '+e.message);
+    }
+  }
+};
+$('stop').onclick=()=>{stop();releaseMicIfIdle()};
 function next(){if(!playing)return;cancelAnimationFrame(raf);if(engineListen){engineListen.cancel();engineListen=null}idx=firstPlayable(idx);if(idx>=sceneRange.end){status('Scene complete');stop(true);releaseMicIfIdle();return}display();let t=script.turns[idx];if(t.who==='beat'){let seconds=beatSeconds(t);status(`Beat — ${seconds} second${seconds===1?'':'s'}…`);beatTimer=setTimeout(()=>{beatTimer=null;idx++;next()},seconds*1000);return}if(t.who==='them'){status('Playing reader…');if(!t.audio){status('Reader recording missing — skipping');idx++;setTimeout(next,250);return}playReaderLine(t);return}else if(useEngineFor(t)){listenWithEngine(t)}else{partsNeeded=lineParts(t.text);partsHeard=0;status(partsNeeded>1?`Listening for your line… (part 1 of ${partsNeeded})`:'Listening for your line…');heard=false;speechAt=0;lastVoice=0;listen()}}
 // Plays one reader line. Back-to-back reader lines use the script's Reader spacing:
 // a pause after this line ends, or (negative) starting the next line before this one ends.
@@ -1847,4 +2044,4 @@ function listen(){if(!playing)return;let a=new Float32Array(analyser.fftSize);an
   if(partsHeard<partsNeeded){heard=false;status(`Keep going… (part ${partsHeard+1} of ${partsNeeded})`)}
   else{idx++;next();return}
 }}raf=requestAnimationFrame(listen)}
-function stop(done=false){playing=false;cancelAnimationFrame(raf);stopEngineSession();if(beatTimer!==null){clearTimeout(beatTimer);beatTimer=null}if(gapTimer!==null){clearTimeout(gapTimer);gapTimer=null}playingAudios.forEach(a=>a.pause());playingAudios.clear();activeAudio=null;decodedReaderTakes.clear();/* Keep microphone permission/stream alive until explicitly released. */if(audioCtx){audioCtx.close();audioCtx=null}setTransport(false);if(!done&&$('status'))status('Stopped')}
+function stop(done=false){const wasStarting=!!playStart;playStart=null;playing=false;cancelAnimationFrame(raf);stopEngineSession();if(beatTimer!==null){clearTimeout(beatTimer);beatTimer=null}if(gapTimer!==null){clearTimeout(gapTimer);gapTimer=null}playingAudios.forEach(a=>a.pause());playingAudios.clear();activeAudio=null;decodedReaderTakes.clear();/* Keep microphone permission/stream alive until explicitly released. */if(audioCtx){audioCtx.close();audioCtx=null}setTransport('idle');if(wasStarting)releaseMicIfIdle();if(!done&&$('status'))status('Stopped')}

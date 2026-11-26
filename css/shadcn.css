@@ -18,6 +18,8 @@
  *   NativeSelect      https://ui.shadcn.com/r/styles/base-nova/native-select.json
  *   Field             https://ui.shadcn.com/r/styles/base-nova/field.json
  *   Label             https://ui.shadcn.com/r/styles/base-nova/label.json
+ *   Progress          https://ui.shadcn.com/r/styles/base-nova/progress.json
+ *   Command           https://ui.shadcn.com/docs/components/base/command
  *
  * Tailwind's hover: variant only applies on devices that can hover, so hover rules
  * below are wrapped in @media (hover: hover) the same way.
@@ -1259,6 +1261,141 @@ button.sidebar-group-label:focus-visible {
   user-select: none;
 }
 
+/* ---- Command ----------------------------------------------------------- */
+
+.command-dialog {
+  --command-top: min(15vh, 96px);
+  position: fixed;
+  inset: 0 0 auto;
+  box-sizing: border-box;
+  width: min(480px, calc(100% - 32px));
+  max-height: min(380px, calc(var(--command-viewport-height, 100dvh) - var(--command-top) - 16px));
+  margin: var(--command-top) auto 0;
+  padding: 0;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  background: var(--popover);
+  color: var(--popover-foreground);
+  box-shadow: 0 10px 15px -3px rgb(0 0 0 / 10%), 0 4px 6px -4px rgb(0 0 0 / 10%);
+}
+
+.command-dialog[open] {
+  display: flex;
+  flex-direction: column;
+}
+
+.command-dialog::backdrop {
+  background: rgb(0 0 0 / 10%);
+  backdrop-filter: blur(4px);
+}
+
+.command-input-row {
+  display: flex;
+  flex: none;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px 6px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.command-input-row > .lucide {
+  color: var(--muted-foreground);
+}
+
+.command-input {
+  flex: 1;
+  min-width: 0;
+  padding: 4px 0;
+  border: 0;
+  background: transparent;
+}
+
+.command-input:focus-visible {
+  box-shadow: none;
+}
+
+.command-list {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
+}
+
+.command-list:empty {
+  padding: 0;
+}
+
+.command-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+.command-item[aria-selected="true"] {
+  background: var(--accent);
+  color: var(--accent-foreground);
+}
+
+.command-item .lucide {
+  color: var(--muted-foreground);
+}
+
+.command-item-text {
+  display: grid;
+  min-width: 0;
+}
+
+.command-item-detail {
+  color: var(--muted-foreground);
+  font-size: 12px;
+}
+
+.command-item-detail mark {
+  background: transparent;
+  color: var(--foreground);
+  font-weight: 600;
+}
+
+.command-empty {
+  margin: 0;
+  padding: 24px 8px;
+  text-align: center;
+  color: var(--muted-foreground);
+  font-size: 14px;
+}
+
+/* ---- Progress ---------------------------------------------------------- */
+
+.progress-track {
+  height: 6px;
+  overflow: hidden;
+  border-radius: 9999px;
+  background: var(--muted);
+}
+
+.progress-indicator {
+  width: 35%;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--primary);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .progress-indicator {
+    animation: progress-indeterminate 1.4s ease-in-out infinite;
+  }
+}
+
+@keyframes progress-indeterminate {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(286%); }
+}
+
 /* ======================================================================== */
 /* NativeSelect: <div class="native-select" [data-size="sm"]>                */
 /*   <select>…</select><svg class="native-select-icon" (chevron-down)></div> */
@@ -1284,7 +1421,7 @@ button.sidebar-group-label:focus-visible {
   background: transparent;
   color: var(--foreground);
   font: inherit;
-  font-size: 14px;
+  font-size: var(--mobile-input-font-size, 14px);
   outline: none;
   appearance: none;
   user-select: none;

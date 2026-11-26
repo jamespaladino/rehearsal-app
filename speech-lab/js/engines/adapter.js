@@ -3,7 +3,7 @@
 //
 //   id, label                       identifiers
 //   info                            static facts: runtime/model names, versions, licences
-//   async load(onProgress)          download + initialise. onProgress({stage, fraction|null}).
+//   async load(onProgress)          download + initialise. onProgress({stage, fraction, downloading?}).
 //                                   Resolves to LoadStats { loadMs, modelBytes, runtimeBytes }.
 //   async reset()                   start a fresh utterance stream
 //   feed(samples)                   push 16 kHz mono Float32 [-1, 1]; must not block

@@ -48,7 +48,7 @@ export class VoskAdapter extends Adapter {
       const { done, value } = await reader.read();
       if (done) break;
       loaded += value.length;
-      onProgress({ stage: 'Downloading model', fraction: total ? loaded / total : null });
+      onProgress({ stage: 'Downloading model', fraction: total ? loaded / total : null, downloading: true });
     }
 
     onProgress({ stage: 'Unpacking model and initialising (Vosk worker)', fraction: null });

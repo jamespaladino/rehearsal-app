@@ -35,6 +35,25 @@
   line-height: 1.35;
 }
 
+.screenplay .turn[tabindex="-1"]:focus {
+  outline: none;
+}
+
+.script-search-highlight {
+  position: absolute;
+  z-index: 0;
+  box-sizing: border-box;
+  overflow: hidden;
+  color: transparent;
+  pointer-events: none;
+}
+
+.script-search-highlight mark {
+  border-radius: 2px;
+  background: color-mix(in oklch, var(--ring) 50%, transparent);
+  color: transparent;
+}
+
 /* Transparent hit area that connects a block to its margin and record controls. */
 .screenplay .turn::before {
   content: "";

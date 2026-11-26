@@ -110,7 +110,7 @@ export function createImportReview(els) {
     if (els.selectId) select.id = els.selectId;
     if (els.labelledBy) select.setAttribute('aria-labelledby', els.labelledBy);
     for (const c of result.characters) {
-      const o = el('option', `${c.name} · ${c.speeches} speech${c.speeches === 1 ? '' : 'es'}`);
+      const o = el('option', c.name);
       o.value = c.name;
       o.selected = c.name === me;
       select.append(o);

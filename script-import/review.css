@@ -91,7 +91,7 @@
 }
 
 .import-blocks .type select {
-  font-size: 13px;
+  font-size: var(--mobile-input-font-size, 13px);
 }
 
 .import-blocks .actions {

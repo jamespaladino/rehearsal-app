@@ -54,7 +54,7 @@ async function fetchWithProgress(urls) {
       parts.push(value);
       n += value.length;
       loaded += value.length;
-      self.postMessage({ type: 'progress', loaded, total, stage: 'Downloading model' });
+      self.postMessage({ type: 'progress', loaded, total, stage: 'Downloading model', downloading: true });
     }
     const buf = new Uint8Array(n);
     let o = 0;
