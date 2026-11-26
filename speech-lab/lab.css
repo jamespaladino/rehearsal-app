@@ -387,6 +387,20 @@ details summary {
 
 /* ---- Test full script (modal) ---- */
 
+:root[data-embed] #runOverlay {
+  top: var(--test-visible-top, 0px);
+  bottom: auto;
+  height: var(--test-visible-height, 100vh);
+}
+
+:root[data-embed] .run-dialog {
+  height: min(860px, max(0px, calc(var(--test-visible-height, 100vh) - 32px)));
+}
+
+:root[data-embed] .run-script {
+  padding-bottom: calc(var(--test-visible-height, 100vh) * .4);
+}
+
 .run-dialog {
   display: flex;
   flex-direction: column;

@@ -643,6 +643,7 @@ async function library(){
   closeMenu();
   // Load first, then replace the list in one step, so overlapping calls can't add duplicate rows.
   const scripts=(await getAll()).sort((a,b)=>(b.lastUsed||0)-(a.lastUsed||0));
+  $('emptyLibrary').classList.toggle('hidden',!!(script||currentPage||scripts.length));
   const query=scriptSearch.value.trim().toLowerCase();
   if(query){
     const matches=scripts.filter(s=>(s.title||'Untitled').toLowerCase().includes(query));
@@ -777,9 +778,42 @@ const PAGES={
   tests:{view:'testsView',row:'openTests',title:'Tests'},
   settings:{view:'settingsView',row:'openSettings',title:'Settings'},
 };
+let currentPage=null;
 const testTabs=[...$('testsTabs').querySelectorAll('[role="tab"]')];
 let activeTestTab=testTabs[0];
+function positionAudioTestDialog(){
+  const frame=$('testsFrame');
+  if(!frame.getAttribute('src')||!frame.getClientRects().length)return;
+  const bounds=frame.getBoundingClientRect();
+  const viewport=window.visualViewport;
+  const top=Math.max(bounds.top,$('testsTabs').getBoundingClientRect().bottom,viewport?.offsetTop??0);
+  const bottom=Math.min(bounds.bottom,viewport?viewport.offsetTop+viewport.height:innerHeight);
+  const root=frame.contentDocument?.documentElement;
+  root?.style.setProperty('--test-visible-top',Math.max(0,top-bounds.top)+'px');
+  root?.style.setProperty('--test-visible-height',Math.max(0,bottom-top)+'px');
+}
+for(const frame of $('testsView').querySelectorAll('iframe[data-src]')){
+  let observer;
+  frame.addEventListener('load',()=>{
+    observer?.disconnect();
+    const main=frame.contentDocument?.querySelector('main');
+    if(!main)return;
+    const fit=()=>{
+      const height=Math.ceil(main.getBoundingClientRect().bottom+frame.contentWindow.scrollY);
+      if(height>0)frame.style.height=height+'px';
+      if(frame===$('testsFrame'))positionAudioTestDialog();
+    };
+    observer=new ResizeObserver(fit);
+    observer.observe(main);
+    fit();
+  });
+}
+window.addEventListener('scroll',positionAudioTestDialog,{passive:true});
+window.addEventListener('resize',positionAudioTestDialog);
+window.visualViewport?.addEventListener('resize',positionAudioTestDialog);
+window.visualViewport?.addEventListener('scroll',positionAudioTestDialog);
 function selectTestTab(selected){
+  const changed=activeTestTab!==selected;
   activeTestTab=selected;
   for(const tab of testTabs){
     const on=tab===selected;
@@ -801,6 +835,8 @@ function selectTestTab(selected){
     // Keep the frame mounted after its first use so switching tabs preserves test state.
     frame.src=frame.dataset.src;
   }
+  if(changed)window.scrollTo({top:0,behavior:'instant'});
+  if(frame===$('testsFrame'))positionAudioTestDialog();
 }
 for(const tab of testTabs)tab.onclick=()=>selectTestTab(tab);
 $('testsTabs').onkeydown=e=>{
@@ -820,6 +856,8 @@ window.addEventListener('message',e=>{
   if(db&&e.origin===location.origin&&e.source===$('importTestsFrame').contentWindow&&e.data==='test-script-saved')library();
 });
 function showView(name){
+  currentPage=name;
+  $('emptyLibrary').classList.add('hidden');
   for(const [id,page] of Object.entries(PAGES)){
     const on=id===name;
     $(page.view).classList.toggle('hidden',!on);
@@ -871,6 +909,8 @@ $('openImport').onclick=()=>{
   if(location.protocol==='file:'){alert('Importing needs a local server. From the repository root, run python3 speech-lab/serve.py, then open http://localhost:8000/');return}
   $('importFile').value='';$('importFile').click();
 };
+$('emptyNewScript').onclick=()=>$('newScript').click();
+$('emptyImportScript').onclick=()=>$('openImport').click();
 $('importFile').onchange=e=>{const file=e.target.files[0];if(file)startImport(file)};
 async function startImport(file){
   if(isBlankNewScript(script))await returnToLibrary();
