@@ -370,17 +370,18 @@
 
 .empty-library {
   display: grid;
-  min-height: calc(65vh - var(--header-height));
-  min-height: calc(65svh - var(--header-height));
+  min-height: calc(100vh - 2 * var(--header-height));
+  min-height: calc(100svh - 2 * var(--header-height));
   place-content: center;
   justify-items: center;
-  gap: 16px;
-  text-align: center;
 }
 
 .empty-library .row {
-  justify-content: center;
-  flex-wrap: wrap;
+  flex-direction: column;
+}
+
+.empty-library .btn {
+  width: min(240px, 80vw);
 }
 
 .editor {
