@@ -41,13 +41,18 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&shell.classList.con
 // Theme: 'system' (follows the device), 'light' or 'dark', chosen in Settings.
 const systemDark=window.matchMedia('(prefers-color-scheme: dark)');
 const THEMES=[{value:'system',label:'System',icon:'monitor'},{value:'light',label:'Light',icon:'sun'},{value:'dark',label:'Dark',icon:'moon'}];
+const nativeTheme=$('nativeTheme');
+nativeTheme.append(...THEMES.map(theme=>new Option(theme.label,theme.value)));
 let themeChoice='light';try{themeChoice=localStorage.getItem('rehearsal-theme')||'light'}catch(e){}
 function applyTheme(){
   const dark=themeChoice==='dark'||(themeChoice==='system'&&systemDark.matches);
   document.documentElement.dataset.theme=dark?'dark':'light';
-  $('themeValue').textContent=(THEMES.find(t=>t.value===themeChoice)||THEMES[1]).label;
+  const theme=THEMES.find(t=>t.value===themeChoice)||THEMES[1];
+  $('themeValue').textContent=theme.label;
+  nativeTheme.value=theme.value;
 }
 function setTheme(choice){themeChoice=choice;applyTheme();try{localStorage.setItem('rehearsal-theme',choice)}catch(e){}}
+nativeTheme.onchange=()=>setTheme(nativeTheme.value);
 applyTheme();
 systemDark.addEventListener('change',()=>{if(themeChoice==='system')applyTheme()});
 
@@ -409,17 +414,18 @@ function findReaderTrim(buffer){
 // yours or a reader's comes from its character name, so there's one option for both.
 const isLine=t=>t.who==='me'||t.who==='them';
 const BLOCK_TYPES=[
-  {label:'Line',icon:'text-align-start',is:isLine,apply:t=>{if(!isLine(t)){t.who='them';t.character='';t.audio=null}}},
-  {label:'Beat',icon:'gap-vertical',is:t=>t.who==='beat',apply:t=>{t.who='beat';t.duration??=2}},
-  {label:'Scene heading',icon:'clapperboard',is:t=>t.who==='heading',apply:t=>{t.who='heading';t.text=(t.text||'').toUpperCase()}},
-  {label:'Action',icon:'pilcrow',is:t=>t.who==='action',apply:t=>{t.who='action'}},
+  {key:'line',label:'Line',icon:'text-align-start',is:isLine,apply:t=>{if(!isLine(t)){t.who='them';t.character='';t.audio=null}}},
+  {key:'beat',label:'Beat',icon:'gap-vertical',is:t=>t.who==='beat',apply:t=>{t.who='beat';t.duration??=2}},
+  {key:'heading',label:'Scene heading',icon:'clapperboard',is:t=>t.who==='heading',apply:t=>{t.who='heading';t.text=(t.text||'').toUpperCase()}},
+  {key:'action',label:'Action',icon:'pilcrow',is:t=>t.who==='action',apply:t=>{t.who='action'}},
 ];
+function changeBlockType(turn,type,onChange){
+  if(type.is(turn))return;
+  rememberScriptEdit();type.apply(turn);onChange(isLine(turn));
+}
 // onChange(becameLine): becameLine is true when a non-dialogue block was turned into a line.
 function turnIntoOptions(t,onChange){
-  return BLOCK_TYPES.map(type=>({label:type.label,icon:type.icon,checked:type.is(t),onSelect:()=>{
-    if(type.is(t))return;
-    rememberScriptEdit();type.apply(t);onChange(isLine(t));
-  }}));
+  return BLOCK_TYPES.map(type=>({label:type.label,icon:type.icon,checked:type.is(t),onSelect:()=>changeBlockType(t,type,onChange)}));
 }
 // Tooltips: any element with data-tooltip shows one on mouse hover or keyboard focus.
 const tooltip=el('div');tooltip.className='tooltip';tooltip.setAttribute('aria-hidden','true');document.body.append(tooltip);
@@ -1035,6 +1041,13 @@ function addTextBlock(index,who){
   render();queueSave(true);
   focusBlockText(index);
 }
+function insertBlock(index,who){
+  if(who==='line'){addDialogueLine(index);return}
+  if(who!=='beat'){addTextBlock(index,who);return}
+  rememberScriptEdit();script.turns.splice(index,0,{who:'beat',text:'',duration:2});
+  render();queueSave(true);
+  if(mobileQuery.matches)$('turns').children[index]?.querySelector('.beat-text')?.focus({preventScroll:true});
+}
 // Script typing: Tab / Shift+Tab move between text fields (character, dialogue, scene
 // heading, action) and skip the block buttons. Outside the script, the usual tab order applies.
 const SCRIPT_FIELDS='.character, .dialogue, .block-text';
@@ -1056,7 +1069,6 @@ function syncMobileEditBar(){
   const visible=!!(mobileQuery.matches&&script&&!$('editor').classList.contains('hidden')&&
     !$('workspace').classList.contains('hidden')&&(block||!script.turns.length)&&
     $('playPane').classList.contains('hidden')&&$('importPane').classList.contains('hidden'));
-  if(openBlockMenu?.mobile&&(!visible||block!==openBlockMenu.origin))closeBlockMenu();
   mobileEditorField=visible?field:null;
   mobileEditBar.classList.toggle('hidden',!visible);
   const history=$('scriptHistory');
@@ -1066,7 +1078,7 @@ function syncMobileEditBar(){
     $('mobileDeleteBlock').disabled=!block;
     $('mobileMoveUp').disabled=!block?.previousElementSibling;
     $('mobileMoveDown').disabled=!block?.nextElementSibling;
-    $('mobileBeatDuration').classList.toggle('hidden',block?.dataset.who!=='beat');
+    $('mobileBeatPicker').classList.toggle('hidden',block?.dataset.who!=='beat');
     positionMobileEditBar();
   }else if(history.parentElement===mobileEditBar)$('playButton').before(history);
 }
@@ -1082,34 +1094,41 @@ $('turns').addEventListener('mousedown',e=>{
 function activeMobileBlock(){
   return renderedBlocks.get(mobileEditorField?.closest('.turn'));
 }
-$('mobileInsert').onclick=e=>{
+const mobileInsert=$('mobileInsert'),mobileTurnInto=$('mobileTurnInto'),mobileBeatDuration=$('mobileBeatDuration');
+for(const select of [mobileInsert,mobileTurnInto])select.append(...BLOCK_TYPES.map(t=>new Option(t.label,t.key)));
+mobileBeatDuration.append(...BEAT_DURATIONS.map(n=>new Option(secondsLabel(n),String(n))));
+function onMobilePick(select,choose){
+  select.onchange=()=>{
+    const value=select.value;
+    select.value='';
+    if(value)choose(value);
+  };
+}
+onMobilePick(mobileInsert,who=>{
   const block=activeMobileBlock();
-  if(block)block.openInsert(e.currentTarget);
-  else if(script&&!script.turns.length)addTextBlock(0,'heading');
-};
-$('mobileTurnInto').onclick=e=>activeMobileBlock()?.openTurnInto(e.currentTarget);
-$('mobileBeatDuration').onclick=e=>activeMobileBlock()?.openBeatDuration(e.currentTarget);
+  if(block)block.insert(who);
+  else if(script&&!script.turns.length)insertBlock(0,who);
+});
+onMobilePick(mobileTurnInto,key=>activeMobileBlock()?.turnInto(BLOCK_TYPES.find(t=>t.key===key)));
+onMobilePick(mobileBeatDuration,value=>activeMobileBlock()?.setDuration(Number(value)));
 $('mobileMoveUp').onclick=()=>activeMobileBlock()?.move(-1);
 $('mobileMoveDown').onclick=()=>activeMobileBlock()?.move(1);
 $('mobileDeleteBlock').onclick=()=>activeMobileBlock()?.remove();
 function closeBlockMenu(){
   if(!openBlockMenu)return;
-  const {menu,origin,trigger}=openBlockMenu;
+  const {menu,trigger}=openBlockMenu;
   menu.classList.add('hidden');
-  if(menu.parentElement!==origin)origin.append(menu);
   trigger.setAttribute('aria-expanded','false');
   openBlockMenu=null;
 }
-function showBlockMenu(menu,origin,trigger,fill){
+function showBlockMenu(menu,trigger,fill){
   const wasOpen=openBlockMenu?.trigger===trigger;
   closeBlockMenu();
   if(wasOpen)return;
   menu.replaceChildren();fill();
-  const mobile=mobileEditBar.contains(trigger);
-  if(mobile)mobileEditBar.append(menu);
   menu.classList.remove('hidden');
   trigger.setAttribute('aria-expanded','true');
-  openBlockMenu={menu,origin,trigger,mobile};
+  openBlockMenu={menu,trigger};
 }
 function tabbableElements(){
   return [...document.querySelectorAll('button, input, textarea, select, a[href], [tabindex]')].filter(el=>
@@ -1160,6 +1179,7 @@ $('turns').addEventListener('keydown',e=>{
 // Re-render the script without losing the field the user just moved into (e.g. clicking
 // from a character name into dialogue): find the same field in the same block afterwards.
 function renderKeepingFocus(target){
+  if(target?.matches?.('.mobile-picker select')){render({keepPickerFocus:true});return}
   const turn=target?.closest?.('#turns .turn');
   const kind=turn&&['.character','.dialogue','.block-text'].find(k=>target.matches(k));
   const key=kind&&{i:[...$('turns').children].indexOf(turn),kind,start:target.selectionStart,end:target.selectionEnd};
@@ -1202,7 +1222,7 @@ function splitCue(value){
   while((m=name.match(/\s*\(([^()]*)\)\s*$/))){if(m[1].trim())extensions.unshift(m[1].trim());name=name.slice(0,m.index).trim()}
   return {name,extensions};
 }
-function render(){
+function render({keepPickerFocus=false}={}){
   normalizeCharacters();
   const root=$('turns');
   const focused=mobileEditorField?.isConnected?mobileEditorField:null;
@@ -1219,25 +1239,12 @@ function render(){
     const dots=el('button');dots.type='button';dots.className='btn btn-ghost btn-icon';dots.setAttribute('aria-haspopup','true');dots.append(icon('grip-vertical'));setTip(dots,'Options');dots.setAttribute('aria-label','Options');dots.setAttribute('aria-expanded','false');
     const menu=el('div');menu.className='dropdown-menu block-menu hidden';
     const menuItem=(name,fn,variant,iconName)=>{const b=dropdownItem(name,fn,variant,iconName);menu.append(b);return b};
-    const insert=(who)=>{if(who==='line'){addDialogueLine(i+1);return}if(who==='heading'||who==='action'){addTextBlock(i+1,who);return}rememberScriptEdit();script.turns.splice(i+1,0,{who:'beat',text:'',duration:2});render();queueSave(true)};
-    const openInsert=trigger=>showBlockMenu(menu,div,trigger,()=>{
-      if(trigger===$('mobileInsert'))menu.append(menuLabel('Insert'));
-      menuItem('Line',()=>insert('line'),undefined,'text-align-start');
-      menuItem('Beat',()=>insert('beat'),undefined,'gap-vertical');
-      menuItem('Scene heading',()=>insert('heading'),undefined,'clapperboard');
-      menuItem('Action',()=>insert('action'),undefined,'pilcrow');
-    });
+    const insert=who=>insertBlock(i+1,who);
     const onTypeChange=becameLine=>{render();queueSave(true);if(becameLine)focusCharacter(i)};
-    const openTurnInto=trigger=>showBlockMenu(menu,div,trigger,()=>{
-      menu.append(menuLabel('Turn into'),...turnIntoOptions(t,onTypeChange).map(dropdownRadioItem));
-    });
-    const durationOptions=()=>beatDurationOptions(t,n=>{
+    const setDuration=n=>{
       if(n===beatSeconds(t))return;
       rememberScriptEdit();t.duration=n;render();queueSave(true);
-    });
-    const openBeatDuration=trigger=>showBlockMenu(menu,div,trigger,()=>{
-      menu.append(...durationOptions().map(dropdownRadioItem));
-    });
+    };
     const move=delta=>{
       const next=i+delta;
       if(next<0||next>=script.turns.length)return;
@@ -1246,10 +1253,15 @@ function render(){
       render();queueSave(true);
     };
     const remove=()=>{rememberScriptEdit();script.turns.splice(i,1);render();queueSave(true)};
-    renderedBlocks.set(div,{turn:t,openInsert,openTurnInto,openBeatDuration,move,remove});
-    add.onclick=e=>{e.stopPropagation();openInsert(add)};
-    dots.onclick=e=>{e.stopPropagation();showBlockMenu(menu,div,dots,()=>{
-      if(t.who==='beat')menu.append(dropdownSubmenu('timer',secondsLabel(beatSeconds(t)),durationOptions()),dropdownSeparator());
+    renderedBlocks.set(div,{turn:t,insert,turnInto:type=>changeBlockType(t,type,onTypeChange),setDuration,move,remove});
+    add.onclick=e=>{e.stopPropagation();showBlockMenu(menu,add,()=>{
+      menuItem('Line',()=>insert('line'),undefined,'text-align-start');
+      menuItem('Beat',()=>insert('beat'),undefined,'gap-vertical');
+      menuItem('Scene heading',()=>insert('heading'),undefined,'clapperboard');
+      menuItem('Action',()=>insert('action'),undefined,'pilcrow');
+    })};
+    dots.onclick=e=>{e.stopPropagation();showBlockMenu(menu,dots,()=>{
+      if(t.who==='beat')menu.append(dropdownSubmenu('timer',secondsLabel(beatSeconds(t)),beatDurationOptions(t,setDuration)),dropdownSeparator());
       menu.append(dropdownSubmenu('repeat','Turn into',turnIntoOptions(t,onTypeChange)),dropdownSeparator());
       const up=menuItem('Move up',()=>move(-1),undefined,'arrow-up');up.disabled=i===0;
       const down=menuItem('Move down',()=>move(1),undefined,'arrow-down');down.disabled=i===script.turns.length-1;
@@ -1401,12 +1413,13 @@ function render(){
     const index=currentIndex>=0?currentIndex:Math.min(focusedIndex,root.children.length-1);
     const block=root.children[index];
     const nextField=block?.querySelector(focusedKind)||block?.querySelector(MOBILE_BLOCK_FIELDS);
-    if(nextField){
+    if(keepPickerFocus)mobileEditorField=nextField;
+    else if(nextField){
       nextField.focus({preventScroll:true});
       if(focused.matches(SCRIPT_FIELDS))nextField.setSelectionRange?.(focused.selectionStart,focused.selectionEnd);
     }
   }
-  syncMobileEditBar();
+  if(!keepPickerFocus)syncMobileEditBar();
   if(Math.abs(window.scrollY-savedScroll)>2)window.scrollTo({top:savedScroll,behavior:'instant'});
 }
 document.addEventListener('click',e=>{if(!e.target.closest('.margin-tools, .block-menu, .mobile-edit-bar'))closeBlockMenu()});

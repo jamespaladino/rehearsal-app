@@ -142,6 +142,10 @@
                   <button id="themeToggle" class="btn btn-outline btn-sm" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu" aria-labelledby="themeLabel themeValue"><span id="themeValue">Light</span><i data-lucide="chevron-down" data-icon="inline-end"></i></button>
                   <div id="themeMenu" class="dropdown-menu settings-select-menu hidden" role="menu" aria-labelledby="themeLabel"></div>
                 </div>
+                <div class="native-select settings-native-theme" data-size="sm">
+                  <select id="nativeTheme" aria-labelledby="themeLabel"></select>
+                  <i data-lucide="chevron-down" class="native-select-icon"></i>
+                </div>
               </div>
             </div>
           </div>
@@ -221,12 +225,12 @@
   </div>
 
   <div id="mobileEditBar" class="mobile-edit-bar hidden" role="group" aria-label="Script editing controls">
-    <button id="mobileInsert" class="btn btn-ghost btn-icon" type="button" aria-label="Insert" aria-haspopup="true" aria-expanded="false"><i data-lucide="plus"></i></button>
-    <button id="mobileTurnInto" class="btn btn-ghost btn-icon" type="button" aria-label="Turn into" aria-haspopup="true" aria-expanded="false"><i data-lucide="repeat"></i></button>
+    <span class="btn btn-ghost btn-icon mobile-picker"><i data-lucide="plus"></i><select id="mobileInsert" aria-label="Insert"><option value="" disabled selected>Insert</option></select></span>
+    <span class="btn btn-ghost btn-icon mobile-picker"><i data-lucide="repeat"></i><select id="mobileTurnInto" aria-label="Turn into"><option value="" disabled selected>Turn into</option></select></span>
     <button id="mobileMoveUp" class="btn btn-ghost btn-icon" type="button" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
     <button id="mobileMoveDown" class="btn btn-ghost btn-icon" type="button" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
     <button id="mobileDeleteBlock" class="btn btn-ghost btn-icon" type="button" aria-label="Delete block"><i data-lucide="trash"></i></button>
-    <button id="mobileBeatDuration" class="btn btn-ghost btn-icon hidden" type="button" aria-label="Beat duration" aria-haspopup="true" aria-expanded="false"><i data-lucide="timer"></i></button>
+    <span id="mobileBeatPicker" class="btn btn-ghost btn-icon mobile-picker hidden"><i data-lucide="timer"></i><select id="mobileBeatDuration" aria-label="Beat duration"><option value="" disabled selected>Beat duration</option></select></span>
   </div>
 
   <div id="playPane" class="play-pane hidden" role="dialog" aria-modal="true" aria-labelledby="playScriptTitle playSceneTitle">
