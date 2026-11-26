@@ -451,7 +451,6 @@ function queueSave(immediate=false){
   const id=script.id;
   saveTimer=setTimeout(()=>{
     if(!script||script.id!==id)return;
-    script.lastUsed=Date.now();
     const snapshot=structuredClone(script);
     saveChain=saveChain.catch(()=>{}).then(()=>put(snapshot)).then(()=>library()).catch(e=>console.error('Autosave failed:',e));
   },immediate?0:400);
@@ -575,9 +574,39 @@ function placeMenu(menu,trigger){
 $('libraryPanel').addEventListener('scroll',()=>closeMenu());
 addEventListener('resize',()=>{if(activeMenu?.closest('.sidebar'))placeMenu(activeMenu,activeMenu.previousElementSibling)});
 document.addEventListener('keydown',e=>{if(e.key==='Escape')closeMenu()});
-// Sidebar: a "Pinned" section (only when something is pinned) and a "Recents" section
-// (everything else), each newest first and collapsible. Collapsed sections are remembered.
+// Pinned follows a saved manual order. Recents follows the last time each script was opened.
 const SECTIONS_KEY='rehearsal-sidebar-collapsed';
+const PINNED_ORDER_KEY='rehearsal-pinned-order';
+let pinnedOrder=[],refreshLibraryAfterDrag=false;
+function savePinnedOrder(order){
+  pinnedOrder=order;
+  try{localStorage.setItem(PINNED_ORDER_KEY,JSON.stringify(order))}catch(e){}
+}
+function orderPinned(scripts){
+  let order=pinnedOrder;
+  try{
+    const saved=JSON.parse(localStorage.getItem(PINNED_ORDER_KEY));
+    if(Array.isArray(saved))order=saved;
+  }catch(e){}
+  const byId=new Map(scripts.map(s=>[s.id,s]));
+  const sorted=[];
+  for(const id of order){
+    if(byId.has(id)){sorted.push(byId.get(id));byId.delete(id)}
+  }
+  sorted.push(...byId.values());
+  const ids=sorted.map(s=>s.id);
+  if(ids.length!==order.length||ids.some((id,i)=>id!==order[i]))savePinnedOrder(ids);
+  else pinnedOrder=ids;
+  return sorted;
+}
+function movePinnedScript(id,to){
+  const from=pinnedOrder.indexOf(id);
+  if(from<0||from===to||to<0||to>=pinnedOrder.length)return;
+  const order=[...pinnedOrder];
+  order.splice(from,1);order.splice(to,0,id);
+  savePinnedOrder(order);
+  library();
+}
 function collapsedSections(){try{return JSON.parse(localStorage.getItem(SECTIONS_KEY)||'{}')}catch(e){return {}}}
 function setSectionCollapsed(name,collapsed){const all=collapsedSections();all[name]=collapsed;try{localStorage.setItem(SECTIONS_KEY,JSON.stringify(all))}catch(e){}}
 // shadcn SidebarGroup whose label is a collapsible trigger.
@@ -593,7 +622,7 @@ function sidebarSection(name,label,rows){
   group.append(trigger,list);
   return group;
 }
-function scriptRow(s){
+function scriptRow(s,pinnedIndex=null){
   const name=s.title||'Untitled script';
   const item=el('li');item.className='sidebar-menu-item';
   const open=el('button');open.type='button';open.className='sidebar-menu-button';
@@ -606,9 +635,15 @@ function scriptRow(s){
   const menu=el('div');menu.className='dropdown-menu script-menu hidden';
   menu.append(
     dropdownItem(isPinned(s)?'Unpin':'Pin',()=>{closeMenu();togglePin(s.id)},undefined,isPinned(s)?'pin-off':'pin'),
-    dropdownItem('Rename',()=>{closeMenu();openModal('rename',s)},undefined,'pen'),
-    dropdownSeparator(),
-    dropdownItem('Delete',()=>{closeMenu();openModal('delete',s)},'destructive','trash'));
+    dropdownItem('Rename',()=>{closeMenu();openModal('rename',s)},undefined,'pen'));
+  if(pinnedIndex!==null&&pinnedOrder.length>1){
+    item.dataset.pinnedScriptId=s.id;
+    const up=dropdownItem('Move up',()=>movePinnedScript(s.id,pinnedIndex-1),undefined,'arrow-up');
+    const down=dropdownItem('Move down',()=>movePinnedScript(s.id,pinnedIndex+1),undefined,'arrow-down');
+    up.disabled=pinnedIndex===0;down.disabled=pinnedIndex===pinnedOrder.length-1;
+    menu.append(dropdownSeparator(),up,down);
+  }
+  menu.append(dropdownSeparator(),dropdownItem('Delete',()=>{closeMenu();openModal('delete',s)},'destructive','trash'));
   menu.onclick=e=>e.stopPropagation();
   toggle.onclick=e=>{e.stopPropagation();const wasOpen=!menu.classList.contains('hidden');closeMenu();if(!wasOpen){menu.classList.remove('hidden');placeMenu(menu,toggle);toggle.setAttribute('aria-expanded','true');activeMenu=menu}};
   item.append(open,toggle,menu);
@@ -643,14 +678,16 @@ async function library(){
   closeMenu();
   // Load first, then replace the list in one step, so overlapping calls can't add duplicate rows.
   const scripts=(await getAll()).sort((a,b)=>(b.lastUsed||0)-(a.lastUsed||0));
+  if(reorderDrag?.sidebar){refreshLibraryAfterDrag=true;return}
   $('emptyLibrary').classList.toggle('hidden',!!(script||currentPage||scripts.length));
+  const pinned=orderPinned(scripts.filter(isPinned)),recents=scripts.filter(s=>!isPinned(s));
   const query=scriptSearch.value.trim().toLowerCase();
   if(query){
     const matches=scripts.filter(s=>(s.title||'Untitled').toLowerCase().includes(query));
     const results=el(matches.length?'ul':'p');
     if(matches.length){
       results.className='sidebar-menu';
-      results.append(...matches.map(scriptRow));
+      results.append(...matches.map(s=>scriptRow(s)));
     }else{
       results.className='sidebar-search-empty muted';
       results.textContent='No matching scripts.';
@@ -658,10 +695,9 @@ async function library(){
     $('library').replaceChildren(results);
     return;
   }
-  const pinned=scripts.filter(isPinned),recents=scripts.filter(s=>!isPinned(s));
   const sections=[];
   if(pinned.length)sections.push(sidebarSection('pinned','Pinned',pinned.map(scriptRow)));
-  if(recents.length)sections.push(sidebarSection('recents','Recents',recents.map(scriptRow)));
+  if(recents.length)sections.push(sidebarSection('recents','Recents',recents.map(s=>scriptRow(s))));
   $('library').replaceChildren(...sections);
 }
 // Pinned scripts: stored as "pinned" (scripts saved earlier as "favorite" count as pinned).
@@ -856,6 +892,7 @@ window.addEventListener('message',e=>{
   if(db&&e.origin===location.origin&&e.source===$('importTestsFrame').contentWindow&&e.data==='test-script-saved')library();
 });
 function showView(name){
+  finishReorder();
   currentPage=name;
   $('emptyLibrary').classList.add('hidden');
   for(const [id,page] of Object.entries(PAGES)){
@@ -1043,6 +1080,176 @@ const mobileEditBar=$('mobileEditBar');
 const renderedBlocks=new WeakMap();
 let mobileEditorField=null;
 
+const dropLine=el('div');
+dropLine.className='reorder-drop-line hidden';
+dropLine.setAttribute('aria-hidden','true');
+document.body.append(dropLine);
+const libraryPanel=$('libraryPanel');
+let reorderDrag=null,suppressReorderClick=false;
+
+function trackReorder(item,x,y,id,touch,commit){
+  const list=item.parentElement;
+  if(reorderDrag||list.children.length<2)return;
+  reorderDrag={item,list,commit,sidebar:list.id==='section-pinned',startX:x,startY:y,y,id,touch};
+  if(touch)reorderDrag.timer=setTimeout(startReorder,350);
+}
+function startReorder(){
+  const drag=reorderDrag;
+  if(!drag?.item.isConnected){finishReorder();return}
+  drag.active=true;
+  closeBlockMenu();closeMenu();hideTip();
+  document.body.classList.add('reordering-items');
+  drag.item.classList.add('reorder-source');
+  dropLine.classList.toggle('sidebar-drop-line',drag.sidebar);
+  dropLine.classList.remove('hidden');
+  scheduleDropLine();
+}
+function dropTarget(list,y){
+  const items=list.children;
+  let first=0,last=items.length;
+  while(first<last){
+    const middle=Math.floor((first+last)/2);
+    const bounds=items[middle].getBoundingClientRect();
+    if(y<bounds.top+bounds.height/2)last=middle;
+    else first=middle+1;
+  }
+  const before=items[first]?.getBoundingClientRect();
+  const after=items[first-1]?.getBoundingClientRect();
+  const top=before&&after?(before.top+after.bottom)/2:before?before.top-1:after.bottom+1;
+  return {index:first,top,bounds:before||after};
+}
+function scheduleDropLine(){
+  if(reorderDrag?.active&&!reorderDrag.frame)reorderDrag.frame=requestAnimationFrame(drawDropLine);
+}
+function drawDropLine(){
+  const drag=reorderDrag;
+  drag.frame=0;
+  if(!drag.item.isConnected||!drag.list.getClientRects().length){finishReorder();return}
+  const target=dropTarget(drag.list,drag.y);
+  const viewport=window.visualViewport;
+  const visibleTop=viewport?.offsetTop??0;
+  const visibleBottom=viewport?viewport.height+visibleTop:innerHeight;
+  const panel=drag.sidebar?libraryPanel.getBoundingClientRect():null;
+  const top=Math.max(visibleTop,panel?.top??document.querySelector('.app-header').getBoundingClientRect().bottom);
+  const bottom=Math.min(visibleBottom,panel?.bottom??
+    (mobileEditBar.classList.contains('hidden')?visibleBottom:mobileEditBar.getBoundingClientRect().top));
+  dropLine.style.top=(drag.sidebar?Math.max(top,Math.min(bottom,target.top)):target.top)+'px';
+  dropLine.style.left=target.bounds.left+'px';
+  dropLine.style.width=target.bounds.width+'px';
+  const speed=drag.y<top+48?-Math.min(20,(top+48-drag.y)/3):
+    drag.y>bottom-48?Math.min(20,(drag.y-bottom+48)/3):0;
+  if(speed){
+    const scroller=drag.sidebar?libraryPanel:document.scrollingElement;
+    const previous=scroller.scrollTop;
+    scroller.scrollBy({top:speed,behavior:'instant'});
+    if(previous!==scroller.scrollTop)scheduleDropLine();
+  }
+}
+function moveReorder(x,y){
+  const drag=reorderDrag;
+  drag.y=y;
+  if(!drag.active&&Math.hypot(x-drag.startX,y-drag.startY)>6){
+    if(drag.touch){finishReorder();return}
+    startReorder();
+  }
+  scheduleDropLine();
+}
+function finishReorder(drop=false){
+  const drag=reorderDrag;
+  if(!drag)return;
+  reorderDrag=null;
+  clearTimeout(drag.timer);cancelAnimationFrame(drag.frame);
+  if(drag.sidebar&&refreshLibraryAfterDrag){
+    refreshLibraryAfterDrag=false;
+    setTimeout(()=>library(),0);
+  }
+  if(!drag.active)return;
+  drag.item.classList.remove('reorder-source');
+  document.body.classList.remove('reordering-items');
+  dropLine.classList.add('hidden');
+  if(!drop||!drag.item.isConnected||!drag.list.getClientRects().length)return;
+  const from=Array.prototype.indexOf.call(drag.list.children,drag.item);
+  const gap=dropTarget(drag.list,drag.y).index;
+  const to=gap>from?gap-1:gap;
+  if(from>=0&&from!==to)drag.commit(to);
+}
+function trackScriptBlock(block,x,y,id,touch){
+  const turn=renderedBlocks.get(block)?.turn,current=script;
+  if(!turn||!current)return;
+  trackReorder(block,x,y,id,touch,to=>{
+    const from=current.turns.indexOf(turn);
+    if(current!==script||from<0)return;
+    rememberScriptEdit();
+    current.turns.splice(from,1);current.turns.splice(to,0,turn);
+    render();queueSave(true);
+  });
+}
+function trackPinnedRow(row,x,y,id,touch){
+  trackReorder(row,x,y,id,touch,to=>movePinnedScript(row.dataset.pinnedScriptId,to));
+}
+
+$('turns').addEventListener('pointerdown',e=>{
+  const grip=e.target.closest('.block-grip');
+  if(grip&&e.pointerType!=='touch'&&e.button===0)trackScriptBlock(grip.closest('.turn'),e.clientX,e.clientY,e.pointerId,false);
+});
+libraryPanel.addEventListener('pointerdown',e=>{
+  const row=e.target.closest('.sidebar-menu-button')?.closest('[data-pinned-script-id]');
+  if(row&&e.pointerType!=='touch'&&e.button===0)trackPinnedRow(row,e.clientX,e.clientY,e.pointerId,false);
+});
+document.addEventListener('pointermove',e=>{
+  if(!reorderDrag||reorderDrag.touch||reorderDrag.id!==e.pointerId)return;
+  if(e.buttons)moveReorder(e.clientX,e.clientY);
+  else finishReorder();
+});
+document.addEventListener('pointerup',e=>{
+  if(!reorderDrag||reorderDrag.touch||reorderDrag.id!==e.pointerId)return;
+  if(reorderDrag.active){
+    reorderDrag.y=e.clientY;
+    suppressReorderClick=true;setTimeout(()=>{suppressReorderClick=false},0);
+  }
+  finishReorder(true);
+});
+document.addEventListener('pointercancel',e=>{if(reorderDrag&&!reorderDrag.touch&&reorderDrag.id===e.pointerId)finishReorder()});
+$('turns').addEventListener('touchstart',e=>{
+  const block=e.target.closest('.turn');
+  if(!block||e.touches.length!==1||e.target.closest('button, a, .dropdown-menu'))return;
+  const touch=e.changedTouches[0];
+  trackScriptBlock(block,touch.clientX,touch.clientY,touch.identifier,true);
+},{passive:true});
+libraryPanel.addEventListener('touchstart',e=>{
+  const row=e.target.closest('[data-pinned-script-id]');
+  if(!row||e.touches.length!==1||!e.target.closest('.sidebar-menu-button'))return;
+  const touch=e.changedTouches[0];
+  trackPinnedRow(row,touch.clientX,touch.clientY,touch.identifier,true);
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  if(!reorderDrag?.touch)return;
+  if(e.touches.length!==1){finishReorder();return}
+  const touch=[...e.changedTouches].find(item=>item.identifier===reorderDrag.id);
+  if(!touch)return;
+  if(reorderDrag.active)e.preventDefault();
+  moveReorder(touch.clientX,touch.clientY);
+},{passive:false});
+document.addEventListener('touchend',e=>{
+  if(!reorderDrag?.touch)return;
+  const touch=[...e.changedTouches].find(item=>item.identifier===reorderDrag.id);
+  if(!touch)return;
+  if(reorderDrag.active){reorderDrag.y=touch.clientY;e.preventDefault()}
+  finishReorder(true);
+},{passive:false});
+document.addEventListener('touchcancel',()=>{if(reorderDrag?.touch)finishReorder()});
+document.addEventListener('contextmenu',e=>{if(reorderDrag?.active&&reorderDrag.touch)e.preventDefault()});
+document.addEventListener('click',e=>{
+  if(suppressReorderClick&&e.target.closest('#turns, #libraryPanel')){e.preventDefault();e.stopPropagation()}
+},true);
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'&&reorderDrag){e.preventDefault();e.stopPropagation();finishReorder()}
+},true);
+window.addEventListener('blur',()=>finishReorder());
+window.addEventListener('scroll',scheduleDropLine,{passive:true});
+libraryPanel.addEventListener('scroll',scheduleDropLine,{passive:true});
+window.addEventListener('storage',e=>{if(e.key===PINNED_ORDER_KEY&&db)library()});
+
 function positionMobileEditBar(){
   const viewport=window.visualViewport;
   const inset=viewport?document.documentElement.clientHeight-viewport.height-viewport.offsetTop:0;
@@ -1202,6 +1409,19 @@ function splitCue(value){
   while((m=name.match(/\s*\(([^()]*)\)\s*$/))){if(m[1].trim())extensions.unshift(m[1].trim());name=name.slice(0,m.index).trim()}
   return {name,extensions};
 }
+function preserveTypedPunctuation(event,previous){
+  if(event.isComposing||!['insertText','insertReplacementText'].includes(event.inputType))return;
+  const field=event.target;
+  const end=field.selectionStart;
+  const punctuation=field.value[end-1];
+  const literal=punctuation==='—'?'--':punctuation==='…'?'...':null;
+  if(!literal)return;
+  const prefix=field.value.slice(0,end-1),suffix=field.value.slice(end);
+  // Replace only when the browser collapsed a punctuation run at the caret.
+  if(previous===prefix+literal+suffix||previous===prefix+literal.slice(1)+suffix){
+    field.setRangeText(literal,end-1,end,'end');
+  }
+}
 function render(){
   normalizeCharacters();
   const root=$('turns');
@@ -1216,7 +1436,7 @@ function render(){
     const div=el('div');div.className='turn'+(t.who==='beat'?' beat':'');div.dataset.who=t.who;
     const tools=el('div');tools.className='margin-tools';
     const add=el('button');add.type='button';add.className='btn btn-ghost btn-icon block-add';add.setAttribute('aria-haspopup','true');add.setAttribute('aria-expanded','false');add.append(icon('plus'));setTip(add,'Insert');add.setAttribute('aria-label','Insert');
-    const dots=el('button');dots.type='button';dots.className='btn btn-ghost btn-icon';dots.setAttribute('aria-haspopup','true');dots.append(icon('grip-vertical'));setTip(dots,'Options');dots.setAttribute('aria-label','Options');dots.setAttribute('aria-expanded','false');
+    const dots=el('button');dots.type='button';dots.className='btn btn-ghost btn-icon block-grip';dots.setAttribute('aria-haspopup','true');dots.append(icon('grip-vertical'));setTip(dots,'Drag to move, click to open menu');dots.setAttribute('aria-label','Options');dots.setAttribute('aria-expanded','false');
     const menu=el('div');menu.className='dropdown-menu block-menu hidden';
     const menuItem=(name,fn,variant,iconName)=>{const b=dropdownItem(name,fn,variant,iconName);menu.append(b);return b};
     const insert=(who)=>{if(who==='line'){addDialogueLine(i+1);return}if(who==='heading'||who==='action'){addTextBlock(i+1,who);return}rememberScriptEdit();script.turns.splice(i+1,0,{who:'beat',text:'',duration:2});render();queueSave(true)};
@@ -1358,7 +1578,12 @@ function render(){
     }
     let field=null;
     if(t.who==='me'||t.who==='them'){
-      field=el('textarea');field.className='dialogue';field.placeholder='Dialogue…';field.value=t.text||'';field.setAttribute('aria-label','Dialogue');field.oninput=()=>{rememberScriptEdit(field);t.text=field.value;field.style.height='auto';field.style.height=field.scrollHeight+'px';queueSave()};
+      field=el('textarea');field.className='dialogue';field.placeholder='Dialogue…';field.value=t.text||'';field.setAttribute('aria-label','Dialogue');
+      field.oninput=e=>{
+        preserveTypedPunctuation(e,t.text||'');
+        if(field.value!==(t.text||''))rememberScriptEdit(field);
+        t.text=field.value;field.style.height='auto';field.style.height=field.scrollHeight+'px';queueSave();
+      };
       field.onkeydown=e=>{
         if(e.key==='Enter'&&!e.shiftKey&&!e.isComposing){
           e.preventDefault();
@@ -1373,7 +1598,8 @@ function render(){
       field=el('textarea');field.className='block-text'+(heading?' scene-heading':'');field.rows=1;
       field.placeholder=heading?'INT. LOCATION - DAY':'Action…';field.setAttribute('aria-label',heading?'Scene heading':'Action');
       field.value=t.text||'';
-      field.oninput=()=>{
+      field.oninput=e=>{
+        preserveTypedPunctuation(e,t.text||'');
         if(heading){const pos=field.selectionStart;field.value=field.value.toUpperCase();field.setSelectionRange(pos,pos)}
         if(field.value!==(t.text||''))rememberScriptEdit(field);
         t.text=field.value;field.style.height='auto';field.style.height=field.scrollHeight+'px';queueSave();

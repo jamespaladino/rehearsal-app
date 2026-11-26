@@ -194,6 +194,36 @@
   left: calc(-1 * var(--tools-inset));
 }
 
+.screenplay .block-grip {
+  cursor: grab;
+  touch-action: none;
+}
+
+.reordering-items,
+.reordering-items :is(.block-grip, [data-pinned-script-id] > .sidebar-menu-button) {
+  cursor: grabbing;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+.reorder-source {
+  opacity: 0.4;
+}
+
+.reorder-drop-line {
+  position: fixed;
+  z-index: 39;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--ring);
+  pointer-events: none;
+  transform: translateY(-50%);
+}
+
+.reorder-drop-line.sidebar-drop-line {
+  z-index: 55;
+}
+
 .screenplay .record-controls {
   right: calc(-1 * var(--tools-inset));
 }

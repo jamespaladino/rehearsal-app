@@ -74,6 +74,12 @@
   overflow-y: auto;
 }
 
+@media (hover: hover) {
+  [data-pinned-script-id] > .sidebar-menu-button {
+    cursor: grab;
+  }
+}
+
 /* Match the spacing of the action and script rows. */
 .sidebar-library .sidebar-menu,
 .sidebar-menu.sidebar-pages {
