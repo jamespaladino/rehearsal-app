@@ -74,9 +74,20 @@
   overflow-y: auto;
 }
 
-/* 2px between script rows (shadcn's SidebarMenu default is gap-0). */
-.sidebar-library .sidebar-menu {
+/* Match the spacing of the action and script rows. */
+.sidebar-library .sidebar-menu,
+.sidebar-menu.sidebar-pages {
   gap: 2px;
+}
+
+.sidebar-search {
+  margin-bottom: 8px;
+}
+
+.sidebar-search-empty {
+  margin: 0;
+  padding: 4px 8px;
+  font-size: 14px;
 }
 
 /* Script-row menus: placed against the window by placeMenu() in js/app.js so the
@@ -86,8 +97,8 @@
   z-index: 60;
 }
 
-/* Fixed pages (Tests) above the script library. */
-.sidebar-pages {
+/* Spacing between library sections. */
+.sidebar-library .sidebar-group:not(:last-child) {
   margin-bottom: 16px;
 }
 
@@ -175,6 +186,28 @@
 
 .settings-row-label {
   font-weight: 500;
+}
+
+.mic-status {
+  position: relative;
+  padding-inline-start: 11px;
+  white-space: nowrap;
+}
+
+.mic-status::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 50%;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+  transform: translateY(-50%);
+}
+
+.mic-status[data-connected]::before {
+  background: #22a447;
 }
 
 /* A dropdown at the end of a settings row; its menu opens below, right-aligned. */

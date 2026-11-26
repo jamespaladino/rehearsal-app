@@ -29,11 +29,15 @@
       <div class="sidebar-top">
         <strong class="sidebar-brand">Rehearsal</strong>
         <div class="sidebar-buttons">
+          <button id="toggleScriptSearch" class="btn btn-ghost btn-icon" type="button" aria-label="Search scripts" aria-expanded="false" aria-controls="scriptSearch" data-tooltip="Search"><i data-lucide="search"></i></button>
           <button id="collapseSidebar" class="btn btn-ghost btn-icon" type="button" aria-label="Close sidebar" data-tooltip="Close sidebar"><i data-lucide="panel-left"></i></button>
-          <button id="newScript" class="btn btn-ghost btn-icon" type="button" aria-label="New script" data-tooltip="New script"><i data-lucide="pen-line"></i></button>
         </div>
       </div>
+      <input id="scriptSearch" class="sidebar-search hidden" type="search" aria-label="Search scripts" placeholder="Search scripts" autocomplete="off">
       <ul class="sidebar-menu sidebar-pages">
+        <li class="sidebar-menu-item">
+          <button id="newScript" class="sidebar-menu-button" type="button"><i data-lucide="pen-line"></i><span>New script</span></button>
+        </li>
         <li class="sidebar-menu-item">
           <button id="openImport" class="sidebar-menu-button" type="button"><i data-lucide="arrow-down-to-line"></i><span>Import</span></button>
           <input id="importFile" type="file" accept=".pdf,.fountain,.spmd,.fdx,.txt,application/pdf" hidden>
@@ -97,17 +101,44 @@
 
       <!-- Settings: app-wide preferences, stored in this browser. -->
       <section id="settingsView" class="settings-view hidden" aria-label="Settings">
-        <section class="settings-section" aria-labelledby="audioSettingsTitle">
+        <section class="settings-section" aria-labelledby="generalSettingsTitle">
           <div class="settings-section-header">
-            <h2 id="audioSettingsTitle" class="settings-section-title">Audio</h2>
-            <p class="muted">The microphone turns on when you press Start or Record, and off when you stop.</p>
+            <h2 id="generalSettingsTitle" class="settings-section-title">General</h2>
           </div>
           <div class="card">
             <div class="card-content settings-rows">
               <div class="settings-row">
-                <div class="settings-row-text"><span class="settings-row-label">Microphone</span><span id="micSettingsStatus" class="muted">Not connected</span></div>
-                <button id="connectMic" class="btn btn-outline btn-sm" type="button"><i data-lucide="mic" data-icon="inline-start"></i>Connect microphone</button>
+                <div class="settings-row-text"><span id="themeLabel" class="settings-row-label">Theme</span><span class="muted">System follows your device's light or dark setting.</span></div>
+                <div class="settings-select">
+                  <button id="themeToggle" class="btn btn-outline btn-sm" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu" aria-labelledby="themeLabel themeValue"><span id="themeValue">Light</span><i data-lucide="chevron-down" data-icon="inline-end"></i></button>
+                  <div id="themeMenu" class="dropdown-menu settings-select-menu hidden" role="menu" aria-labelledby="themeLabel"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-content settings-rows">
+              <div class="settings-row">
+                <div class="settings-row-text">
+                  <span class="settings-row-label">Microphone</span>
+                  <span class="muted"><span id="micSettingsStatus" class="mic-status">Not connected</span>&nbsp;· The microphone turns on when you press Start or Record, and off when you stop.</span>
+                </div>
+                <button id="connectMic" class="btn btn-outline btn-sm" type="button" aria-label="Connect microphone"><i data-lucide="mic" data-icon="inline-start"></i>Connect</button>
                 <button id="releaseMic" class="btn btn-outline btn-sm hidden" type="button"><i data-lucide="mic-off" data-icon="inline-start"></i>Release microphone</button>
+              </div>
+            </div>
+          </div>
+        </section>
+        <section class="settings-section" aria-labelledby="installSettingsTitle">
+          <div class="settings-section-header">
+            <h2 id="installSettingsTitle" class="settings-section-title">Install</h2>
+            <p class="muted">Install Rehearsal to open it like an app, in its own window, without the browser around it.</p>
+          </div>
+          <div class="card">
+            <div class="card-content settings-rows">
+              <div class="settings-row">
+                <div class="settings-row-text"><span class="settings-row-label">Install app</span><span id="installStatus" class="muted"></span></div>
+                <button id="installApp" class="btn btn-outline btn-sm hidden" type="button"><i data-lucide="download" data-icon="inline-start"></i>Install</button>
               </div>
             </div>
           </div>
@@ -121,23 +152,7 @@
             <div class="card-content settings-rows">
               <div class="settings-row">
                 <div class="settings-row-text"><span class="settings-row-label">Clear storage</span><span class="muted">Delete every script and recording on this device.</span></div>
-                <button id="clearStorage" class="btn btn-outline btn-sm" type="button"><i data-lucide="trash-2" data-icon="inline-start"></i>Clear storage</button>
-              </div>
-            </div>
-          </div>
-        </section>
-        <section class="settings-section" aria-labelledby="appearanceSettingsTitle">
-          <div class="settings-section-header">
-            <h2 id="appearanceSettingsTitle" class="settings-section-title">Appearance</h2>
-          </div>
-          <div class="card">
-            <div class="card-content settings-rows">
-              <div class="settings-row">
-                <div class="settings-row-text"><span id="themeLabel" class="settings-row-label">Theme</span><span class="muted">System follows your device's light or dark setting.</span></div>
-                <div class="settings-select">
-                  <button id="themeToggle" class="btn btn-outline btn-sm" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu" aria-labelledby="themeLabel themeValue"><span id="themeValue">Light</span><i data-lucide="chevron-down" data-icon="inline-end"></i></button>
-                  <div id="themeMenu" class="dropdown-menu settings-select-menu hidden" role="menu" aria-labelledby="themeLabel"></div>
-                </div>
+                <button id="clearStorage" class="btn btn-destructive btn-sm" type="button"><i data-lucide="trash-2" data-icon="inline-start"></i>Clear storage</button>
               </div>
             </div>
           </div>

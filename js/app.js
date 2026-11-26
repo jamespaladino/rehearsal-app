@@ -70,7 +70,9 @@ function updateMicState(){
   const live=!!(stream && stream.getAudioTracks().some(t=>t.readyState==='live'));
   $('connectMic').classList.toggle('hidden',live);
   $('releaseMic').classList.toggle('hidden',!live);
-  $('micSettingsStatus').textContent=live?'Connected':'Not connected';
+  const status=$('micSettingsStatus');
+  status.textContent=live?'Connected':'Not connected';
+  status.toggleAttribute('data-connected',live);
 }
 function releaseMicrophone(){
   stop();
@@ -88,7 +90,7 @@ function releaseMicIfIdle(){
   updateMicState();
 }
 // Microphone dropdown: status label plus Connect / Release.
-// Settings > Appearance: theme dropdown (radio items, right-aligned under its button).
+// Settings > General: theme dropdown (radio items, right-aligned under its button).
 function setThemeMenu(open){
   if(open)$('themeMenu').replaceChildren(...THEMES.map(t=>dropdownRadioItem({label:t.label,icon:t.icon,checked:t.value===themeChoice,onSelect:()=>{setTheme(t.value);setThemeMenu(false);$('themeToggle').focus()}})));
   $('themeMenu').classList.toggle('hidden',!open);
@@ -120,6 +122,31 @@ async function updateStorageStatus(){
   out.replaceChildren(text);if(used)out.append(' ',el('strong',used),' used.');
 }
 updateStorageStatus();
+// Settings > Install: Chrome and Edge offer an install prompt (beforeinstallprompt), which the
+// Install button shows. Safari and Firefox have no prompt, so the row says how to do it by hand.
+let installPrompt=null;
+function updateInstallStatus(){
+  const ua=navigator.userAgent,btn=$('installApp');
+  const macSafari=/Macintosh/.test(ua)&&/Safari/.test(ua)&&!/Chrome|Chromium|Edg|Firefox/.test(ua)&&!isIOS();
+  let text;
+  if(installed())text='Installed. You\'re using the app.';
+  else if(installPrompt)text='Add Rehearsal to this device.';
+  else if(isIOS())text='In Safari, tap Share, then Add to Home Screen.';
+  else if(macSafari)text='In Safari, choose File > Add to Dock.';
+  else if(/Firefox/.test(ua))text='Firefox can\'t install apps. Open Rehearsal in Chrome, Edge or Safari to install it.';
+  else text='Use Install in the address bar or browser menu. If it\'s already installed, open it from there.';
+  $('installStatus').textContent=text;
+  btn.classList.toggle('hidden',!installPrompt||installed());
+}
+window.addEventListener('beforeinstallprompt',e=>{e.preventDefault();installPrompt=e;updateInstallStatus()});
+window.addEventListener('appinstalled',()=>{installPrompt=null;updateInstallStatus()});
+$('installApp').onclick=async()=>{
+  if(!installPrompt)return;
+  const p=installPrompt;installPrompt=null;
+  try{await p.prompt();await p.userChoice}catch(e){}
+  updateInstallStatus();
+};
+updateInstallStatus();
 const req=indexedDB.open('rehearsal-v1',1);req.onupgradeneeded=()=>req.result.createObjectStore('scripts',{keyPath:'id'});req.onsuccess=async()=>{db=req.result;try{const scripts=await getAll();const lastId=localStorage.getItem("rehearsal-last-opened");if(lastId==='tests'){await openTests();return}if(lastId==='settings'){await openSettings();return}const target=scripts.find(s=>s.id===lastId)||scripts[0];if(target)await openScript(target);else await library()}catch(e){console.error("Could not restore last script",e);await library()}};req.onerror=()=>alert('Local storage unavailable. Try a modern browser.');
 const store=(mode='readonly')=>db.transaction('scripts',mode).objectStore('scripts');const getAll=()=>new Promise((ok,no)=>{let r=store().getAll();r.onsuccess=()=>ok(r.result);r.onerror=no});const put=s=>new Promise((ok,no)=>{let r=store('readwrite').put(s);r.onsuccess=ok;r.onerror=no});const del=id=>new Promise((ok,no)=>{let r=store('readwrite').delete(id);r.onsuccess=ok;r.onerror=no});
 function el(tag,text){let x=document.createElement(tag);if(text!==undefined)x.textContent=text;return x}
@@ -397,6 +424,9 @@ const tooltip=el('div');tooltip.className='tooltip';tooltip.setAttribute('aria-h
 let tipTarget=null;
 function showTip(t){
   tipTarget=t;tooltip.textContent=t.dataset.tooltip;
+  if(t.dataset.tooltipShortcut){
+    const key=el('kbd',t.dataset.tooltipShortcut);key.dataset.slot='kbd';tooltip.append(key);
+  }
   const r=t.getBoundingClientRect(),w=tooltip.offsetWidth,h=tooltip.offsetHeight;
   let top=r.top-h-4;if(top<4)top=r.bottom+4;
   const left=Math.max(4,Math.min(r.left+r.width/2-w/2,innerWidth-w-4));
@@ -428,6 +458,37 @@ async function flushSave(){
   clearTimeout(saveTimer);
   if(script){const snapshot=structuredClone(script);saveChain=saveChain.catch(()=>{}).then(()=>put(snapshot));}
   await saveChain;
+}
+
+const UNTITLED_SCRIPT='Untitled script';
+const DEFAULT_ACTOR_NAME='YOU';
+function isBlankNewScript(s){
+  return s?.newDraft===true&&s.title===UNTITLED_SCRIPT&&!isPinned(s)&&
+    (s.meCharacter===DEFAULT_ACTOR_NAME||s.meCharacter==='ME')&&
+    s.turns.length===1&&s.turns[0].who==='heading'&&
+    !s.turns[0].text?.trim();
+}
+async function finishScript(){
+  if(!isBlankNewScript(script)){
+    if(script?.newDraft)delete script.newDraft;
+    await flushSave();
+    return;
+  }
+  const draft=script;
+  clearTimeout(saveTimer);
+  script=null;
+  // Let any in-flight autosave finish before checking and deleting the draft.
+  saveChain=saveChain.catch(()=>{}).then(()=>new Promise((resolve,reject)=>{
+    const scripts=store('readwrite');
+    const request=scripts.get(draft.id);
+    request.onsuccess=()=>{if(isBlankNewScript(request.result))scripts.delete(draft.id)};
+    scripts.transaction.oncomplete=resolve;
+    scripts.transaction.onabort=()=>reject(scripts.transaction.error);
+  }));
+  try{await saveChain}catch(err){script??=draft;throw err}
+  try{
+    if(localStorage.getItem('rehearsal-last-opened')===draft.id)localStorage.removeItem('rehearsal-last-opened');
+  }catch(e){}
 }
 
 function closeModal(){modalAction=null;$('modalBackdrop').classList.add('hidden');$('modalError').textContent='';if(modalPreviousFocus?.isConnected)modalPreviousFocus.focus()}
@@ -509,10 +570,49 @@ function scriptRow(s){
   item.append(open,toggle,menu);
   return item;
 }
+const scriptSearch=$('scriptSearch'),scriptSearchToggle=$('toggleScriptSearch');
+const searchUsesMeta=/Mac|iPhone|iPad|iPod/.test(navigator.platform);
+scriptSearchToggle.dataset.tooltipShortcut=searchUsesMeta?'⌘ K':'Ctrl K';
+scriptSearchToggle.setAttribute('aria-keyshortcuts',searchUsesMeta?'Meta+K':'Control+K');
+function setScriptSearch(open){
+  scriptSearch.classList.toggle('hidden',!open);
+  scriptSearchToggle.setAttribute('aria-expanded',String(open));
+  if(open){scriptSearch.focus();return}
+  scriptSearch.value='';
+  scriptSearchToggle.focus();
+  if(db)library();
+}
+scriptSearchToggle.onclick=()=>setScriptSearch(scriptSearch.classList.contains('hidden'));
+scriptSearch.oninput=()=>{if(db)library()};
+scriptSearch.onkeydown=e=>{
+  if(e.key!=='Escape')return;
+  e.preventDefault();e.stopPropagation();setScriptSearch(false);
+};
+document.addEventListener('keydown',e=>{
+  const modifier=searchUsesMeta?e.metaKey&&!e.ctrlKey:e.ctrlKey&&!e.metaKey;
+  if(e.defaultPrevented||e.isComposing||e.altKey||e.shiftKey||!modifier||e.key.toLowerCase()!=='k')return;
+  if(modalAction||!$('playPane').classList.contains('hidden')||!$('importPane').classList.contains('hidden'))return;
+  e.preventDefault();
+  setSidebar(true);setScriptSearch(true);
+});
 async function library(){
   closeMenu();
   // Load first, then replace the list in one step, so overlapping calls can't add duplicate rows.
   const scripts=(await getAll()).sort((a,b)=>(b.lastUsed||0)-(a.lastUsed||0));
+  const query=scriptSearch.value.trim().toLowerCase();
+  if(query){
+    const matches=scripts.filter(s=>(s.title||'Untitled').toLowerCase().includes(query));
+    const results=el(matches.length?'ul':'p');
+    if(matches.length){
+      results.className='sidebar-menu';
+      results.append(...matches.map(scriptRow));
+    }else{
+      results.className='sidebar-search-empty muted';
+      results.textContent='No matching scripts.';
+    }
+    $('library').replaceChildren(results);
+    return;
+  }
   const pinned=scripts.filter(isPinned),recents=scripts.filter(s=>!isPinned(s));
   const sections=[];
   if(pinned.length)sections.push(sidebarSection('pinned','Pinned',pinned.map(scriptRow)));
@@ -574,8 +674,36 @@ $('topRename').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden'
 $('topDelete').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden');openModal('delete',script)}};
 // New scripts start with just a scene heading (cursor in it). Enter adds the action, then Enter
 // again starts the first dialogue line.
-$('newScript').onclick=async()=>{closeMobileSidebar();await flushSave();const fresh={id:crypto.randomUUID(),title:'Untitled script',meCharacter:'ME',otherCharacters:[],turns:[{who:'heading',text:''}]};await put(fresh);await openScript(fresh);focusBlockText(0)};$('back').onclick=async()=>{await flushSave();stop();releaseMicrophone();script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');showView(null);updateScriptHeader();library()};
-async function openScript(s){showView(null);await flushSave();$('playButton').classList.remove('hidden');if(script?.id!==s.id){stop();releaseMicrophone()}script=s;script.lastUsed=Date.now();queueSave(true);try{localStorage.setItem("rehearsal-last-opened",s.id)}catch(e){}$('title').value=s.title;updateScriptHeader();$('editor').classList.remove('hidden');enterMode('record');render();library()}
+$('newScript').onclick=async()=>{
+  closeMobileSidebar();
+  const fresh={id:crypto.randomUUID(),title:UNTITLED_SCRIPT,newDraft:true,meCharacter:DEFAULT_ACTOR_NAME,otherCharacters:[],turns:[{who:'heading',text:''}]};
+  await openScript(fresh,{create:true});
+  focusBlockText(0);
+};
+async function returnToLibrary(){
+  await finishScript();stop();releaseMicrophone();script=null;
+  $('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');
+  showView(null);updateScriptHeader();await library();
+}
+$('back').onclick=returnToLibrary;
+async function openScript(s,{create=false}={}){
+  if(script?.id===s.id){s=script;await flushSave()}
+  else{
+    await finishScript();
+    // A sidebar row can still be visible while its draft is being discarded.
+    if(!create&&s.newDraft){
+      s=(await getAll()).find(saved=>saved.id===s.id);
+      if(!s)return;
+    }
+    stop();releaseMicrophone();
+  }
+  if(create)await put(s);
+  showView(null);$('playButton').classList.remove('hidden');
+  script=s;script.lastUsed=Date.now();queueSave(true);
+  try{localStorage.setItem('rehearsal-last-opened',s.id)}catch(e){}
+  $('title').value=s.title;updateScriptHeader();$('editor').classList.remove('hidden');
+  enterMode('record');render();await library();
+}
 // Pages above the library (Tests, Settings) open in the main area the same way a script opens:
 // the current script closes, the sidebar row is selected, and it's remembered as last opened.
 // Tests is the Speech Recognition Lab (speech-lab/); it loads on first open and stays alive
@@ -600,7 +728,7 @@ function showView(name){
 async function openPage(name){
   // Tests uses its own microphone, so the app's is released. Settings leaves a connected
   // microphone on, so its status and Release button show it (a recording in progress still ends).
-  closeMenu();closeMobileSidebar();await flushSave();stop();
+  closeMenu();closeMobileSidebar();await finishScript();stop();
   if(name==='settings'){if(recorder&&recorder.state!=='inactive')recorder.stop()}else releaseMicrophone();
   script=null;$('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');
   updateScriptHeader();showView(name);
@@ -640,6 +768,7 @@ $('openImport').onclick=()=>{
 };
 $('importFile').onchange=e=>{const file=e.target.files[0];if(file)startImport(file)};
 async function startImport(file){
+  if(isBlankNewScript(script))await returnToLibrary();
   openImportPane(file.name);
   $('importStatus').textContent=`Reading ${file.name}…`;
   try{
@@ -835,7 +964,7 @@ function focusBlockText(index){$('turns').children[index]?.querySelector('.block
 function normalizeCharacters(){
   if(!script)return;
   if(!script.meCharacter){
-    script.meCharacter=(script.turns.find(t=>t.who==='me'&&t.character?.trim())?.character.trim()||'ME').toUpperCase();
+    script.meCharacter=(script.turns.find(t=>t.who==='me'&&t.character?.trim())?.character.trim()||DEFAULT_ACTOR_NAME).toUpperCase();
   }
   // Character suggestions are derived from characters currently used in blocks.
   // Removing or renaming the last occurrence automatically removes the old name.
@@ -897,7 +1026,7 @@ function render(){
         if(focusDialogue){const next=$('turns').children[i]?.querySelector('textarea.dialogue');next?.focus({preventScroll:true});}
       };
       const changed=()=>character.value.trim().toUpperCase()!==current()+cueSuffix(t);
-      // Dropdown: every character (yours marked "(me)", the current one checked), narrowed while
+      // Dropdown: every character (yours marked "(you)", the current one checked), narrowed while
       // typing; then "Rename" for the block's current character. Up/Down move through every
       // item in the list while it's showing; Enter picks the character or runs the action.
       let activeChoice=-1;
@@ -910,7 +1039,7 @@ function render(){
         for(const n of names){
           const option=el('button');option.type='button';option.className='dropdown-menu-item character-option';
           option.append(el('span',n));
-          if(n===script.meCharacter){const hint=el('span','(me)');hint.className='me-hint';option.append(hint)}
+          if(n===script.meCharacter){const hint=el('span','(you)');hint.className='me-hint';option.append(hint)}
           if(n===name&&!filtering)option.append(icon('check'));
           option.onmousedown=e=>e.preventDefault();
           option.onclick=()=>{character.value=n+extensionText(splitCue(character.value).extensions);choices.classList.add('hidden');commit(true)};

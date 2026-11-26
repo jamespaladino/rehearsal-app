@@ -522,11 +522,6 @@
   min-width: 0;
 }
 
-/* 16px between groups: what shadcn's p-2 on each SidebarGroup adds up to. */
-.sidebar-group + .sidebar-group {
-  margin-top: 16px;
-}
-
 /* SidebarGroupLabel */
 .sidebar-group-label {
   display: flex;
@@ -1244,6 +1239,23 @@ button.sidebar-group-label:focus-visible {
 
 .tooltip.visible {
   opacity: 1;
+}
+
+/* Kbd (shadcn/ui) */
+[data-slot="kbd"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 16px;
+  padding-inline: 4px;
+  border-radius: 6px;
+  background: var(--muted);
+  color: var(--muted-foreground);
+  font: normal 12px/1 var(--font-sans);
+  white-space: nowrap;
+  pointer-events: none;
+  user-select: none;
 }
 
 /* ======================================================================== */
