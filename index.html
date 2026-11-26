@@ -22,6 +22,7 @@
   <script src="vendor/lucide/lucide.min.js" defer></script>
   <script src="js/icons.js" defer></script>
   <script src="js/app.js" defer></script>
+  <script src="js/storage-diagnostics.js" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -64,7 +65,7 @@
           <span id="topViewTitle" class="header-view-title truncate hidden">Tests</span>
           <div id="titleDropdownWrap" class="title-dropdown-wrap hidden">
             <button id="topScriptTitle" class="btn btn-ghost" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="titleDropdown"><span id="topScriptTitleText" class="truncate"></span></button>
-            <form id="titleDropdown" class="popover title-dropdown hidden">
+            <form id="titleDropdown" class="popover title-dropdown hidden" tabindex="-1">
               <label for="quickRenameInput">Script name</label>
               <input id="quickRenameInput" maxlength="200" autocomplete="off" required>
               <div id="quickRenameError" class="error" aria-live="polite"></div>
@@ -94,12 +95,36 @@
         </div>
       </header>
 
-      <!-- Tests: the Speech Recognition Lab (speech-lab/), loaded on first open and kept alive. -->
       <section id="testsView" class="tests-view hidden" aria-label="Tests">
-        <iframe id="testsFrame" title="Speech Recognition Lab" allow="microphone"></iframe>
+        <div id="testsTabs" class="tests-tabs" role="tablist" aria-label="Test type">
+          <button id="storageTestTab" class="tests-tab" type="button" role="tab" aria-controls="storageTestPanel" aria-selected="true">Storage</button>
+          <button id="audioTestTab" class="tests-tab" type="button" role="tab" aria-controls="audioTestPanel" aria-selected="false" tabindex="-1">Audio</button>
+          <button id="importTestTab" class="tests-tab" type="button" role="tab" aria-controls="importTestPanel" aria-selected="false" tabindex="-1">Import</button>
+        </div>
+        <div id="storageTestPanel" role="tabpanel" aria-labelledby="storageTestTab" tabindex="0">
+          <section class="card storage-diagnostics" aria-labelledby="storageDiagnosticsTitle">
+            <div class="card-header"><h2 id="storageDiagnosticsTitle" class="card-title">Recording storage</h2></div>
+            <div class="card-content">
+              <p class="muted">Record a two-second sample, wait for it to save, then close and reopen Rehearsal in the same browser or Home Screen app. Return here to check what survived.</p>
+              <div class="row">
+                <button id="saveStorageProbe" class="btn btn-default" type="button">Record test sample</button>
+                <button id="checkStorageProbe" class="btn btn-outline" type="button">Check storage</button>
+              </div>
+              <p id="storageProbeStatus" role="status"></p>
+              <audio id="storageProbeAudio" class="hidden" controls preload="metadata" aria-label="Saved test recording"></audio>
+              <pre id="storageProbeReport" class="storage-probe-report"></pre>
+            </div>
+          </section>
+        </div>
+        <div id="audioTestPanel" class="hidden" role="tabpanel" aria-labelledby="audioTestTab" tabindex="0">
+          <iframe id="testsFrame" title="Speech Recognition Lab" allow="microphone" data-src="speech-lab/?embed"></iframe>
+        </div>
+        <div id="importTestPanel" class="hidden" role="tabpanel" aria-labelledby="importTestTab" tabindex="0">
+          <iframe id="importTestsFrame" title="Script import tests" data-src="script-import/?embed"></iframe>
+        </div>
         <div id="testsNeedsServer" class="tests-needs-server hidden">
           <h2>Tests need a local server</h2>
-          <p class="muted">The speech engines run in Web Workers and WebAssembly, which browsers won't load from a file opened on disk. From the repository root, run <code>python3 speech-lab/serve.py</code>, then open <code>http://localhost:8000/</code>.</p>
+          <p class="muted">The Audio and Import tests need HTTP to load their modules. From the repository root, run <code>python3 speech-lab/serve.py</code>, then open <code>http://localhost:8000/</code>.</p>
         </div>
       </section>
 
@@ -194,6 +219,7 @@
     <button id="mobileMoveUp" class="btn btn-ghost btn-icon" type="button" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
     <button id="mobileMoveDown" class="btn btn-ghost btn-icon" type="button" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
     <button id="mobileDeleteBlock" class="btn btn-ghost btn-icon" type="button" aria-label="Delete block"><i data-lucide="trash"></i></button>
+    <button id="mobileBeatDuration" class="btn btn-ghost btn-icon hidden" type="button" aria-label="Beat duration" aria-haspopup="true" aria-expanded="false"><i data-lucide="timer"></i></button>
   </div>
 
   <div id="playPane" class="play-pane hidden" role="dialog" aria-modal="true" aria-labelledby="playScriptTitle playSceneTitle">
@@ -310,7 +336,7 @@
   </div>
 
   <div id="modalBackdrop" class="dialog-overlay hidden" role="presentation">
-    <div class="dialog-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage">
+    <div class="dialog-content" role="dialog" aria-modal="true" aria-labelledby="modalTitle" aria-describedby="modalMessage" tabindex="-1">
       <div class="dialog-header">
         <h2 id="modalTitle" class="dialog-title"></h2>
         <p id="modalMessage" class="dialog-description"></p>

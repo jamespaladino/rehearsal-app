@@ -24,7 +24,13 @@ The engines are loaded on demand from `speech-lab/js/rehearsal-engine.js`, the s
 
 ## Tests
 
-**Tests**, at the top of the sidebar, opens the Speech Recognition Lab (`speech-lab/`) in the main area, the way a script opens. It benchmarks offline speech engines for cue detection. It needs a one-time `python3 speech-lab/setup.py` and a local server (`python3 speech-lab/serve.py`, then open `http://localhost:8000/`). It doesn't work from `file://`. Use `serve.py` rather than `python3 -m http.server`: the plain server sends no cache headers, so browsers can keep running old JavaScript after an update. See `speech-lab/README.md`.
+**Tests**, at the top of the sidebar, has three tabs.
+
+- **Storage** checks whether a test recording survives closing and reopening the same browser or Home Screen app. It reports the sample, a local storage marker, and the count and size of saved reader recordings. The sample stays on the device in a separate IndexedDB database.
+- **Audio** opens the Speech Recognition Lab (`speech-lab/`) to benchmark offline speech engines for cue detection. It needs the one-time `python3 speech-lab/setup.py`. See `speech-lab/README.md`.
+- **Import** opens the script import test view, which shows the parsed blocks and confidence scores for a PDF, Fountain, or Final Draft file.
+
+Audio and Import need the local server. Run `python3 speech-lab/serve.py` and open `http://localhost:8000/`. The local server disables caching so the browser loads the latest edits.
 
 ## Script import (first pass)
 

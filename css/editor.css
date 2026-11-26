@@ -250,6 +250,7 @@
 }
 
 .mobile-edit-bar {
+  --edit-button-count: 7;
   position: fixed;
   right: 0;
   bottom: var(--keyboard-inset, 0px);
@@ -265,9 +266,13 @@
 }
 
 .mobile-edit-bar .btn-icon {
-  width: clamp(36px, calc((100vw - 28px) / 7), 44px);
+  width: clamp(36px, calc((100vw - 30px) / var(--edit-button-count)), 44px);
   height: 44px;
   transition-property: background-color, color, opacity, transform;
+}
+
+.mobile-edit-bar:has(#mobileBeatDuration:not(.hidden)) {
+  --edit-button-count: 8;
 }
 
 .mobile-edit-bar .script-history {
@@ -282,9 +287,8 @@
 }
 
 @media (max-width: 767px) {
-  /* The inline controls remain usable when the keyboard bar is closed. */
-  .screenplay .block-add,
-  body:has(.mobile-edit-bar:not(.hidden)) .screenplay .margin-tools {
+  .screenplay .margin-tools,
+  .header-right > .script-history {
     display: none;
   }
 

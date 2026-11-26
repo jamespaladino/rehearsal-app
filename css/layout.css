@@ -110,9 +110,45 @@
   line-height: 32px;
 }
 
-/* Tests view: the Speech Recognition Lab, embedded full-bleed below the top bar. */
+/* Tests tabs and embedded test panels. */
 .tests-view {
+  --tests-tab-height: 40px;
   margin: 0 calc(var(--main-gutter) * -1) -50px;
+}
+
+.tests-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 16px;
+  box-sizing: border-box;
+  height: var(--tests-tab-height);
+  padding: 0 var(--main-gutter);
+  border-bottom: 1px solid var(--border);
+}
+
+.tests-tab {
+  padding: 0 4px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  color: var(--muted-foreground);
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.tests-tab:hover,
+.tests-tab[aria-selected="true"] {
+  color: var(--foreground);
+}
+
+.tests-tab[aria-selected="true"] {
+  border-bottom-color: currentColor;
+}
+
+.tests-tab:focus-visible {
+  outline: 2px solid var(--ring);
+  outline-offset: -2px;
 }
 
 .tests-needs-server {
@@ -129,9 +165,29 @@
 .tests-view iframe {
   display: block;
   width: 100%;
-  height: calc(100vh - var(--header-height));
+  height: calc(100vh - var(--header-height) - var(--tests-tab-height));
+  height: calc(100dvh - var(--header-height) - var(--tests-tab-height));
   border: 0;
   background: var(--page-bg);
+}
+
+.storage-diagnostics {
+  margin: 16px var(--main-gutter);
+}
+
+.storage-diagnostics .row {
+  flex-wrap: wrap;
+}
+
+.storage-diagnostics audio {
+  max-width: 100%;
+}
+
+.storage-probe-report {
+  margin: 12px 0 0;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  font-size: 13px;
 }
 
 /* Settings view: a column of sections, each a heading and description above a card. */

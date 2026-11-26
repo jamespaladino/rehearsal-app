@@ -69,6 +69,10 @@ async function save() {
     try { localStorage.setItem('rehearsal-last-opened', script.id); } catch (e) { /* private mode */ }
     const link = el('a', 'Open it in Rehearsal');
     link.href = '../';
+    if (document.documentElement.hasAttribute('data-embed') && window.parent !== window) {
+      link.target = '_parent';
+      window.parent.postMessage('test-script-saved', location.origin);
+    }
     $('saved').replaceChildren(`Saved "${script.title}" (${script.turns.length} blocks, you are ${script.meCharacter}). `, link);
   } catch (e) {
     $('saved').textContent = `Couldn't save: ${e.message}`;

@@ -105,7 +105,6 @@ $('connectMic').onclick=async()=>{try{await getMicrophone()}catch(e){alert('Micr
 $('releaseMic').onclick=()=>releaseMicrophone();
 window.addEventListener('pagehide',()=>{if(stream)stream.getTracks().forEach(t=>t.stop())});
 // Storage: ask the browser not to clear our data, and show whether it agreed (Settings > Storage).
-// iPhone Safari clears a site's data after 7 days without a visit; the home-screen app is exempt.
 const installed=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
 const isIOS=()=>/iPhone|iPad|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 async function updateStorageStatus(){
@@ -114,7 +113,7 @@ async function updateStorageStatus(){
   try{if(navigator.storage?.persist)kept=await navigator.storage.persisted()||await navigator.storage.persist()}catch(e){}
   try{const est=await navigator.storage?.estimate?.();if(est?.usage!=null)used=`${(est.usage/1048576).toFixed(1)} MB`}catch(e){}
   let text;
-  if(installed())text=kept?'This home-screen app keeps your data.':'Home-screen apps keep their data.';
+  if(installed())text=kept?'The browser reports persistent storage for this Home Screen app.':'The browser has not confirmed persistent storage for this Home Screen app.';
   else if(kept)text='This browser has agreed to keep your data.';
   else if(isIOS())text='Safari may clear it after 7 days without a visit. Use Share > Add to Home Screen and open the app from there. Recordings made here won\'t carry over to it.';
   else text='The browser may clear it if the device runs low on space.';
@@ -213,9 +212,9 @@ function dropdownSubmenu(triggerIcon,triggerLabel,options,extra={}){
   return sub;
 }
 // Beat length: the trigger shows the current length.
-function beatDurationSubmenu(t,onChange){
+function beatDurationOptions(t,onChange){
   const current=beatSeconds(t);
-  return dropdownSubmenu('timer',secondsLabel(current),BEAT_DURATIONS.map(n=>({label:secondsLabel(n),checked:n===current,onSelect:()=>onChange(n)})));
+  return BEAT_DURATIONS.map(n=>({label:secondsLabel(n),checked:n===current,onSelect:()=>onChange(n)}));
 }
 // Reader spacing (per script): seconds between back-to-back reader lines. Negative values
 // overlap them: the next line starts that long before the current one ends.
@@ -491,12 +490,14 @@ function rememberScriptEdit(field=null){
 }
 function restoreScriptEdit(from,to){
   if(!script||recorder||!from.length)return;
+  const restoreMobileFocus=mobileQuery.matches&&!script.turns.length;
   if(!$('scriptHistory').closest('#mobileEditBar'))leaveScriptField();
   if(!from.length)return;
   to.push(snapshotScriptEdit());
   Object.assign(script,from.pop());typingField=null;
   $('title').value=script.title;$('scriptHeading').textContent=script.title;
   updateScriptHeader();render();queueSave(true);
+  if(restoreMobileFocus)$('turns').querySelector(MOBILE_BLOCK_FIELDS)?.focus();
 }
 $('undoScript').onclick=()=>restoreScriptEdit(scriptUndo,scriptRedo);
 $('redoScript').onclick=()=>restoreScriptEdit(scriptRedo,scriptUndo);
@@ -550,7 +551,9 @@ function openModal(type,s){
   $('renameInput').oninput=type==='character'?()=>{const el=$('renameInput'),pos=el.selectionStart;el.value=el.value.toUpperCase();el.setSelectionRange(pos,pos)}:null;
   $('modalConfirm').textContent=text.confirm;$('modalCancel').textContent=text.cancel||'Cancel';$('modalConfirm').className='btn '+(hasField?'btn-default':'btn-destructive');
   $('modalError').textContent='';$('modalBackdrop').classList.remove('hidden');
-  if(hasField){$('renameInput').focus();$('renameInput').select()}else $('modalCancel').focus();
+  if(hasField&&mobileQuery.matches)$('modalBackdrop').querySelector('.dialog-content').focus({preventScroll:true});
+  else if(hasField){$('renameInput').focus({preventScroll:true});$('renameInput').select()}
+  else $('modalCancel').focus({preventScroll:true});
 }
 $('modalCancel').onclick=closeModal;
 $('modalBackdrop').addEventListener('click',e=>{if(e.target===$('modalBackdrop'))closeModal()});
@@ -670,6 +673,7 @@ async function togglePin(id){
 }
 function updateScriptHeader(){
   updateScriptHistoryButtons();
+  syncMobileEditBar();
   $('topScriptTitleText').textContent=script?(script.title||'Untitled script'):'';
   $('titleDropdownWrap').classList.toggle('hidden',!script);
   closeTitleDropdown();
@@ -690,7 +694,8 @@ $('topScriptTitle').onclick=e=>{
     $('quickRenameError').textContent='';
     $('titleDropdown').classList.remove('hidden');
     $('topScriptTitle').setAttribute('aria-expanded','true');
-    $('quickRenameInput').focus();$('quickRenameInput').select();
+    if(mobileQuery.matches)$('titleDropdown').focus({preventScroll:true});
+    else{$('quickRenameInput').focus({preventScroll:true});$('quickRenameInput').select()}
   }
 };
 $('titleDropdown').onclick=e=>e.stopPropagation();
@@ -752,13 +757,52 @@ async function openScript(s,{create=false}={}){
 }
 // Pages above the library (Tests, Settings) open in the main area the same way a script opens:
 // the current script closes, the sidebar row is selected, and it's remembered as last opened.
-// Tests is the Speech Recognition Lab (speech-lab/); it loads on first open and stays alive
-// (models, takes) while you switch to scripts and back.
-// Tests is a page from its own folder, shown in an iframe (src loaded on first open).
 const PAGES={
-  tests:{view:'testsView',row:'openTests',title:'Tests',frame:'testsFrame',src:'speech-lab/?embed',needsServer:'testsNeedsServer'},
+  tests:{view:'testsView',row:'openTests',title:'Tests'},
   settings:{view:'settingsView',row:'openSettings',title:'Settings'},
 };
+const testTabs=[...$('testsTabs').querySelectorAll('[role="tab"]')];
+let activeTestTab=testTabs[0];
+function selectTestTab(selected){
+  activeTestTab=selected;
+  for(const tab of testTabs){
+    const on=tab===selected;
+    tab.setAttribute('aria-selected',String(on));
+    tab.tabIndex=on?0:-1;
+    $(tab.getAttribute('aria-controls')).classList.toggle('hidden',!on);
+  }
+  const panel=$(selected.getAttribute('aria-controls'));
+  const frame=panel.querySelector('iframe');
+  const needsServer=$('testsNeedsServer');
+  const fromDisk=location.protocol==='file:';
+  needsServer.classList.toggle('hidden',!(frame&&fromDisk));
+  if(!frame){
+    document.dispatchEvent(new Event('storage-diagnostics-open'));
+  }else if(fromDisk){
+    frame.classList.add('hidden');
+    panel.append(needsServer);
+  }else if(!frame.getAttribute('src')){
+    // Keep the frame mounted after its first use so switching tabs preserves test state.
+    frame.src=frame.dataset.src;
+  }
+}
+for(const tab of testTabs)tab.onclick=()=>selectTestTab(tab);
+$('testsTabs').onkeydown=e=>{
+  const index=testTabs.indexOf(e.target);
+  if(index<0)return;
+  let next;
+  switch(e.key){
+    case 'ArrowLeft':next=(index-1+testTabs.length)%testTabs.length;break;
+    case 'ArrowRight':next=(index+1)%testTabs.length;break;
+    case 'Home':next=0;break;
+    case 'End':next=testTabs.length-1;break;
+    default:return;
+  }
+  e.preventDefault();selectTestTab(testTabs[next]);testTabs[next].focus();
+};
+window.addEventListener('message',e=>{
+  if(db&&e.origin===location.origin&&e.source===$('importTestsFrame').contentWindow&&e.data==='test-script-saved')library();
+});
 function showView(name){
   for(const [id,page] of Object.entries(PAGES)){
     const on=id===name;
@@ -768,8 +812,7 @@ function showView(name){
   }
   $('topViewTitle').classList.toggle('hidden',!name);
   if(name)$('topViewTitle').textContent=PAGES[name].title;
-  const page=PAGES[name];
-  if(page?.frame){const f=$(page.frame);const fromDisk=location.protocol==='file:';f.classList.toggle('hidden',fromDisk);$(page.needsServer).classList.toggle('hidden',!fromDisk);if(!fromDisk&&!f.getAttribute('src'))f.src=page.src}
+  if(name==='tests')selectTestTab(activeTestTab);
 }
 async function openPage(name){
   // Tests uses its own microphone, so the app's is released. Settings leaves a connected
@@ -939,6 +982,7 @@ function addTextBlock(index,who){
 // Script typing: Tab / Shift+Tab move between text fields (character, dialogue, scene
 // heading, action) and skip the block buttons. Outside the script, the usual tab order applies.
 const SCRIPT_FIELDS='.character, .dialogue, .block-text';
+const MOBILE_BLOCK_FIELDS=SCRIPT_FIELDS+', .beat-text';
 const mobileEditBar=$('mobileEditBar');
 const renderedBlocks=new WeakMap();
 let mobileEditorField=null;
@@ -950,19 +994,23 @@ function positionMobileEditBar(){
 }
 function syncMobileEditBar(){
   const active=document.activeElement;
-  const field=active?.matches('#turns :is('+SCRIPT_FIELDS+')')?active:
+  const field=active?.matches('#turns :is('+MOBILE_BLOCK_FIELDS+')')?active:
     mobileEditBar.contains(active)&&mobileEditorField?.isConnected?mobileEditorField:null;
-  const visible=!!(mobileQuery.matches&&field&&script&&!field.closest('.hidden')&&
+  const block=field?.closest('.turn');
+  const visible=!!(mobileQuery.matches&&script&&!$('editor').classList.contains('hidden')&&
+    !$('workspace').classList.contains('hidden')&&(block||!script.turns.length)&&
     $('playPane').classList.contains('hidden')&&$('importPane').classList.contains('hidden'));
-  if(openBlockMenu?.mobile&&(!visible||field.closest('.turn')!==openBlockMenu.origin))closeBlockMenu();
+  if(openBlockMenu?.mobile&&(!visible||block!==openBlockMenu.origin))closeBlockMenu();
   mobileEditorField=visible?field:null;
   mobileEditBar.classList.toggle('hidden',!visible);
   const history=$('scriptHistory');
   if(visible){
     if(history.parentElement!==mobileEditBar)mobileEditBar.append(history);
-    const block=field.closest('.turn');
-    $('mobileMoveUp').disabled=!block.previousElementSibling;
-    $('mobileMoveDown').disabled=!block.nextElementSibling;
+    $('mobileTurnInto').disabled=!block;
+    $('mobileDeleteBlock').disabled=!block;
+    $('mobileMoveUp').disabled=!block?.previousElementSibling;
+    $('mobileMoveDown').disabled=!block?.nextElementSibling;
+    $('mobileBeatDuration').classList.toggle('hidden',block?.dataset.who!=='beat');
     positionMobileEditBar();
   }else if(history.parentElement===mobileEditBar)$('playButton').before(history);
 }
@@ -978,8 +1026,13 @@ $('turns').addEventListener('mousedown',e=>{
 function activeMobileBlock(){
   return renderedBlocks.get(mobileEditorField?.closest('.turn'));
 }
-$('mobileInsert').onclick=e=>activeMobileBlock()?.openInsert(e.currentTarget);
+$('mobileInsert').onclick=e=>{
+  const block=activeMobileBlock();
+  if(block)block.openInsert(e.currentTarget);
+  else if(script&&!script.turns.length)addTextBlock(0,'heading');
+};
 $('mobileTurnInto').onclick=e=>activeMobileBlock()?.openTurnInto(e.currentTarget);
+$('mobileBeatDuration').onclick=e=>activeMobileBlock()?.openBeatDuration(e.currentTarget);
 $('mobileMoveUp').onclick=()=>activeMobileBlock()?.move(-1);
 $('mobileMoveDown').onclick=()=>activeMobileBlock()?.move(1);
 $('mobileDeleteBlock').onclick=()=>activeMobileBlock()?.remove();
@@ -1100,7 +1153,7 @@ function render(){
   const focusedBlock=focused?.closest('.turn');
   const focusedIndex=focusedBlock?[...root.children].indexOf(focusedBlock):-1;
   const focusedTurn=renderedBlocks.get(focusedBlock)?.turn;
-  const focusedKind=focused&&['.character','.dialogue','.block-text'].find(selector=>focused.matches(selector));
+  const focusedKind=focused&&['.character','.dialogue','.block-text','.beat-text'].find(selector=>focused.matches(selector));
   const savedScroll=window.scrollY;
   hideTip();closeBlockMenu();root.replaceChildren();
   script.turns.forEach((t,i)=>{
@@ -1112,6 +1165,7 @@ function render(){
     const menuItem=(name,fn,variant,iconName)=>{const b=dropdownItem(name,fn,variant,iconName);menu.append(b);return b};
     const insert=(who)=>{if(who==='line'){addDialogueLine(i+1);return}if(who==='heading'||who==='action'){addTextBlock(i+1,who);return}rememberScriptEdit();script.turns.splice(i+1,0,{who:'beat',text:'',duration:2});render();queueSave(true)};
     const openInsert=trigger=>showBlockMenu(menu,div,trigger,()=>{
+      if(trigger===$('mobileInsert'))menu.append(menuLabel('Insert'));
       menuItem('Line',()=>insert('line'),undefined,'text-align-start');
       menuItem('Beat',()=>insert('beat'),undefined,'gap-vertical');
       menuItem('Scene heading',()=>insert('heading'),undefined,'clapperboard');
@@ -1119,7 +1173,14 @@ function render(){
     });
     const onTypeChange=becameLine=>{render();queueSave(true);if(becameLine)focusCharacter(i)};
     const openTurnInto=trigger=>showBlockMenu(menu,div,trigger,()=>{
-      menu.append(...turnIntoOptions(t,onTypeChange).map(dropdownRadioItem));
+      menu.append(menuLabel('Turn into'),...turnIntoOptions(t,onTypeChange).map(dropdownRadioItem));
+    });
+    const durationOptions=()=>beatDurationOptions(t,n=>{
+      if(n===beatSeconds(t))return;
+      rememberScriptEdit();t.duration=n;render();queueSave(true);
+    });
+    const openBeatDuration=trigger=>showBlockMenu(menu,div,trigger,()=>{
+      menu.append(...durationOptions().map(dropdownRadioItem));
     });
     const move=delta=>{
       const next=i+delta;
@@ -1129,10 +1190,10 @@ function render(){
       render();queueSave(true);
     };
     const remove=()=>{rememberScriptEdit();script.turns.splice(i,1);render();queueSave(true)};
-    renderedBlocks.set(div,{turn:t,openInsert,openTurnInto,move,remove});
+    renderedBlocks.set(div,{turn:t,openInsert,openTurnInto,openBeatDuration,move,remove});
     add.onclick=e=>{e.stopPropagation();openInsert(add)};
     dots.onclick=e=>{e.stopPropagation();showBlockMenu(menu,div,dots,()=>{
-      if(t.who==='beat'){menu.append(beatDurationSubmenu(t,n=>{if(n===beatSeconds(t))return;rememberScriptEdit();t.duration=n;render();queueSave(true)}),dropdownSeparator())}
+      if(t.who==='beat')menu.append(dropdownSubmenu('timer',secondsLabel(beatSeconds(t)),durationOptions()),dropdownSeparator());
       menu.append(dropdownSubmenu('repeat','Turn into',turnIntoOptions(t,onTypeChange)),dropdownSeparator());
       const up=menuItem('Move up',()=>move(-1),undefined,'arrow-up');up.disabled=i===0;
       const down=menuItem('Move down',()=>move(1),undefined,'arrow-down');down.disabled=i===script.turns.length-1;
@@ -1235,7 +1296,9 @@ function render(){
       character.onblur=e=>{choices.classList.add('hidden');if(character.isConnected&&changed())commit(false,e.relatedTarget)};
       picker.append(character,choices);div.append(picker);
     }else if(t.who==='beat'){
-      const beat=el('div','Beat.');beat.className='beat-text';div.append(beat);
+      const beat=el('div','Beat.');beat.className='beat-text';beat.tabIndex=-1;
+      beat.onclick=()=>{if(mobileQuery.matches)beat.focus({preventScroll:true})};
+      div.append(beat);
     }
     let field=null;
     if(t.who==='me'||t.who==='them'){
@@ -1281,10 +1344,10 @@ function render(){
     const currentIndex=script.turns.indexOf(focusedTurn);
     const index=currentIndex>=0?currentIndex:Math.min(focusedIndex,root.children.length-1);
     const block=root.children[index];
-    const nextField=block?.querySelector(focusedKind)||block?.querySelector(SCRIPT_FIELDS);
+    const nextField=block?.querySelector(focusedKind)||block?.querySelector(MOBILE_BLOCK_FIELDS);
     if(nextField){
       nextField.focus({preventScroll:true});
-      nextField.setSelectionRange(focused.selectionStart,focused.selectionEnd);
+      if(focused.matches(SCRIPT_FIELDS))nextField.setSelectionRange?.(focused.selectionStart,focused.selectionEnd);
     }
   }
   syncMobileEditBar();

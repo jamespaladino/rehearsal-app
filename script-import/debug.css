@@ -13,6 +13,10 @@ body {
   padding: 0 var(--main-gutter);
 }
 
+:root[data-embed] .import-header {
+  display: none;
+}
+
 .import-header strong {
   margin-right: 8px;
 }
