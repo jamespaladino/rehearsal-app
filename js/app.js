@@ -737,6 +737,21 @@ async function returnToLibrary(){
   showView(null);updateScriptHeader();await library();
 }
 $('back').onclick=returnToLibrary;
+// iOS can't play a recording straight from IndexedDB through a blob URL (the <audio> element
+// fails without an error), though its bytes still read fine. Copy each take into memory once
+// when a script opens so playback uses an in-memory blob instead.
+const inMemoryTakes=new WeakSet();
+async function loadRecordingsIntoMemory(s){
+  await Promise.all(s.turns.map(async turn=>{
+    const take=turn.audio;
+    if(!take||inMemoryTakes.has(take))return;
+    try{
+      const copy=new Blob([await take.arrayBuffer()],{type:take.type});
+      inMemoryTakes.add(copy);
+      if(turn.audio===take)turn.audio=copy;
+    }catch(e){console.error('Could not load a recording',e)}
+  }));
+}
 async function openScript(s,{create=false}={}){
   if(script?.id===s.id){s=script;await flushSave()}
   else{
@@ -749,6 +764,7 @@ async function openScript(s,{create=false}={}){
     stop();releaseMicrophone();
   }
   if(create)await put(s);
+  await loadRecordingsIntoMemory(s);
   showView(null);$('playButton').classList.remove('hidden');
   script=s;script.lastUsed=Date.now();queueSave(true);
   try{localStorage.setItem('rehearsal-last-opened',s.id)}catch(e){}
