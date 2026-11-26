@@ -271,7 +271,7 @@
   transition-property: background-color, color, opacity, transform;
 }
 
-.mobile-edit-bar:has(#mobileBeatPicker:not(.hidden)) {
+.mobile-edit-bar:has(#mobileBeatDuration:not(.hidden)) {
   --edit-button-count: 8;
 }
 
@@ -279,26 +279,11 @@
   margin-inline-start: auto;
 }
 
-.mobile-picker {
-  position: relative;
-}
-
-.mobile-picker select {
+.mobile-edit-bar > .block-menu {
   position: absolute;
-  inset: 0;
-  height: 100%;
-  margin: 0;
-  opacity: 0;
-  font-size: 16px;
-  cursor: pointer;
-}
-
-.mobile-picker:has(select:disabled) {
-  opacity: 0.5;
-}
-
-.mobile-picker:has(select:focus-visible) {
-  box-shadow: 0 0 0 2px var(--ring);
+  bottom: calc(100% + 4px);
+  left: 8px;
+  overflow: visible;
 }
 
 @media (max-width: 767px) {

@@ -280,24 +280,6 @@
   flex-shrink: 0;
 }
 
-.settings-native-theme {
-  display: none;
-}
-
-@media (max-width: 767px), (hover: none) and (pointer: coarse) {
-  .settings-select {
-    display: none;
-  }
-
-  .settings-native-theme {
-    display: block;
-  }
-
-  .settings-native-theme select {
-    font-size: 16px;
-  }
-}
-
 .settings-select-menu {
   position: absolute;
   top: calc(100% + 4px);
