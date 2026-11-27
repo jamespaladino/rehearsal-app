@@ -1445,7 +1445,8 @@ function updateScriptViewport(){
   if(!mobileQuery.matches||$('editor').classList.contains('hidden'))return;
   const viewport=window.visualViewport;
   const styles=document.documentElement.style;
-  styles.setProperty('--script-viewport-top',(viewport?.offsetTop??0)+'px');
+  const pageTop=viewport?.pageTop??(window.scrollY+(viewport?.offsetTop??0));
+  styles.setProperty('--script-viewport-top',pageTop+'px');
   styles.setProperty('--script-viewport-height',(viewport?.height??innerHeight)+'px');
 }
 // Update in the event itself: waiting a frame leaves the header and editing bar visibly out of
@@ -1460,16 +1461,19 @@ function scheduleScriptViewportUpdate(){
 // With the keyboard open, iOS pans the whole page when a drag can't scroll anything: one that
 // starts on the header or editing bar, or one that runs past the top or bottom of the script.
 // That moves the header and bar off screen, so cancel those drags.
-let scriptTouchY=0,scriptTouchX=0;
-document.addEventListener('touchstart',e=>{
-  if(e.touches.length===1){scriptTouchX=e.touches[0].clientX;scriptTouchY=e.touches[0].clientY}
+const scriptMain=$('editor').parentElement;
+let scriptTouch=null;
+scriptMain.addEventListener('touchstart',e=>{
+  scriptTouch=e.touches.length===1?e.touches[0]:null;
 },{passive:true});
-document.addEventListener('touchmove',e=>{
+scriptMain.addEventListener('touchmove',e=>{
+  const previousTouch=scriptTouch;
+  scriptTouch=e.touches.length===1?e.touches[0]:null;
   if(!mobileQuery.matches||$('editor').classList.contains('hidden')||reorderDrag?.active)return;
-  if(e.touches.length!==1||!e.cancelable||!e.target.closest?.('.app-main'))return;
-  const dx=e.touches[0].clientX-scriptTouchX,dy=e.touches[0].clientY-scriptTouchY;
+  if(!scriptTouch||previousTouch?.identifier!==scriptTouch.identifier||!e.cancelable)return;
+  const dx=scriptTouch.clientX-previousTouch.clientX,dy=scriptTouch.clientY-previousTouch.clientY;
   if(!dy||Math.abs(dx)>Math.abs(dy))return;
-  for(let node=e.target;node&&node!==document.body;node=node.parentElement){
+  for(let node=e.target;node&&node!==scriptMain;node=node.parentElement){
     if(!/(auto|scroll)/.test(getComputedStyle(node).overflowY)||node.scrollHeight<=node.clientHeight)continue;
     const atTop=node.scrollTop<=0,atBottom=node.scrollTop+node.clientHeight>=node.scrollHeight-1;
     if((dy>0&&!atTop)||(dy<0&&!atBottom))return;
@@ -1499,7 +1503,7 @@ function syncMobileEditBar(){
   }else if(history.parentElement===mobileEditBar)$('playButton').before(history);
 }
 document.addEventListener('focusin',()=>{syncMobileEditBar();scheduleScriptViewportUpdate()});
-document.addEventListener('focusout',()=>queueMicrotask(syncMobileEditBar));
+document.addEventListener('focusout',()=>requestAnimationFrame(syncMobileEditBar));
 mobileQuery.addEventListener('change',syncMobileEditBar);
 window.visualViewport?.addEventListener('resize',scheduleScriptViewportUpdate);
 window.visualViewport?.addEventListener('scroll',scheduleScriptViewportUpdate);
