@@ -301,6 +301,7 @@
   --edit-button-count: 7;
   position: relative;
   z-index: 45;
+  transform: translateZ(0);
   display: flex;
   flex: none;
   align-items: center;

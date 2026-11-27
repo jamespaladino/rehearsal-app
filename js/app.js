@@ -1449,12 +1449,14 @@ function updateScriptViewport(){
   styles.setProperty('--script-viewport-top',pageTop+'px');
   styles.setProperty('--script-viewport-height',(viewport?.height??innerHeight)+'px');
 }
-// Update in the event itself: waiting a frame leaves the header and editing bar visibly out of
-// place while iOS animates the keyboard. iOS can also report the final size late, so measure
-// again once the keyboard has settled after a field gains focus.
-let settleTimer=0;
+// Safari can deliver keyboard viewport events before its geometry has settled.
+let viewportFrame=0,settleTimer=0;
 function scheduleScriptViewportUpdate(){
   updateScriptViewport();
+  if(!viewportFrame)viewportFrame=requestAnimationFrame(()=>{
+    viewportFrame=0;
+    updateScriptViewport();
+  });
   clearTimeout(settleTimer);
   settleTimer=setTimeout(updateScriptViewport,400);
 }
