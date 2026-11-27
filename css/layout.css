@@ -459,12 +459,12 @@
     clip-path: inset(0);
   }
 
-  /* Room below the last block so even it can be lifted above the keyboard when focused.
-     vh doesn't change with the keyboard on iOS, so this doesn't jump while it opens. */
-  #editor:has(#turns :is(.character, .dialogue, .block-text, .beat-text):focus)::after {
+  /* Room below the last block, only while one needs lifting above the keyboard (js/app.js sets
+     --focus-room to exactly what's needed). */
+  #editor::after {
     content: "";
     display: block;
-    height: 60vh;
+    height: var(--focus-room, 0px);
   }
 
   .sidebar {
