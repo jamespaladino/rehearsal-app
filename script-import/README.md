@@ -25,8 +25,7 @@ Node with a note; everything else, including the classifier and page-break stitc
 3. **Import** creates the script and opens it. The close button or Escape exits, after you
    confirm.
 
-**Debug view in the browser** (the same review on a standalone page; PDFs work here on any machine):
-open <http://localhost:8000/script-import/>.
+Open <http://localhost:8000/> and choose **Tests → Import** for the browser debug view.
 
 Choose or drop a file to see every block with its type and confidence; rows that need review are
 highlighted (the reasons are in each block's `flags`, printed by the CLI, not shown as badges). A
@@ -126,7 +125,7 @@ ctx) }`, so a stage-play ruleset can be added beside `rulesets/screenplay.js`.
 | `test-support/synthetic.js` | Builds synthetic screenplay pages and minimal PDFs for tests and fixtures |
 | `fixtures/` | Synthetic fixtures and the generator; `real/` for your own scripts |
 | `review-ui.js`, `review.css` | The review UI (character list, block table, edit controls, Undo), shared by the app's import pane and the debug view |
-| `index.html`, `debug.js`, `debug.css` | Standalone browser debug view |
+| `debug.js`, `debug.css` | Browser debug view embedded in Tests |
 | `cli.js`, `node-pdfjs.js` | Command-line debug view |
 
 pdf.js 4.10.38 (Apache-2.0) is vendored in `vendor/pdfjs-4.10.38/`. There are no other

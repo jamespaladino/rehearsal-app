@@ -1,33 +1,6 @@
 /* Speech Recognition Lab: layout and lab-only pieces. Everything else (buttons, toggles,
    cards, alerts, inputs, tokens) comes from the Rehearsal design system in ../css/. */
 
-.lab-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-  padding: 14px var(--main-gutter);
-  border-bottom: 1px solid var(--border);
-  background: var(--background);
-}
-
-:root[data-embed] .lab-header {
-  display: none;
-}
-
-.lab-title {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-  flex-wrap: wrap;
-  font-size: 14px;
-}
-
-.lab-title strong {
-  font-size: 16px;
-}
-
 .lab-main {
   display: grid;
   gap: 16px;
@@ -100,11 +73,11 @@ input[type="range"] {
   flex: 1 1 0;
 }
 
-/* Native select styled like the design system's inputs (shadcn NativeSelect: h-8, text-sm). */
+/* Native select styled like the design system's inputs. */
 select {
   box-sizing: border-box;
   width: 100%;
-  height: 32px;
+  height: var(--control-height-lg);
   padding: 0 28px 0 10px;
   border: 1px solid var(--input);
   border-radius: var(--radius-lg);
@@ -155,7 +128,7 @@ select optgroup {
 }
 
 .cue-row label.check {
-  height: 32px;
+  height: var(--control-height-lg);
 }
 
 .settings-grid {
@@ -387,18 +360,10 @@ details summary {
 
 /* ---- Test full script (modal) ---- */
 
-:root[data-embed] #runOverlay {
+#runOverlay {
   top: var(--test-visible-top, 0px);
   bottom: auto;
   height: var(--test-visible-height, 100vh);
-}
-
-:root[data-embed] .run-dialog {
-  height: min(860px, max(0px, calc(var(--test-visible-height, 100vh) - 32px)));
-}
-
-:root[data-embed] .run-script {
-  padding-bottom: calc(var(--test-visible-height, 100vh) * .4);
 }
 
 .run-dialog {
@@ -406,7 +371,7 @@ details summary {
   flex-direction: column;
   box-sizing: border-box;
   width: min(960px, calc(100vw - 32px));
-  height: min(860px, calc(100vh - 32px));
+  height: min(860px, max(0px, calc(var(--test-visible-height, 100vh) - 32px)));
   overflow: hidden;
   border-radius: var(--radius-xl);
   background: var(--popover);
@@ -434,6 +399,7 @@ details summary {
 
 .run-options {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 10px;
 }
@@ -449,13 +415,14 @@ label.run-field {
 
 label.run-field select {
   width: auto;
+  min-width: var(--dropdown-min-width);
 }
 
 .run-script {
   flex: 1;
   min-height: 0;
   margin: 0;
-  padding: 16px max(16px, calc((100% - 640px) / 2)) 40vh;
+  padding: 16px max(16px, calc((100% - 640px) / 2)) calc(var(--test-visible-height, 100vh) * .4);
   overflow-y: auto;
   list-style: none;
 }

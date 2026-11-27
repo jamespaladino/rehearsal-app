@@ -1,5 +1,5 @@
-// Import review UI, shared by the app's import flow (js/app.js) and the standalone debug page
-// (script-import/index.html). DOM only: parsing lives in src/.
+// Import review UI, shared by the app's import flow and the Import test panel.
+// DOM only: parsing lives in src/.
 //
 //   const result = await readScriptFile(file);
 //   const review = createImportReview({ characters, blocks, filter, onChange });
@@ -164,7 +164,7 @@ export function createImportReview(els) {
       // Picking the guessed type confirms it as is (retyping a character to character would
       // drop its extensions); any other type retypes the block.
       select.onchange = () => apply(select.value === b.type ? acceptBlock(result, b.id) : retypeBlock(result, b.id, select.value));
-      typeCell.append(nativeSelect(select, 'sm'));
+      typeCell.append(nativeSelect(select));
       const actions = el('td', '', 'actions');
       actions.append(iconButton('trash', `Delete block ${b.id}`, 'Delete', () => apply(deleteBlock(result, b.id))));
       tr.append(idCell, el('td', b.page ?? '–', 'num'), ...(els.confidence === false ? [] : [conf]), textCell, typeCell, actions);
@@ -194,10 +194,9 @@ export function createImportReview(els) {
   return review;
 }
 
-/** shadcn NativeSelect (css/shadcn.css): the select in a wrapper with a chevron. size: 'sm' or default. */
-function nativeSelect(select, size) {
+/** shadcn NativeSelect (css/shadcn.css): the select in a wrapper with a chevron. */
+function nativeSelect(select) {
   const wrap = el('div', '', 'native-select');
-  if (size) wrap.dataset.size = size;
   wrap.append(select);
   if (window.icon) {
     const chevron = window.icon('chevron-down');
@@ -207,9 +206,9 @@ function nativeSelect(select, size) {
   return wrap;
 }
 
-// shadcn Button, destructive variant, icon-sm size (28px, like the small type picker beside it).
+// shadcn Button, destructive variant, sized to match the type picker beside it.
 function iconButton(name, label, tip, onClick) {
-  const b = el('button', '', 'btn btn-destructive btn-icon-sm');
+  const b = el('button', '', 'btn btn-destructive btn-icon-lg');
   b.type = 'button';
   b.setAttribute('aria-label', label);
   b.title = tip;

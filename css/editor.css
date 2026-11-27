@@ -14,9 +14,9 @@
    so they never spill out of the editor; the text column narrows when space is short.
    Every block button sits 13px from the text: the same gap as the top bar's sidebar button
    to the script title (21px from icon to text). --tools-inset is the distance from the text
-   to the outer edge of the buttons: two 32px buttons + 2px gap + 13px = 79px. */
+   to the outer edge of the buttons: two large buttons + 2px gap + 13px. */
 .screenplay {
-  --tools-inset: 79px;
+  --tools-inset: calc(2 * var(--control-height-lg) + 15px);
   min-height: 320px;
   margin: 18px 0;
   padding: 36px max(var(--tools-inset), calc((100% - 690px) / 2));
@@ -109,6 +109,7 @@
 .screenplay .character {
   display: block;
   width: 100%;
+  height: auto;
   margin: 0 auto 2px;
   padding: 0 5px;
   letter-spacing: 0.03em;
@@ -168,7 +169,6 @@
   top: 100%;
   left: 50%;
   z-index: 30;
-  min-width: 190px;
   max-height: 220px;
   overflow: auto;
   transform: translateX(-50%);
@@ -188,10 +188,9 @@
 
 /* ---- Margin tools (left) and record controls (right) ------------------- */
 
-/* The 32px buttons are centred on each block's first line of text: the block's 7px top
-   padding, plus half a line (1.35em at the block's 16px), minus half a button. */
+/* Centre the tools on the block's first line of text. */
 .screenplay .turn {
-  --block-tools-top: calc(7px + (1.35em - 32px) / 2);
+  --block-tools-top: calc(7px + (1.35em - var(--control-height-lg)) / 2);
 }
 
 .screenplay .margin-tools,
@@ -254,10 +253,10 @@
   pointer-events: auto;
 }
 
-/* Block menu opens 4px below the margin tools' 32px buttons. */
+/* Block menu opens 4px below the margin tools. */
 .screenplay .block-menu {
   position: absolute;
-  top: calc(var(--block-tools-top) + 32px + 4px);
+  top: calc(var(--block-tools-top) + var(--control-height-lg) + 4px);
   left: calc(-1 * var(--tools-inset));
   /* Above every block's margin and record buttons (z-index 3), which come later in the
      page and would otherwise paint over an open menu; below character suggestions (30). */
@@ -282,10 +281,10 @@
    column has room for side-by-side buttons, each side's buttons stack (grip on top, level
    with the text) and the margins shrink to one button + 13px. The buttons then sit on the page
    gutter and the text lines up with the script title, matching the top bar's sidebar button
-   and title. 848px = the 690px column + 79px on each side, so the margins don't jump. */
-@container script-page (max-width: 847px) {
+   and title. 864px = the 690px column + 87px on each side, so the margins don't jump. */
+@container script-page (max-width: 863px) {
   .screenplay {
-    --tools-inset: 45px;
+    --tools-inset: calc(var(--control-height-lg) + 13px);
     padding: 24px max(var(--tools-inset), calc((100% - 690px) / 2));
   }
 
@@ -300,22 +299,21 @@
 
 .mobile-edit-bar {
   --edit-button-count: 7;
-  position: fixed;
-  right: 0;
-  bottom: var(--keyboard-inset, 0px);
-  left: 0;
+  position: relative;
   z-index: 45;
   display: flex;
+  flex: none;
   align-items: center;
   gap: 2px;
+  margin-inline: calc(-1 * var(--main-gutter));
   padding: 4px max(8px, env(safe-area-inset-right))
     4px max(8px, env(safe-area-inset-left));
   border-top: 1px solid var(--border);
   background: var(--page-bg);
 }
 
-.mobile-edit-bar .btn-icon {
-  width: clamp(36px, calc((100vw - 30px) / var(--edit-button-count)), 44px);
+.mobile-edit-bar .btn-icon-lg {
+  width: clamp(var(--control-height-lg), calc((100vw - 30px) / var(--edit-button-count)), 44px);
   height: 44px;
   transition-property: background-color, color, opacity, transform;
 }
@@ -339,9 +337,5 @@
   .screenplay .margin-tools,
   .header-right > .script-history {
     display: none;
-  }
-
-  body:has(.mobile-edit-bar:not(.hidden)) .app-main {
-    padding-bottom: 60px;
   }
 }

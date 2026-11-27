@@ -82,7 +82,8 @@
 
 /* Match the spacing of the action and script rows. */
 .sidebar-library .sidebar-menu,
-.sidebar-menu.sidebar-pages {
+.sidebar-menu.sidebar-pages,
+.play-scene-list .sidebar-menu {
   gap: 2px;
 }
 
@@ -281,7 +282,6 @@
   top: calc(100% + 4px);
   right: 0;
   z-index: 5;
-  min-width: 140px;
 }
 
 .settings-section-header .muted,
@@ -401,6 +401,46 @@
 }
 
 @media (max-width: 767px) {
+  /* Keep the editor's chrome outside its scroll area when the keyboard changes the viewport. */
+  html:has(#editor:not(.hidden)),
+  body:has(#editor:not(.hidden)) {
+    height: 100%;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .app-shell:has(#editor:not(.hidden)) {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .app-main:has(> #editor:not(.hidden)) {
+    /* Anchor in document coordinates so browser keyboard panning is applied only once. */
+    position: absolute;
+    isolation: isolate;
+    top: var(--script-viewport-top, 0px);
+    right: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    height: var(--script-viewport-height, 100dvh);
+    min-height: 0;
+    padding-bottom: 0;
+  }
+
+  .app-main:has(> #editor:not(.hidden)) > .app-header {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  #editor {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;

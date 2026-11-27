@@ -41,11 +41,16 @@ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&shell.classList.con
 // Theme: 'system' (follows the device), 'light' or 'dark', chosen in Settings.
 const systemDark=window.matchMedia('(prefers-color-scheme: dark)');
 const THEMES=[{value:'system',label:'System',icon:'monitor'},{value:'light',label:'Light',icon:'sun'},{value:'dark',label:'Dark',icon:'moon'}];
-let themeChoice='light';try{themeChoice=localStorage.getItem('rehearsal-theme')||'light'}catch(e){}
+let themeChoice='system';try{themeChoice=localStorage.getItem('rehearsal-theme')||'system'}catch(e){}
 function applyTheme(){
+  const theme=THEMES.find(t=>t.value===themeChoice)||THEMES[0];
+  themeChoice=theme.value;
   const dark=themeChoice==='dark'||(themeChoice==='system'&&systemDark.matches);
   document.documentElement.dataset.theme=dark?'dark':'light';
-  $('themeValue').textContent=(THEMES.find(t=>t.value===themeChoice)||THEMES[1]).label;
+  $('themeValue').textContent=theme.label;
+  const themeIcon=icon(theme.icon);
+  themeIcon.dataset.icon='inline-start';
+  $('themeToggle').querySelector('[data-icon="inline-start"]').replaceWith(themeIcon);
 }
 function setTheme(choice){themeChoice=choice;applyTheme();try{localStorage.setItem('rehearsal-theme',choice)}catch(e){}}
 applyTheme();
@@ -548,7 +553,7 @@ function openModal(type,s){
   $('renameLabel').textContent=text.label||'';$('renameInput').value=text.value||'';
   // Character names are uppercase, like the rest of the script.
   $('renameInput').oninput=type==='character'?()=>{const el=$('renameInput'),pos=el.selectionStart;el.value=el.value.toUpperCase();el.setSelectionRange(pos,pos)}:null;
-  $('modalConfirm').textContent=text.confirm;$('modalCancel').textContent=text.cancel||'Cancel';$('modalConfirm').className='btn '+(hasField?'btn-default':'btn-destructive');
+  $('modalConfirm').textContent=text.confirm;$('modalCancel').textContent=text.cancel||'Cancel';$('modalConfirm').className='btn btn-lg '+(hasField?'btn-default':'btn-destructive');
   $('modalError').textContent='';$('modalBackdrop').classList.remove('hidden');
   if(hasField&&mobileQuery.matches)$('modalBackdrop').querySelector('.dialog-content').focus({preventScroll:true});
   else if(hasField){$('renameInput').focus({preventScroll:true});$('renameInput').select()}
@@ -757,7 +762,7 @@ async function openSearchMatch(s,blockIndex,query){
   if(bounds){
     const viewport=window.visualViewport;
     const center=(viewport?.offsetTop??0)+(viewport?.height??innerHeight)/2;
-    window.scrollBy({top:bounds.top+bounds.height/2-center,behavior:'instant'});
+    scriptScroller().scrollBy({top:bounds.top+bounds.height/2-center,behavior:'instant'});
   }else block.scrollIntoView({block:'center',behavior:'instant'});
 }
 function renderSearchResults(message){
@@ -967,9 +972,30 @@ const PAGES={
 let currentPage=null;
 const testTabs=[...$('testsTabs').querySelectorAll('[role="tab"]')];
 let activeTestTab=testTabs[0];
+function mountTestFrame(frame){
+  const template=$(frame.dataset.testTemplate);
+  const base=el('base');base.href=new URL(template.dataset.base,document.baseURI).href;
+  const styles=['../css/tokens.css','../css/base.css','../css/shadcn.css',...template.dataset.styles.split(' ')];
+  const theme=document.documentElement.dataset.theme;
+  const debug=frame===$('testsFrame')&&new URLSearchParams(location.search).has('debug');
+  frame.srcdoc=`<!doctype html>
+    <html lang="en" data-theme="${theme}"${debug?' data-debug':''}>
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1">
+      ${el('title',frame.title).outerHTML}
+      ${base.outerHTML}
+      ${styles.map(path=>`<link rel="stylesheet" href="${path}">`).join('')}
+      <script src="../vendor/lucide/lucide.min.js" defer></script>
+      <script src="../js/icons.js" defer></script>
+      <script type="module" src="${template.dataset.script}"></script>
+    </head>
+    <body>${template.innerHTML}</body>
+    </html>`;
+}
 function positionAudioTestDialog(){
   const frame=$('testsFrame');
-  if(!frame.getAttribute('src')||!frame.getClientRects().length)return;
+  if(!frame.hasAttribute('srcdoc')||!frame.getClientRects().length)return;
   const bounds=frame.getBoundingClientRect();
   const viewport=window.visualViewport;
   const top=Math.max(bounds.top,$('testsTabs').getBoundingClientRect().bottom,viewport?.offsetTop??0);
@@ -978,7 +1004,7 @@ function positionAudioTestDialog(){
   root?.style.setProperty('--test-visible-top',Math.max(0,top-bounds.top)+'px');
   root?.style.setProperty('--test-visible-height',Math.max(0,bottom-top)+'px');
 }
-for(const frame of $('testsView').querySelectorAll('iframe[data-src]')){
+for(const frame of $('testsView').querySelectorAll('iframe[data-test-template]')){
   let observer;
   frame.addEventListener('load',()=>{
     observer?.disconnect();
@@ -1017,9 +1043,9 @@ function selectTestTab(selected){
   }else if(fromDisk){
     frame.classList.add('hidden');
     panel.append(needsServer);
-  }else if(!frame.getAttribute('src')){
+  }else if(!frame.hasAttribute('srcdoc')){
     // Keep the frame mounted after its first use so switching tabs preserves test state.
-    frame.src=frame.dataset.src;
+    mountTestFrame(frame);
   }
   if(changed)window.scrollTo({top:0,behavior:'instant'});
   if(frame===$('testsFrame'))positionAudioTestDialog();
@@ -1300,7 +1326,7 @@ function drawDropLine(){
   const speed=drag.y<top+48?-Math.min(20,(top+48-drag.y)/3):
     drag.y>bottom-48?Math.min(20,(drag.y-bottom+48)/3):0;
   if(speed){
-    const scroller=drag.sidebar?libraryPanel:document.scrollingElement;
+    const scroller=drag.sidebar?libraryPanel:scriptScroller();
     const previous=scroller.scrollTop;
     scroller.scrollBy({top:speed,behavior:'instant'});
     if(previous!==scroller.scrollTop)scheduleDropLine();
@@ -1408,15 +1434,54 @@ document.addEventListener('keydown',e=>{
 },true);
 window.addEventListener('blur',()=>finishReorder());
 window.addEventListener('scroll',scheduleDropLine,{passive:true});
+$('editor').addEventListener('scroll',scheduleDropLine,{passive:true});
 libraryPanel.addEventListener('scroll',scheduleDropLine,{passive:true});
 window.addEventListener('storage',e=>{if(e.key===PINNED_ORDER_KEY&&db)library()});
 
-function positionMobileEditBar(){
-  const viewport=window.visualViewport;
-  const inset=viewport?document.documentElement.clientHeight-viewport.height-viewport.offsetTop:0;
-  mobileEditBar.style.setProperty('--keyboard-inset',Math.max(0,inset)+'px');
+function scriptScroller(){
+  return mobileQuery.matches?$('editor'):document.scrollingElement;
 }
+function updateScriptViewport(){
+  if(!mobileQuery.matches||$('editor').classList.contains('hidden'))return;
+  const viewport=window.visualViewport;
+  const styles=document.documentElement.style;
+  const pageTop=viewport?.pageTop??(window.scrollY+(viewport?.offsetTop??0));
+  styles.setProperty('--script-viewport-top',pageTop+'px');
+  styles.setProperty('--script-viewport-height',(viewport?.height??innerHeight)+'px');
+}
+// Update in the event itself: waiting a frame leaves the header and editing bar visibly out of
+// place while iOS animates the keyboard. iOS can also report the final size late, so measure
+// again once the keyboard has settled after a field gains focus.
+let settleTimer=0;
+function scheduleScriptViewportUpdate(){
+  updateScriptViewport();
+  clearTimeout(settleTimer);
+  settleTimer=setTimeout(updateScriptViewport,400);
+}
+// With the keyboard open, iOS pans the whole page when a drag can't scroll anything: one that
+// starts on the header or editing bar, or one that runs past the top or bottom of the script.
+// That moves the header and bar off screen, so cancel those drags.
+const scriptMain=$('editor').parentElement;
+let scriptTouch=null;
+scriptMain.addEventListener('touchstart',e=>{
+  scriptTouch=e.touches.length===1?e.touches[0]:null;
+},{passive:true});
+scriptMain.addEventListener('touchmove',e=>{
+  const previousTouch=scriptTouch;
+  scriptTouch=e.touches.length===1?e.touches[0]:null;
+  if(!mobileQuery.matches||$('editor').classList.contains('hidden')||reorderDrag?.active)return;
+  if(!scriptTouch||previousTouch?.identifier!==scriptTouch.identifier||!e.cancelable)return;
+  const dx=scriptTouch.clientX-previousTouch.clientX,dy=scriptTouch.clientY-previousTouch.clientY;
+  if(!dy||Math.abs(dx)>Math.abs(dy))return;
+  for(let node=e.target;node&&node!==scriptMain;node=node.parentElement){
+    if(!/(auto|scroll)/.test(getComputedStyle(node).overflowY)||node.scrollHeight<=node.clientHeight)continue;
+    const atTop=node.scrollTop<=0,atBottom=node.scrollTop+node.clientHeight>=node.scrollHeight-1;
+    if((dy>0&&!atTop)||(dy<0&&!atBottom))return;
+  }
+  e.preventDefault();
+},{passive:false});
 function syncMobileEditBar(){
+  updateScriptViewport();
   const active=document.activeElement;
   const field=active?.matches('#turns :is('+MOBILE_BLOCK_FIELDS+')')?active:
     mobileEditBar.contains(active)&&mobileEditorField?.isConnected?mobileEditorField:null;
@@ -1435,14 +1500,16 @@ function syncMobileEditBar(){
     $('mobileMoveUp').disabled=!block?.previousElementSibling;
     $('mobileMoveDown').disabled=!block?.nextElementSibling;
     $('mobileBeatDuration').classList.toggle('hidden',block?.dataset.who!=='beat');
-    positionMobileEditBar();
   }else if(history.parentElement===mobileEditBar)$('playButton').before(history);
 }
-document.addEventListener('focusin',syncMobileEditBar);
-document.addEventListener('focusout',()=>queueMicrotask(syncMobileEditBar));
+document.addEventListener('focusin',()=>{syncMobileEditBar();scheduleScriptViewportUpdate()});
+document.addEventListener('focusout',()=>requestAnimationFrame(syncMobileEditBar));
 mobileQuery.addEventListener('change',syncMobileEditBar);
-window.visualViewport?.addEventListener('resize',positionMobileEditBar);
-window.visualViewport?.addEventListener('scroll',positionMobileEditBar);
+window.visualViewport?.addEventListener('resize',scheduleScriptViewportUpdate);
+window.visualViewport?.addEventListener('scroll',scheduleScriptViewportUpdate);
+window.addEventListener('resize',scheduleScriptViewportUpdate);
+window.addEventListener('scroll',scheduleScriptViewportUpdate,{passive:true});
+window.addEventListener('pageshow',scheduleScriptViewportUpdate);
 mobileEditBar.addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault()});
 $('turns').addEventListener('mousedown',e=>{
   if(mobileEditorField&&e.target.closest('.record-controls button'))e.preventDefault();
@@ -1592,13 +1659,13 @@ function render(){
   const focusedIndex=focusedBlock?[...root.children].indexOf(focusedBlock):-1;
   const focusedTurn=renderedBlocks.get(focusedBlock)?.turn;
   const focusedKind=focused&&['.character','.dialogue','.block-text','.beat-text'].find(selector=>focused.matches(selector));
-  const savedScroll=window.scrollY;
+  const scroller=scriptScroller(),savedScroll=scroller.scrollTop;
   hideTip();closeBlockMenu();root.replaceChildren();
   script.turns.forEach((t,i)=>{
     const div=el('div');div.className='turn'+(t.who==='beat'?' beat':'');div.dataset.who=t.who;
     const tools=el('div');tools.className='margin-tools';
-    const add=el('button');add.type='button';add.className='btn btn-ghost btn-icon block-add';add.setAttribute('aria-haspopup','true');add.setAttribute('aria-expanded','false');add.append(icon('plus'));setTip(add,'Insert');add.setAttribute('aria-label','Insert');
-    const dots=el('button');dots.type='button';dots.className='btn btn-ghost btn-icon block-grip';dots.setAttribute('aria-haspopup','true');dots.append(icon('grip-vertical'));setTip(dots,'Drag to move, click to open menu');dots.setAttribute('aria-label','Options');dots.setAttribute('aria-expanded','false');
+    const add=el('button');add.type='button';add.className='btn btn-ghost btn-icon-lg block-add';add.setAttribute('aria-haspopup','true');add.setAttribute('aria-expanded','false');add.append(icon('plus'));setTip(add,'Insert');add.setAttribute('aria-label','Insert');
+    const dots=el('button');dots.type='button';dots.className='btn btn-ghost btn-icon-lg block-grip';dots.setAttribute('aria-haspopup','true');dots.append(icon('grip-vertical'));setTip(dots,'Drag to move, click to open menu');dots.setAttribute('aria-label','Options');dots.setAttribute('aria-expanded','false');
     const menu=el('div');menu.className='dropdown-menu block-menu hidden';
     const menuItem=(name,fn,variant,iconName)=>{const b=dropdownItem(name,fn,variant,iconName);menu.append(b);return b};
     const insert=(who)=>{if(who==='line'){addDialogueLine(i+1);return}if(who==='heading'||who==='action'){addTextBlock(i+1,who);return}rememberScriptEdit();script.turns.splice(i+1,0,{who:'beat',text:'',duration:2});render();queueSave(true)};
@@ -1777,10 +1844,10 @@ function render(){
     }
     if(t.who==='them'){
       const controls=el('div');controls.className='record-controls';
-      const record=el('button');record.type='button';record.className='btn btn-ghost btn-icon';const recordLabel=t.audio?'Rerecord audio':'Record audio';record.setAttribute('aria-label',recordLabel);setTip(record,recordLabel);
+      const record=el('button');record.type='button';record.className='btn btn-ghost btn-icon-lg';const recordLabel=t.audio?'Rerecord audio':'Record audio';record.setAttribute('aria-label',recordLabel);setTip(record,recordLabel);
       record.replaceChildren(icon('mic'));
       record.onclick=()=>recordLine(i,record);controls.append(record);
-      if(t.audio){const listen=el('button');listen.type='button';listen.className='btn btn-ghost btn-icon';setTip(listen,'Listen');listen.setAttribute('aria-label','Listen');listen.replaceChildren(icon('play'));listen.onclick=()=>{const url=URL.createObjectURL(t.audio);const a=new Audio(url);const fail=message=>{URL.revokeObjectURL(url);alert(`Couldn't play this recording (${t.audio.size} bytes, ${t.audio.type||'unknown format'}). ${message||''}`.trim())};a.onended=()=>URL.revokeObjectURL(url);a.onerror=()=>fail(a.error?.message);a.play().catch(e=>{if(!a.error)fail(e.message)})};controls.append(listen)}div.append(controls);
+      if(t.audio){const listen=el('button');listen.type='button';listen.className='btn btn-ghost btn-icon-lg';setTip(listen,'Listen');listen.setAttribute('aria-label','Listen');listen.replaceChildren(icon('play'));listen.onclick=()=>{const url=URL.createObjectURL(t.audio);const a=new Audio(url);const fail=message=>{URL.revokeObjectURL(url);alert(`Couldn't play this recording (${t.audio.size} bytes, ${t.audio.type||'unknown format'}). ${message||''}`.trim())};a.onended=()=>URL.revokeObjectURL(url);a.onerror=()=>fail(a.error?.message);a.play().catch(e=>{if(!a.error)fail(e.message)})};controls.append(listen)}div.append(controls);
     }
     root.append(div);if(field){field.style.height='auto';field.style.height=Math.max(field.classList.contains('dialogue')?46:0,field.scrollHeight)+'px'}
   });
@@ -1795,7 +1862,7 @@ function render(){
     }
   }
   syncMobileEditBar();
-  if(Math.abs(window.scrollY-savedScroll)>2)window.scrollTo({top:savedScroll,behavior:'instant'});
+  if(Math.abs(scroller.scrollTop-savedScroll)>2)scroller.scrollTo({top:savedScroll,behavior:'instant'});
 }
 document.addEventListener('click',e=>{if(!e.target.closest('.margin-tools, .block-menu, .mobile-edit-bar'))closeBlockMenu()});
 async function recordLine(i,button){

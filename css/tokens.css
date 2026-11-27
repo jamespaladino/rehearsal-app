@@ -107,6 +107,9 @@
 
   /* Layout */
   --header-height: 64px;
+  --control-height-lg: 36px;
+  --menu-row-height: 32px;
+  --dropdown-min-width: 12rem;
   --play-bar-height: 74px; /* bottom dock (bar 50px) + its 24px offset; updated by js/app.js when the alert shows */
   --sidebar-width: 260px;
   --main-gutter: 30px;

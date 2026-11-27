@@ -14,7 +14,7 @@ python3 speech-lab/setup.py        # downloads ~280 MB once, installs ~100 MB, v
 python3 speech-lab/serve.py       # serves the repository root on :8000 with caching off
 ```
 
-Then open <http://localhost:8000/> and choose **Tests** at the top of the sidebar. The lab opens in the main area, like a script, and keeps its state while you switch to scripts and back. You can also open it on its own at <http://localhost:8000/speech-lab/>. Inside the app it loads with `?embed`, which hides its own header and follows the app's light/dark setting.
+Then open <http://localhost:8000/> and choose **Tests → Audio**. The lab keeps its state while you switch tabs or open a script, and it follows the app's theme.
 
 - `setup.py` reads every URL and hash from `pins.json`. A download that doesn't match its pinned SHA-256 is rejected. Downloads are cached in `speech-lab/.cache/`, so re-running is cheap. `python3 speech-lab/setup.py --verify` checks an existing install without downloading.
 - Installed files go to `speech-lab/vendor/`, `speech-lab/models/` and `speech-lab/samples/`. These folders and `.cache/` are git-ignored (`speech-lab/.gitignore`), so no model or runtime binaries are committed.

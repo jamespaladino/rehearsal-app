@@ -30,8 +30,8 @@
       <div class="sidebar-top">
         <strong class="sidebar-brand">Rehearsal</strong>
         <div class="sidebar-buttons">
-          <button id="toggleScriptSearch" class="btn btn-ghost btn-icon" type="button" aria-label="Search scripts" aria-haspopup="dialog" aria-expanded="false" aria-controls="scriptSearchDialog" data-tooltip="Search"><i data-lucide="search"></i></button>
-          <button id="collapseSidebar" class="btn btn-ghost btn-icon" type="button" aria-label="Close sidebar" data-tooltip="Close sidebar"><i data-lucide="panel-left"></i></button>
+          <button id="toggleScriptSearch" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Search scripts" aria-haspopup="dialog" aria-expanded="false" aria-controls="scriptSearchDialog" data-tooltip="Search"><i data-lucide="search"></i></button>
+          <button id="collapseSidebar" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Close sidebar" data-tooltip="Close sidebar"><i data-lucide="panel-left"></i></button>
         </div>
       </div>
       <ul class="sidebar-menu sidebar-pages">
@@ -58,24 +58,24 @@
 
     <div class="app-main">
       <header class="app-header">
-        <button id="openSidebar" class="btn btn-ghost btn-icon hidden" type="button" aria-label="Open sidebar" data-tooltip="Open sidebar"><i data-lucide="panel-left"></i></button>
+        <button id="openSidebar" class="btn btn-ghost btn-icon-lg hidden" type="button" aria-label="Open sidebar" data-tooltip="Open sidebar"><i data-lucide="panel-left"></i></button>
 
         <div class="header-title-group">
           <span id="topViewTitle" class="header-view-title truncate hidden">Tests</span>
           <div id="titleDropdownWrap" class="title-dropdown-wrap hidden">
-            <button id="topScriptTitle" class="btn btn-ghost" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="titleDropdown"><span id="topScriptTitleText" class="truncate"></span></button>
+            <button id="topScriptTitle" class="btn btn-ghost btn-lg" type="button" aria-expanded="false" aria-haspopup="true" aria-controls="titleDropdown"><span id="topScriptTitleText" class="truncate"></span></button>
             <form id="titleDropdown" class="popover title-dropdown hidden" tabindex="-1">
               <label for="quickRenameInput">Script name</label>
               <input id="quickRenameInput" maxlength="200" autocomplete="off" required>
               <div id="quickRenameError" class="error" aria-live="polite"></div>
               <div class="quick-rename-actions">
-                <button id="quickRenameCancel" class="btn btn-outline" type="button">Cancel</button>
-                <button class="btn btn-default" type="submit">Save</button>
+                <button id="quickRenameCancel" class="btn btn-outline btn-lg" type="button">Cancel</button>
+                <button class="btn btn-default btn-lg" type="submit">Save</button>
               </div>
             </form>
           </div>
           <div id="topScriptActions" class="script-actions hidden">
-            <button id="topScriptMenuToggle" class="btn btn-ghost btn-icon" type="button" aria-label="Script options" aria-haspopup="true" aria-expanded="false" data-tooltip="Script options"><i data-lucide="ellipsis"></i></button>
+            <button id="topScriptMenuToggle" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Script options" aria-haspopup="true" aria-expanded="false" data-tooltip="Script options"><i data-lucide="ellipsis"></i></button>
             <div id="topScriptMenu" class="dropdown-menu script-menu hidden">
               <button type="button" id="topPin" class="dropdown-menu-item"></button>
               <button type="button" id="topRename" class="dropdown-menu-item"><i data-lucide="pen"></i>Rename</button>
@@ -87,10 +87,10 @@
 
         <div class="header-right">
           <div id="scriptHistory" class="script-history hidden" role="group" aria-label="Script edit history">
-            <button id="undoScript" class="btn btn-ghost btn-icon" type="button" aria-label="Undo" data-tooltip="Undo" disabled><i data-lucide="undo-2"></i></button>
-            <button id="redoScript" class="btn btn-ghost btn-icon" type="button" aria-label="Redo" data-tooltip="Redo" disabled><i data-lucide="redo-2"></i></button>
+            <button id="undoScript" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Undo" data-tooltip="Undo" disabled><i data-lucide="undo-2"></i></button>
+            <button id="redoScript" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Redo" data-tooltip="Redo" disabled><i data-lucide="redo-2"></i></button>
           </div>
-          <button id="playButton" class="btn btn-default hidden" type="button" aria-label="Start" data-tooltip="Start"><i data-lucide="play" data-icon="inline-start"></i>Start</button>
+          <button id="playButton" class="btn btn-default btn-lg hidden" type="button" aria-label="Start" data-tooltip="Start"><i data-lucide="play" data-icon="inline-start"></i>Start</button>
         </div>
       </header>
 
@@ -106,8 +106,8 @@
             <div class="card-content">
               <p class="muted">Record a two-second sample, wait for it to save, then close and reopen Rehearsal in the same browser or Home Screen app. Return here to check what survived.</p>
               <div class="row">
-                <button id="saveStorageProbe" class="btn btn-default" type="button">Record test sample</button>
-                <button id="checkStorageProbe" class="btn btn-outline" type="button">Check storage</button>
+                <button id="saveStorageProbe" class="btn btn-default btn-lg" type="button">Record test sample</button>
+                <button id="checkStorageProbe" class="btn btn-outline btn-lg" type="button">Check storage</button>
               </div>
               <p id="storageProbeStatus" role="status"></p>
               <audio id="storageProbeAudio" class="hidden" controls preload="metadata" aria-label="Saved test recording"></audio>
@@ -116,10 +116,10 @@
           </section>
         </div>
         <div id="audioTestPanel" class="hidden" role="tabpanel" aria-labelledby="audioTestTab" tabindex="0">
-          <iframe id="testsFrame" title="Speech Recognition Lab" allow="microphone" data-src="speech-lab/?embed"></iframe>
+          <iframe id="testsFrame" title="Speech Recognition Lab" allow="microphone" data-test-template="audioTestTemplate"></iframe>
         </div>
         <div id="importTestPanel" class="hidden" role="tabpanel" aria-labelledby="importTestTab" tabindex="0">
-          <iframe id="importTestsFrame" title="Script import tests" data-src="script-import/?embed"></iframe>
+          <iframe id="importTestsFrame" title="Script import tests" data-test-template="importTestTemplate"></iframe>
         </div>
         <div id="testsNeedsServer" class="tests-needs-server hidden">
           <h2>Tests need a local server</h2>
@@ -138,7 +138,7 @@
               <div class="settings-row">
                 <div class="settings-row-text"><span id="themeLabel" class="settings-row-label">Theme</span><span class="muted">System follows your device's light or dark setting.</span></div>
                 <div class="settings-select">
-                  <button id="themeToggle" class="btn btn-outline btn-sm" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu" aria-labelledby="themeLabel themeValue"><span id="themeValue">Light</span><i data-lucide="chevron-down" data-icon="inline-end"></i></button>
+                  <button id="themeToggle" class="btn btn-outline btn-lg" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="themeMenu" aria-labelledby="themeLabel themeValue"><i data-lucide="monitor" data-icon="inline-start"></i><span id="themeValue">System</span><i data-lucide="chevron-down" data-icon="inline-end"></i></button>
                   <div id="themeMenu" class="dropdown-menu settings-select-menu hidden" role="menu" aria-labelledby="themeLabel"></div>
                 </div>
               </div>
@@ -151,8 +151,8 @@
                   <span class="settings-row-label">Microphone</span>
                   <span class="muted"><span id="micSettingsStatus" class="mic-status">Not connected</span>&nbsp;· The microphone turns on when you press Start or Record, and off when you stop.</span>
                 </div>
-                <button id="connectMic" class="btn btn-outline btn-sm" type="button" aria-label="Connect microphone"><i data-lucide="mic" data-icon="inline-start"></i>Connect</button>
-                <button id="releaseMic" class="btn btn-outline btn-sm hidden" type="button" aria-label="Release microphone"><i data-lucide="mic-off" data-icon="inline-start"></i>Release</button>
+                <button id="connectMic" class="btn btn-outline btn-lg" type="button" aria-label="Connect microphone"><i data-lucide="mic" data-icon="inline-start"></i>Connect</button>
+                <button id="releaseMic" class="btn btn-outline btn-lg hidden" type="button" aria-label="Release microphone"><i data-lucide="mic-off" data-icon="inline-start"></i>Release</button>
               </div>
             </div>
           </div>
@@ -166,7 +166,7 @@
             <div class="card-content settings-rows">
               <div class="settings-row">
                 <div class="settings-row-text"><span class="settings-row-label">Install app</span><span id="installStatus" class="muted"></span></div>
-                <button id="installApp" class="btn btn-outline btn-sm hidden" type="button"><i data-lucide="download" data-icon="inline-start"></i>Install</button>
+                <button id="installApp" class="btn btn-outline btn-lg hidden" type="button"><i data-lucide="download" data-icon="inline-start"></i>Install</button>
               </div>
             </div>
           </div>
@@ -180,7 +180,7 @@
             <div class="card-content settings-rows">
               <div class="settings-row">
                 <div class="settings-row-text"><span class="settings-row-label">Clear storage</span><span class="muted">Delete every script and recording on this device.</span></div>
-                <button id="clearStorage" class="btn btn-destructive btn-sm" type="button"><i data-lucide="trash-2" data-icon="inline-start"></i>Clear storage</button>
+                <button id="clearStorage" class="btn btn-destructive btn-lg" type="button"><i data-lucide="trash-2" data-icon="inline-start"></i>Clear storage</button>
               </div>
             </div>
           </div>
@@ -196,16 +196,16 @@
 
       <main id="editor" class="editor hidden">
         <nav class="row hidden">
-          <button id="back" class="btn btn-ghost" type="button"><i data-lucide="arrow-left" data-icon="inline-start"></i>Library</button>
-          <button id="home" class="btn btn-ghost" type="button">Script overview</button>
+          <button id="back" class="btn btn-ghost btn-lg" type="button"><i data-lucide="arrow-left" data-icon="inline-start"></i>Library</button>
+          <button id="home" class="btn btn-ghost btn-lg" type="button">Script overview</button>
         </nav>
 
         <div id="scriptHome">
           <h2 id="scriptHeading"></h2>
           <p class="muted">Choose how you want to work with this scene.</p>
           <div class="row">
-            <button class="btn btn-default" id="enterRecord" type="button">Record mode</button>
-            <button class="btn btn-default" id="enterPlay" type="button">Play mode</button>
+            <button class="btn btn-default btn-lg" id="enterRecord" type="button">Record mode</button>
+            <button class="btn btn-default btn-lg" id="enterPlay" type="button">Play mode</button>
           </div>
         </div>
 
@@ -216,16 +216,16 @@
           </div>
         </div>
       </main>
-    </div>
-  </div>
 
-  <div id="mobileEditBar" class="mobile-edit-bar hidden" role="group" aria-label="Script editing controls">
-    <button id="mobileInsert" class="btn btn-ghost btn-icon" type="button" aria-label="Insert" aria-haspopup="true" aria-expanded="false"><i data-lucide="plus"></i></button>
-    <button id="mobileTurnInto" class="btn btn-ghost btn-icon" type="button" aria-label="Turn into" aria-haspopup="true" aria-expanded="false"><i data-lucide="repeat"></i></button>
-    <button id="mobileMoveUp" class="btn btn-ghost btn-icon" type="button" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
-    <button id="mobileMoveDown" class="btn btn-ghost btn-icon" type="button" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
-    <button id="mobileDeleteBlock" class="btn btn-ghost btn-icon" type="button" aria-label="Delete block"><i data-lucide="trash"></i></button>
-    <button id="mobileBeatDuration" class="btn btn-ghost btn-icon hidden" type="button" aria-label="Beat duration" aria-haspopup="true" aria-expanded="false"><i data-lucide="timer"></i></button>
+      <div id="mobileEditBar" class="mobile-edit-bar hidden" role="group" aria-label="Script editing controls">
+        <button id="mobileInsert" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Insert" aria-haspopup="true" aria-expanded="false"><i data-lucide="plus"></i></button>
+        <button id="mobileTurnInto" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Turn into" aria-haspopup="true" aria-expanded="false"><i data-lucide="repeat"></i></button>
+        <button id="mobileMoveUp" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Move up"><i data-lucide="arrow-up"></i></button>
+        <button id="mobileMoveDown" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Move down"><i data-lucide="arrow-down"></i></button>
+        <button id="mobileDeleteBlock" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Delete block"><i data-lucide="trash"></i></button>
+        <button id="mobileBeatDuration" class="btn btn-ghost btn-icon-lg hidden" type="button" aria-label="Beat duration" aria-haspopup="true" aria-expanded="false"><i data-lucide="timer"></i></button>
+      </div>
+    </div>
   </div>
 
   <div id="playPane" class="play-pane hidden" role="dialog" aria-modal="true" aria-labelledby="playScriptTitle playSceneTitle">
@@ -238,8 +238,8 @@
         </ol>
       </nav>
       <div class="play-pane-actions">
-        <button id="toggleScenes" class="btn btn-ghost btn-icon" type="button" aria-label="Scenes" aria-controls="playSidebar" aria-expanded="true" data-tooltip="Hide scenes"><i data-lucide="list"></i></button>
-        <button id="closePlay" class="btn btn-ghost btn-icon" type="button" aria-label="Close play mode" data-tooltip="Close"><i data-lucide="x"></i></button>
+        <button id="toggleScenes" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Scenes" aria-controls="playSidebar" aria-expanded="true" data-tooltip="Hide scenes"><i data-lucide="list"></i></button>
+        <button id="closePlay" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Close play mode" data-tooltip="Close"><i data-lucide="x"></i></button>
       </div>
     </header>
 
@@ -255,16 +255,16 @@
             <div class="alert-description">They'll be skipped when you rehearse. Record them on the script page.</div>
           </div>
           <div class="play-bar">
-            <button id="start" class="btn btn-default" type="button"><i data-lucide="play" data-icon="inline-start"></i>Start</button>
-            <button id="playLoading" class="btn btn-default play-loading hidden" type="button" aria-disabled="true" aria-busy="true"><i data-lucide="loader-circle" data-icon="inline-start"></i>Loading</button>
-            <button id="stop" class="btn btn-secondary hidden" type="button"><i data-lucide="square" data-icon="inline-start"></i>Stop</button>
+            <button id="start" class="btn btn-default btn-icon-lg" type="button" aria-label="Start"><i data-lucide="play"></i></button>
+            <button id="playLoading" class="btn btn-default btn-icon-lg play-loading hidden" type="button" aria-label="Loading" aria-disabled="true" aria-busy="true"><i data-lucide="loader-circle"></i></button>
+            <button id="stop" class="btn btn-destructive btn-icon-lg hidden" type="button" aria-label="Stop"><i data-lucide="square"></i></button>
             <p class="play-meta"><span id="progress"></span><span id="status" role="status">Ready</span></p>
             <div class="play-detection">
-              <button id="playDetectionToggle" class="btn btn-ghost" type="button" aria-label="Line detection" aria-haspopup="true" aria-expanded="false" aria-controls="playDetectionMenu" data-tooltip="Line detection"><i data-lucide="audio-lines" data-icon="inline-start"></i><span id="playDetectionLabel" class="play-detection-label">VAD</span></button>
+              <button id="playDetectionToggle" class="btn btn-ghost btn-lg" type="button" aria-label="Line detection" aria-haspopup="true" aria-expanded="false" aria-controls="playDetectionMenu" data-tooltip="Line detection"><i data-lucide="audio-lines" data-icon="inline-start"></i><span id="playDetectionLabel" class="play-detection-label">VAD</span></button>
               <div id="playDetectionMenu" class="dropdown-menu play-detection-menu hidden" role="menu"></div>
             </div>
             <div class="play-settings">
-              <button id="playSettingsToggle" class="btn btn-ghost btn-icon" type="button" aria-label="Rehearsal settings" aria-haspopup="true" aria-expanded="false" aria-controls="playSettingsMenu" data-tooltip="Settings"><i data-lucide="settings-2"></i></button>
+              <button id="playSettingsToggle" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Rehearsal settings" aria-haspopup="true" aria-expanded="false" aria-controls="playSettingsMenu" data-tooltip="Settings"><i data-lucide="settings-2"></i></button>
               <div id="playSettingsMenu" class="dropdown-menu play-settings-menu hidden" role="menu"></div>
             </div>
           </div>
@@ -289,8 +289,8 @@
         <span id="importFileName" class="muted truncate"></span>
       </div>
       <div class="play-pane-actions import-pane-actions">
-        <button id="cancelImport" class="btn btn-outline" type="button">Cancel</button>
-        <button id="importConfirm" class="btn btn-default" type="button" disabled>Import</button>
+        <button id="cancelImport" class="btn btn-outline btn-lg" type="button">Cancel</button>
+        <button id="importConfirm" class="btn btn-default btn-lg" type="button" disabled>Import</button>
       </div>
     </header>
     <div class="import-pane-main">
@@ -327,7 +327,7 @@
               <div class="import-section-head">
                 <h2 id="importBlocksTitle" class="field-legend" data-variant="label">Blocks</h2>
                 <div class="import-tools">
-                  <button id="importUndo" class="btn btn-ghost hidden" type="button"><i data-lucide="undo-2" data-icon="inline-start"></i>Undo</button>
+                  <button id="importUndo" class="btn btn-ghost btn-lg hidden" type="button"><i data-lucide="undo-2" data-icon="inline-start"></i>Undo</button>
                   <div id="importFilter" class="toggle-group" data-spacing="0" role="group" aria-label="Show blocks">
                     <button class="toggle toggle-outline" type="button" data-filter="all" aria-pressed="true">All</button>
                     <button class="toggle toggle-outline" type="button" data-filter="review" aria-pressed="false">Review</button>
@@ -351,7 +351,7 @@
     <div class="command-input-row" data-slot="command-input-wrapper">
       <i data-lucide="search"></i>
       <input id="scriptSearch" class="command-input" data-slot="command-input" type="text" role="combobox" aria-label="Search scripts" aria-controls="scriptSearchResults" aria-autocomplete="list" aria-expanded="false" placeholder="Search titles and script text…" autocomplete="off" autofocus>
-      <button id="closeScriptSearch" class="btn btn-ghost btn-icon-sm" type="button" aria-label="Close search"><i data-lucide="x"></i></button>
+      <button id="closeScriptSearch" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Close search"><i data-lucide="x"></i></button>
     </div>
     <div id="scriptSearchResults" class="command-list" data-slot="command-list" role="listbox" aria-label="Scripts"></div>
     <p id="scriptSearchStatus" class="command-empty hidden" data-slot="command-empty" role="status"></p>
@@ -370,11 +370,232 @@
           <div id="modalError" class="error" aria-live="polite"></div>
         </div>
         <div class="dialog-footer">
-          <button type="button" id="modalCancel" class="btn btn-outline">Cancel</button>
-          <button type="submit" id="modalConfirm" class="btn btn-default">Save</button>
+          <button type="button" id="modalCancel" class="btn btn-outline btn-lg">Cancel</button>
+          <button type="submit" id="modalConfirm" class="btn btn-default btn-lg">Save</button>
         </div>
       </form>
     </div>
   </div>
+
+  <template id="audioTestTemplate" data-base="speech-lab/" data-styles="lab.css" data-script="js/app.js">
+  <main class="lab-main">
+    <div id="setupAlert" class="alert alert-destructive hidden" role="alert">
+      <i data-lucide="circle-alert"></i>
+      <div class="alert-title">Runtime or model files are missing</div>
+      <div class="alert-description" id="setupAlertText">Run <code>python3 speech-lab/setup.py</code> from the repository root, then reload.</div>
+    </div>
+
+    <!-- 1. Engines -->
+    <section class="card">
+      <div class="card-header"><h2 class="card-title">1. Engines</h2></div>
+      <div class="card-content lab-stack">
+        <div class="row">
+          <span class="lab-label">Live engine</span>
+          <div class="toggle-group" data-spacing="0" role="group" aria-label="Live engine" id="engineToggle">
+            <button class="toggle toggle-outline" type="button" data-engine="sherpa" aria-pressed="true">Sherpa-ONNX</button>
+            <button class="toggle toggle-outline" type="button" data-engine="vosk" aria-pressed="false">Vosk</button>
+          </div>
+        </div>
+        <div class="engine-grid" id="engineCards"></div>
+      </div>
+    </section>
+
+    <!-- 2. Script and cue -->
+    <section class="card">
+      <div class="card-header"><h2 class="card-title">2. Expected dialogue and cue</h2></div>
+      <div class="card-content lab-stack">
+        <div class="picker-row">
+          <div class="picker-field">
+            <label for="scriptPicker">Script</label>
+            <select id="scriptPicker"><option value="">Loading scripts…</option></select>
+          </div>
+          <div class="picker-field picker-line">
+            <label for="linePicker">Your line</label>
+            <select id="linePicker" disabled><option value="">Choose a script first</option></select>
+          </div>
+          <button id="nextLine" class="btn btn-outline btn-lg" type="button" disabled><i data-lucide="skip-forward" data-icon="inline-start"></i>Next line</button>
+          <button id="refreshScripts" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Reload scripts" title="Reload scripts"><i data-lucide="refresh-cw"></i></button>
+          <button id="fullRun" class="btn btn-default btn-lg" type="button" disabled><i data-lucide="clapperboard" data-icon="inline-start"></i>Test full script</button>
+        </div>
+        <p id="lineContext" class="muted small hidden"></p>
+        <div>
+          <label for="expected">Expected dialogue</label>
+          <textarea id="expected" rows="3">I told you before, I am not going back to that house. Not tonight, not ever. You can keep the keys.</textarea>
+        </div>
+        <div class="cue-row">
+          <div class="grow">
+            <label for="cue">Cue phrase</label>
+            <input id="cue" autocomplete="off">
+          </div>
+          <div>
+            <label for="cueWords">Auto words</label>
+            <input id="cueWords" type="number" min="1" max="20" value="5" class="num">
+          </div>
+          <label class="check"><input type="checkbox" id="cueAuto" checked> Auto-generate</label>
+        </div>
+        <div class="settings-grid">
+          <div>
+            <label for="fuzzyThreshold">Fuzzy threshold <span class="muted" id="fuzzyThresholdValue"></span></label>
+            <input id="fuzzyThreshold" type="range" min="0.5" max="1" step="0.01" value="0.8">
+          </div>
+          <div>
+            <label for="prematureTolerance">Premature if earlier than (s)</label>
+            <input id="prematureTolerance" type="number" min="0" step="0.05" value="0.25" class="num">
+          </div>
+          <div>
+            <label for="maxLatency">Missed if later than (s)</label>
+            <input id="maxLatency" type="number" min="0.1" step="0.1" value="3" class="num">
+          </div>
+          <div>
+            <label for="chunkMs">Chunk size (ms)</label>
+            <input id="chunkMs" type="number" min="20" max="500" step="10" value="100" class="num">
+          </div>
+        </div>
+        <p class="muted small">Matching is case-, punctuation- and apostrophe-insensitive. Exact requires the cue words contiguously; fuzzy accepts a window of n±1 heard words whose character similarity to the cue is at least the threshold. Both run on partial and final results.</p>
+      </div>
+    </section>
+
+    <!-- 3. Live -->
+    <section class="card">
+      <div class="card-header"><h2 class="card-title">3. Live microphone</h2></div>
+      <div class="card-content lab-stack">
+        <div class="row">
+          <button id="micStart" class="btn btn-default btn-lg" type="button"><i data-lucide="mic" data-icon="inline-start"></i>Start</button>
+          <button id="micStop" class="btn btn-secondary btn-lg hidden" type="button"><i data-lucide="square" data-icon="inline-start"></i>Stop</button>
+          <label class="check"><input type="checkbox" id="voiceProcessing" checked> Browser voice processing (echo cancel, noise suppression, AGC)</label>
+          <label class="check"><input type="checkbox" id="keepTake" checked> Save as take</label>
+          <span id="liveStatus" class="muted" role="status"></span>
+        </div>
+        <div class="cue-badges">
+          <span class="badge" id="liveExact">Exact: waiting</span>
+          <span class="badge" id="liveFuzzy">Fuzzy: waiting</span>
+          <span class="muted small" id="liveClock"></span>
+        </div>
+        <div class="transcript" id="liveTranscript" aria-live="polite"><span class="muted">Transcript appears here.</span></div>
+      </div>
+    </section>
+
+    <!-- 4. Takes -->
+    <section class="card">
+      <div class="card-header"><h2 class="card-title">4. Takes and cue annotation</h2></div>
+      <div class="card-content lab-stack">
+        <p class="muted small">Each take is stored as preprocessed 16 kHz mono PCM, so every engine replays exactly the same samples. Click the waveform (or type a time) to mark where the cue actually ends. Takes live in memory; download the WAV to keep one.</p>
+        <div class="row">
+          <label class="btn btn-outline btn-lg" for="loadWav"><i data-lucide="upload" data-icon="inline-start"></i>Load audio file…</label>
+          <input id="loadWav" type="file" accept="audio/*,.wav" class="hidden" multiple>
+        </div>
+        <div id="takes" class="lab-stack"></div>
+      </div>
+    </section>
+
+    <!-- 5. Benchmark -->
+    <section class="card">
+      <div class="card-header"><h2 class="card-title">5. Benchmark</h2></div>
+      <div class="card-content lab-stack">
+        <div class="row">
+          <label class="check"><input type="checkbox" class="bench-engine" value="sherpa" checked> Sherpa-ONNX</label>
+          <label class="check"><input type="checkbox" class="bench-engine" value="vosk" checked> Vosk</label>
+          <label>Trailing silence (ms) <input id="trailingMs" type="number" min="0" step="100" value="1500" class="num inline"></label>
+          <button id="benchRun" class="btn btn-default btn-lg" type="button"><i data-lucide="play" data-icon="inline-start"></i>Run benchmark</button>
+          <button id="benchStop" class="btn btn-secondary btn-lg hidden" type="button"><i data-lucide="square" data-icon="inline-start"></i>Stop</button>
+          <button id="exportJson" class="btn btn-outline btn-lg" type="button" disabled><i data-lucide="download" data-icon="inline-start"></i>JSON</button>
+          <button id="exportCsv" class="btn btn-outline btn-lg" type="button" disabled><i data-lucide="download" data-icon="inline-start"></i>CSV</button>
+        </div>
+        <p class="muted small">Engines run one after another (never at the same time) so they don't compete for CPU. Each take is replayed at real-time speed in chunk-sized pieces; each chunk is delivered when it would have finished arriving from a live microphone, so detection times are directly comparable with the annotated cue end.</p>
+        <div id="benchStatus" class="muted" role="status"></div>
+        <div class="progress hidden" id="benchProgress"><div></div></div>
+        <div class="table-wrap"><table class="results" id="summaryTable"></table></div>
+        <details>
+          <summary>Per-take results</summary>
+          <div class="table-wrap"><table class="results" id="runsTable"></table></div>
+        </details>
+      </div>
+    </section>
+  </main>
+
+  <!-- Test full script: walk a whole script with the selected engine, as in a real rehearsal. -->
+  <div id="runOverlay" class="dialog-overlay hidden" role="presentation">
+    <div class="run-dialog" role="dialog" aria-modal="true" aria-labelledby="runTitle" aria-describedby="runSubtitle">
+      <header class="run-header">
+        <div class="run-heading">
+          <h2 id="runTitle" class="dialog-title"></h2>
+          <p id="runSubtitle" class="dialog-description">Reader lines play their recordings. Say your lines; the script moves on as soon as the cue is heard. Click a line to start from it.</p>
+        </div>
+        <div class="run-options">
+          <label class="run-field">Engine
+            <select id="runEngine"><option value="sherpa">Sherpa-ONNX</option><option value="vosk">Vosk</option></select>
+          </label>
+          <label class="run-field">Match
+            <select id="runMatch"><option value="fuzzy">Fuzzy</option><option value="exact">Exact</option></select>
+          </label>
+          <button id="runClose" class="btn btn-ghost btn-icon-lg" type="button" aria-label="Close"><i data-lucide="x"></i></button>
+        </div>
+      </header>
+      <ol id="runScript" class="run-script" aria-label="Script"></ol>
+      <footer class="run-footer">
+        <div id="runSummary" class="run-summary hidden"></div>
+        <div id="runHeard" class="transcript run-heard"><span class="muted">Your words appear here while it's listening.</span></div>
+        <div class="row">
+          <button id="runStart" class="btn btn-default btn-lg" type="button"><i data-lucide="play" data-icon="inline-start"></i>Start</button>
+          <button id="runStop" class="btn btn-secondary btn-lg hidden" type="button"><i data-lucide="square" data-icon="inline-start"></i>Stop</button>
+          <button id="runSkip" class="btn btn-outline btn-lg" type="button" disabled title="Move on now (→)"><i data-lucide="skip-forward" data-icon="inline-start"></i>Skip</button>
+          <label class="check"><input type="checkbox" id="runSaveTakes" checked> Save my lines as takes</label>
+          <span id="runStatus" class="muted" role="status"></span>
+        </div>
+      </footer>
+    </div>
+  </div>
+  </template>
+
+  <template id="importTestTemplate" data-base="script-import/" data-styles="review.css debug.css" data-script="debug.js">
+  <main class="import-main">
+    <label id="drop" class="import-drop" for="file">
+      <i data-lucide="file-up"></i>
+      <span><strong>Choose a script</strong> or drop it here</span>
+      <span class="muted">.pdf, .fountain, .fdx, .txt</span>
+      <input id="file" type="file" accept=".pdf,.fountain,.spmd,.fdx,.txt,application/pdf" hidden>
+    </label>
+
+    <p id="status" class="muted" role="status"></p>
+
+    <section id="result" class="hidden">
+      <div class="import-summary">
+        <div id="summary"></div>
+        <div class="import-tools">
+          <button id="undo" class="btn btn-outline btn-lg hidden" type="button"><i data-lucide="undo-2" data-icon="inline-start"></i>Undo</button>
+          <div id="filter" class="toggle-group" data-spacing="0" role="group" aria-label="Show blocks">
+            <button class="toggle toggle-outline" type="button" data-filter="all" aria-pressed="true">All</button>
+            <button class="toggle toggle-outline" type="button" data-filter="review" aria-pressed="false">Review</button>
+          </div>
+        </div>
+      </div>
+      <div id="warnings"></div>
+
+      <div class="import-columns">
+        <div class="card">
+          <div class="card-header"><h2 id="youTitle" class="card-title">You</h2><p class="muted">The character you'll play, to save the script to Rehearsal.</p></div>
+          <div class="card-content">
+            <div id="characters" class="import-characters"></div>
+            <label for="title" class="import-label">Script name</label>
+            <input id="title" autocomplete="off">
+            <button id="save" class="btn btn-default btn-lg" type="button"><i data-lucide="save" data-icon="inline-start"></i>Save to Rehearsal</button>
+            <p id="saved" class="muted" role="status"></p>
+          </div>
+        </div>
+
+        <div class="card import-blocks-card">
+          <div class="card-header"><h2 class="card-title">Blocks</h2><p class="muted">Type and confidence for every block. Highlighted rows need a look: choose a type for each, or delete it.</p></div>
+          <div class="card-content">
+            <table class="import-blocks">
+              <thead><tr><th>#</th><th>Page</th><th>Conf.</th><th>Text</th><th>Type</th><th><span class="sr-only">Actions</span></th></tr></thead>
+              <tbody id="blocks"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+  </template>
+
 </body>
 </html>

@@ -46,8 +46,8 @@ export class SherpaAdapter extends Adapter {
       };
       this.worker.onerror = (e) => reject(new Error(e.message || 'Worker failed to start'));
     });
-    // Open the lab with ?debug to see sherpa-onnx's own logging in the console.
-    const debug = new URLSearchParams(location.search).has('debug');
+    // Rehearsal passes its ?debug flag into the embedded Audio test.
+    const debug = document.documentElement.hasAttribute('data-debug') || new URLSearchParams(location.search).has('debug');
     this.worker.postMessage({ type: 'load', runtimeBase: this.runtimeBase, modelBase: this.modelBase, files: this.files, debug });
     const m = await ready;
     this.loaded = true;

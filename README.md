@@ -39,7 +39,7 @@ Audio and Import need the local server. Run `python3 speech-lab/serve.py` and op
 entirely on the device. Choose **Import** at the top of the sidebar and pick a file. An import pane opens:
 name the script, choose who you play (**You**, preselected with a best guess), and review the blocks. You can retype, confirm or delete any of
 them. **Import** creates the script and opens it; exiting asks first. It needs a local server like Tests
-(`python3 speech-lab/serve.py`). A standalone debug view is at `/script-import/`. Tests:
+(`python3 speech-lab/serve.py`). The browser debug view is under **Tests → Import**. Tests:
 `node script-import/tests/run.js`. Details and known limitations: [script-import/README.md](script-import/README.md).
 
 ## Settings
