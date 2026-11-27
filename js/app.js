@@ -1442,68 +1442,77 @@ window.addEventListener('storage',e=>{if(e.key===PINNED_ORDER_KEY&&db)library()}
 function scriptScroller(){
   return mobileQuery.matches?$('editor'):document.scrollingElement;
 }
-// Phones: pin the main area (header included) to the visible area above the keyboard, on every
-// page. iOS pans the page to reveal a focused field; scroll it straight back so the header stays
-// on screen, and follow any pan that remains so the main area still lines up with what's visible.
+// ---- Phones: the main area and the on-screen keyboard ---------------------------------------
+// iOS never shrinks the page for the keyboard. It shrinks the *visible* area (window.visualViewport)
+// and, if the focused field would end up under the keyboard, pans that visible area down the page,
+// which slides anything pinned to the page (the header) off screen. So on phones:
+//  1. The page itself never scrolls. .app-main (header + content) is pinned to the visible area:
+//     its top and height follow visualViewport (css/layout.css). The content scrolls inside it.
+//  2. iOS is never given a reason to pan. When a field gains focus, it's placed where the keyboard
+//     won't cover it (once, synchronously, before iOS checks), so the visible area stays put.
+//  3. Drags that can't scroll anything are cancelled while the keyboard is open, because iOS turns
+//     them into a pan of the whole page.
+// If iOS pans anyway, (1) still lines the main area up with what's visible.
+const appMain=$('editor').parentElement;
+// Full screen height. Unlike innerHeight (which shrinks with the keyboard in Safari), this doesn't
+// change when the keyboard opens.
+const screenHeight=()=>document.documentElement.clientHeight;
+const keyboardOpen=()=>!!window.visualViewport&&screenHeight()-window.visualViewport.height>120;
 function updateAppViewport(){
   if(!mobileQuery.matches)return;
   const viewport=window.visualViewport;
-  if(viewport&&viewport.scale>1.01)return; // pinch-zoomed: leave the layout alone
-  if(window.scrollY||document.scrollingElement.scrollTop)window.scrollTo(0,0);
+  if(!viewport||viewport.scale>1.01)return; // pinch-zoomed: leave the layout alone
+  // Only write when the numbers change: each write lays out the whole main area again.
+  const top=viewport.offsetTop+'px',height=viewport.height+'px';
   const styles=document.documentElement.style;
-  styles.setProperty('--app-viewport-top',(viewport?.offsetTop??0)+'px');
-  styles.setProperty('--app-viewport-height',(viewport?.height??innerHeight)+'px');
+  if(styles.getPropertyValue('--app-viewport-top')!==top)styles.setProperty('--app-viewport-top',top);
+  if(styles.getPropertyValue('--app-viewport-height')!==height)styles.setProperty('--app-viewport-height',height);
 }
-// Once the keyboard has settled, make sure the focused field (also inside a Tests iframe) is
-// visible in the area that's left.
-function revealFocusedField(){
-  if(!mobileQuery.matches)return;
-  let active=document.activeElement;
-  try{while(active?.tagName==='IFRAME')active=active.contentDocument?.activeElement}catch(e){return}
-  if(!active?.matches?.('input, textarea, select, [contenteditable]'))return;
-  if(active===mobileEditorField)keepMobileFieldInView(active);
-  else active.scrollIntoView({block:'nearest'});
-}
-// Safari can deliver keyboard viewport events before its geometry has settled.
-let viewportFrame=0,settleTimer=0;
-function keepMobileFieldInView(field,openingKeyboard=false){
-  const editor=$('editor');
-  if(!mobileQuery.matches||!editor.contains(field)||!field.matches(MOBILE_BLOCK_FIELDS))return;
-  const pane=editor.getBoundingClientRect();
-  const bounds=field.getBoundingClientRect();
+window.visualViewport?.addEventListener('resize',updateAppViewport);
+window.visualViewport?.addEventListener('scroll',updateAppViewport);
+window.addEventListener('resize',updateAppViewport);
+window.addEventListener('pageshow',updateAppViewport);
+mobileQuery.addEventListener('change',updateAppViewport);
+updateAppViewport();
+
+// The keyboard plus Safari's bar above it cover the bottom 45–55% of a phone screen in portrait.
+// A field whose bottom is above this line (from the top of the screen) is never covered.
+const KEYBOARD_SAFE_FRACTION=.4;
+function placeFocusedField(field){
+  if(!mobileQuery.matches||!appMain.contains(field))return;
+  // The field's own scroll area: the script on the script page, otherwise the main area.
+  const scroller=field.closest('#editor')||appMain;
+  if(scroller.scrollHeight<=scroller.clientHeight&&scroller!==$('editor'))return;
+  const pane=scroller.getBoundingClientRect(),bounds=field.getBoundingClientRect();
   if(!pane.height||!bounds.height)return;
-  const top=pane.top+8;
-  const bottom=openingKeyboard?pane.top+pane.height/2:pane.bottom-8;
-  if(bounds.top<top&&bounds.bottom>bottom)return;
-  if(bounds.top<top)editor.scrollTop+=bounds.top-top;
-  else if(bounds.bottom>bottom)editor.scrollTop+=Math.min(bounds.bottom-bottom,bounds.top-top);
+  const header=scroller===appMain?appMain.querySelector('.app-header').offsetHeight:0;
+  const top=pane.top+header+8;
+  const bottom=keyboardOpen()?pane.bottom-8:Math.min(pane.bottom-8,screenHeight()*KEYBOARD_SAFE_FRACTION);
+  let delta=0;
+  if(bounds.top<top)delta=bounds.top-top;
+  else if(bounds.bottom>bottom)delta=Math.min(bounds.bottom-bottom,bounds.top-top);
+  if(delta)scroller.scrollTop+=delta;
 }
-function scheduleAppViewportUpdate(){
-  updateAppViewport();
-  if(!viewportFrame)viewportFrame=requestAnimationFrame(()=>{
-    viewportFrame=0;
-    updateAppViewport();
-  });
-  clearTimeout(settleTimer);
-  settleTimer=setTimeout(()=>{updateAppViewport();revealFocusedField()},400);
-}
-// With the keyboard open, iOS pans the whole page when a drag can't scroll anything: one that
-// starts on the header or editing bar, or one that runs past the top or bottom of the content.
-// That moves the header and bar off screen, so cancel those drags.
-const scriptMain=$('editor').parentElement; // .app-main
-let scriptTouch=null;
-scriptMain.addEventListener('touchstart',e=>{
-  scriptTouch=e.touches.length===1?e.touches[0]:null;
+document.addEventListener('focusin',e=>{
+  syncMobileEditBar();
+  if(e.target.matches?.('input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=file]), textarea, select, [contenteditable], .beat-text'))
+    placeFocusedField(e.target);
+});
+
+// Cancel drags that would pan the page (see 3 above). Cheap when the keyboard is closed.
+let appTouch=null;
+appMain.addEventListener('touchstart',e=>{
+  appTouch=e.touches.length===1?e.touches[0]:null;
 },{passive:true});
-scriptMain.addEventListener('touchmove',e=>{
-  const previousTouch=scriptTouch;
-  scriptTouch=e.touches.length===1?e.touches[0]:null;
-  if(!mobileQuery.matches||reorderDrag?.active)return;
-  if(!scriptTouch||previousTouch?.identifier!==scriptTouch.identifier||!e.cancelable)return;
-  const dx=scriptTouch.clientX-previousTouch.clientX,dy=scriptTouch.clientY-previousTouch.clientY;
+appMain.addEventListener('touchmove',e=>{
+  const previous=appTouch;
+  appTouch=e.touches.length===1?e.touches[0]:null;
+  if(!mobileQuery.matches||reorderDrag?.active||!keyboardOpen())return;
+  if(!appTouch||previous?.identifier!==appTouch.identifier||!e.cancelable)return;
+  const dx=appTouch.clientX-previous.clientX,dy=appTouch.clientY-previous.clientY;
   if(!dy||Math.abs(dx)>Math.abs(dy))return;
-  for(let node=e.target;node&&node!==scriptMain.parentElement;node=node.parentElement){
-    if(!/(auto|scroll)/.test(getComputedStyle(node).overflowY)||node.scrollHeight<=node.clientHeight)continue;
+  for(let node=e.target;node&&node!==appMain.parentElement;node=node.parentElement){
+    if(node.scrollHeight<=node.clientHeight||!/(auto|scroll)/.test(getComputedStyle(node).overflowY))continue;
     const atTop=node.scrollTop<=0,atBottom=node.scrollTop+node.clientHeight>=node.scrollHeight-1;
     if((dy>0&&!atTop)||(dy<0&&!atBottom))return;
   }
@@ -1531,23 +1540,8 @@ function syncMobileEditBar(){
     $('mobileBeatDuration').classList.toggle('hidden',block?.dataset.who!=='beat');
   }else if(history.parentElement===mobileEditBar)$('playButton').before(history);
 }
-document.addEventListener('focusin',e=>{
-  syncMobileEditBar();
-  // Put a low field in the upper half before Safari tries to pan the page to reveal it.
-  if(e.target===mobileEditorField){
-    const viewport=window.visualViewport;
-    const openingKeyboard=!viewport||window.innerHeight-viewport.height<100;
-    keepMobileFieldInView(e.target,openingKeyboard);
-  }
-  scheduleAppViewportUpdate();
-});
 document.addEventListener('focusout',()=>requestAnimationFrame(syncMobileEditBar));
 mobileQuery.addEventListener('change',syncMobileEditBar);
-window.visualViewport?.addEventListener('resize',scheduleAppViewportUpdate);
-window.visualViewport?.addEventListener('scroll',scheduleAppViewportUpdate);
-window.addEventListener('resize',scheduleAppViewportUpdate);
-window.addEventListener('scroll',scheduleAppViewportUpdate,{passive:true});
-window.addEventListener('pageshow',scheduleAppViewportUpdate);
 mobileEditBar.addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault()});
 $('turns').addEventListener('mousedown',e=>{
   if(mobileEditorField&&e.target.closest('.record-controls button'))e.preventDefault();
