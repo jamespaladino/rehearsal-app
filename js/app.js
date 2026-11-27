@@ -1448,14 +1448,34 @@ function updateScriptViewport(){
   styles.setProperty('--script-viewport-top',(viewport?.offsetTop??0)+'px');
   styles.setProperty('--script-viewport-height',(viewport?.height??innerHeight)+'px');
 }
-let scriptViewportFrame=0;
+// Update in the event itself: waiting a frame leaves the header and editing bar visibly out of
+// place while iOS animates the keyboard. iOS can also report the final size late, so measure
+// again once the keyboard has settled after a field gains focus.
+let settleTimer=0;
 function scheduleScriptViewportUpdate(){
-  if(scriptViewportFrame)return;
-  scriptViewportFrame=requestAnimationFrame(()=>{
-    scriptViewportFrame=0;
-    updateScriptViewport();
-  });
+  updateScriptViewport();
+  clearTimeout(settleTimer);
+  settleTimer=setTimeout(updateScriptViewport,400);
 }
+// With the keyboard open, iOS pans the whole page when a drag can't scroll anything: one that
+// starts on the header or editing bar, or one that runs past the top or bottom of the script.
+// That moves the header and bar off screen, so cancel those drags.
+let scriptTouchY=0,scriptTouchX=0;
+document.addEventListener('touchstart',e=>{
+  if(e.touches.length===1){scriptTouchX=e.touches[0].clientX;scriptTouchY=e.touches[0].clientY}
+},{passive:true});
+document.addEventListener('touchmove',e=>{
+  if(!mobileQuery.matches||$('editor').classList.contains('hidden')||reorderDrag?.active)return;
+  if(e.touches.length!==1||!e.cancelable||!e.target.closest?.('.app-main'))return;
+  const dx=e.touches[0].clientX-scriptTouchX,dy=e.touches[0].clientY-scriptTouchY;
+  if(!dy||Math.abs(dx)>Math.abs(dy))return;
+  for(let node=e.target;node&&node!==document.body;node=node.parentElement){
+    if(!/(auto|scroll)/.test(getComputedStyle(node).overflowY)||node.scrollHeight<=node.clientHeight)continue;
+    const atTop=node.scrollTop<=0,atBottom=node.scrollTop+node.clientHeight>=node.scrollHeight-1;
+    if((dy>0&&!atTop)||(dy<0&&!atBottom))return;
+  }
+  e.preventDefault();
+},{passive:false});
 function syncMobileEditBar(){
   updateScriptViewport();
   const active=document.activeElement;
@@ -1478,7 +1498,7 @@ function syncMobileEditBar(){
     $('mobileBeatDuration').classList.toggle('hidden',block?.dataset.who!=='beat');
   }else if(history.parentElement===mobileEditBar)$('playButton').before(history);
 }
-document.addEventListener('focusin',syncMobileEditBar);
+document.addEventListener('focusin',()=>{syncMobileEditBar();scheduleScriptViewportUpdate()});
 document.addEventListener('focusout',()=>queueMicrotask(syncMobileEditBar));
 mobileQuery.addEventListener('change',syncMobileEditBar);
 window.visualViewport?.addEventListener('resize',scheduleScriptViewportUpdate);
