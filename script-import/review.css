@@ -170,7 +170,14 @@ tr:not(.needs-review):focus-within .actions .btn,
 }
 
 
-/* Narrow screens: each block is two lines instead of a table row. Number, type, confidence and
+@media (max-width: 767px) {
+  .import-pane .import-blocks th:first-child,
+  .import-pane .import-blocks td.num:first-child {
+    display: none;
+  }
+}
+
+/* Narrow screens: each block is two lines instead of a table row. Metadata and
    actions on top (whatever the column order); the text full width below, with smaller indents. */
 @media (max-width: 640px) {
   .import-blocks thead {
@@ -238,6 +245,18 @@ tr:not(.needs-review):focus-within .actions .btn,
   .import-blocks td.actions {
     grid-row: 1;
     grid-column: 4;
+  }
+
+  .import-pane .import-blocks tr {
+    grid-template-columns: minmax(0, 1fr) auto;
+  }
+
+  .import-pane .import-blocks td.type {
+    grid-column: 1;
+  }
+
+  .import-pane .import-blocks td.actions {
+    grid-column: 2;
   }
 
   .import-blocks td[colspan] {

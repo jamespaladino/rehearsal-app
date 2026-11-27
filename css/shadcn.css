@@ -1483,3 +1483,57 @@ button.sidebar-group-label:focus-visible {
   user-select: none;
   transform: translateY(-50%);
 }
+.drawer {
+  position: fixed;
+  inset: auto 0 0;
+  box-sizing: border-box;
+  width: 100%;
+  max-width: none;
+  max-height: calc(100dvh - 16px);
+  margin: 0;
+  padding: 0 max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+  background: var(--popover);
+  color: var(--popover-foreground);
+  translate: 0 var(--drawer-drag, 0px);
+}
+
+.drawer::backdrop {
+  background: rgb(0 0 0 / 48%);
+}
+
+.drawer-handle {
+  display: grid;
+  height: 28px;
+  place-items: center;
+  touch-action: none;
+  cursor: grab;
+}
+
+.drawer-handle::before {
+  content: "";
+  width: 48px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.drawer-title {
+  margin: 0 0 8px;
+  outline: none;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .drawer[open] {
+    animation: drawer-enter 220ms cubic-bezier(.2, .75, .3, 1);
+  }
+
+  @keyframes drawer-enter {
+    from { transform: translateY(100%); }
+  }
+}

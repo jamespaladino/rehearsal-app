@@ -334,6 +334,18 @@
   overflow: visible;
 }
 
+.block-drawer .block-menu {
+  padding: 0;
+  background: transparent;
+  box-shadow: none;
+}
+
+.block-drawer :is(.dropdown-menu-item, .dropdown-menu-radio-item) {
+  min-height: 44px;
+  font-size: 16px;
+}
+
+
 @media (max-width: 767px) {
   .screenplay .margin-tools,
   .header-right > .script-history {

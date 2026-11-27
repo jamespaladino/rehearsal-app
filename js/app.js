@@ -917,12 +917,17 @@ $('topRename').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden'
 $('topDelete').onclick=()=>{if(script){$('topScriptMenu').classList.add('hidden');openModal('delete',script)}};
 // New scripts start with just a scene heading (cursor in it). Enter adds the action, then Enter
 // again starts the first dialogue line.
-$('newScript').onclick=async()=>{
+function newScript(){
   closeMobileSidebar();
   const fresh={id:crypto.randomUUID(),title:UNTITLED_SCRIPT,newDraft:true,meCharacter:DEFAULT_ACTOR_NAME,otherCharacters:[],turns:[{who:'heading',text:''}]};
-  await openScript(fresh,{create:true});
+  // Queue the previous script's save before switching. iOS needs focus to happen
+  // during the tap itself for the scene heading to open the keyboard.
+  finishScript().catch(error=>console.error('Could not finish previous script:',error));
+  stop();releaseMicrophone();
+  showScript(fresh);
   focusBlockText(0);
-};
+}
+$('newScript').onclick=newScript;
 async function returnToLibrary(){
   await finishScript();stop();releaseMicrophone();script=null;
   $('playButton').classList.add('hidden');closePlayPane();$('editor').classList.add('hidden');
@@ -944,24 +949,26 @@ async function loadRecordingsIntoMemory(s){
     }catch(e){console.error('Could not load a recording',e)}
   }));
 }
-async function openScript(s,{create=false}={}){
+async function openScript(s){
   if(script?.id===s.id){s=script;await flushSave()}
   else{
     await finishScript();
     // A sidebar row can still be visible while its draft is being discarded.
-    if(!create&&s.newDraft){
+    if(s.newDraft){
       s=(await getAll()).find(saved=>saved.id===s.id);
       if(!s)return;
     }
     stop();releaseMicrophone();
   }
-  if(create)await put(s);
   await loadRecordingsIntoMemory(s);
+  showScript(s);await library();
+}
+function showScript(s){
   showView(null);$('playButton').classList.remove('hidden');
   script=s;script.lastUsed=Date.now();queueSave(true);
   try{localStorage.setItem('rehearsal-last-opened',s.id)}catch(e){}
   $('title').value=s.title;updateScriptHeader();$('editor').classList.remove('hidden');
-  enterMode('record');render();await library();
+  enterMode('record');render();
 }
 // Pages above the library (Tests, Settings) open in the main area the same way a script opens:
 // the current script closes, the sidebar row is selected, and it's remembered as last opened.
@@ -1123,7 +1130,7 @@ $('openImport').onclick=()=>{
   if(location.protocol==='file:'){alert('Importing needs a local server. From the repository root, run python3 speech-lab/serve.py, then open http://localhost:8000/');return}
   $('importFile').value='';$('importFile').click();
 };
-$('emptyNewScript').onclick=()=>$('newScript').click();
+$('emptyNewScript').onclick=newScript;
 $('emptyImportScript').onclick=()=>$('openImport').click();
 $('importFile').onchange=e=>{const file=e.target.files[0];if(file)startImport(file)};
 async function startImport(file){
@@ -1265,6 +1272,7 @@ function addTextBlock(index,who){
 const SCRIPT_FIELDS='.character, .dialogue, .block-text';
 const MOBILE_BLOCK_FIELDS=SCRIPT_FIELDS+', .beat-text';
 const mobileEditBar=$('mobileEditBar');
+const blockDrawer=$('blockDrawer');
 const renderedBlocks=new WeakMap();
 let mobileEditorField=null;
 
@@ -1528,7 +1536,8 @@ appMain.addEventListener('touchmove',e=>{
 function syncMobileEditBar(){
   updateAppViewport();
   const active=document.activeElement;
-  const field=active?.matches('#turns :is('+MOBILE_BLOCK_FIELDS+')')?active:
+  const field=blockDrawer.open?openBlockMenu?.field:
+    active?.matches('#turns :is('+MOBILE_BLOCK_FIELDS+')')?active:
     mobileEditBar.contains(active)&&mobileEditorField?.isConnected?mobileEditorField:null;
   const block=field?.closest('.turn');
   const visible=!!(mobileQuery.matches&&script&&!$('editor').classList.contains('hidden')&&
@@ -1556,34 +1565,86 @@ $('turns').addEventListener('mousedown',e=>{
 function activeMobileBlock(){
   return renderedBlocks.get(mobileEditorField?.closest('.turn'));
 }
+function openMobileBlockDrawer(trigger,method){
+  const field=mobileEditorField;
+  if(!field?.isConnected)return;
+  if(field.matches('.character')){
+    // Commit pending character edits before moving focus into the modal. Committing
+    // can render a replacement field, which then owns the drawer.
+    const index=[...$('turns').children].indexOf(field.closest('.turn'));
+    field.blur();
+    if(!field.isConnected)mobileEditorField=$('turns').children[index]?.querySelector('.character');
+  }
+  activeMobileBlock()?.[method](trigger);
+}
 $('mobileInsert').onclick=e=>{
-  const block=activeMobileBlock();
-  if(block)block.openInsert(e.currentTarget);
+  if(activeMobileBlock())openMobileBlockDrawer(e.currentTarget,'openInsert');
   else if(script&&!script.turns.length)addTextBlock(0,'heading');
 };
-$('mobileTurnInto').onclick=e=>activeMobileBlock()?.openTurnInto(e.currentTarget);
+$('mobileTurnInto').onclick=e=>openMobileBlockDrawer(e.currentTarget,'openTurnInto');
 $('mobileBeatDuration').onclick=e=>activeMobileBlock()?.openBeatDuration(e.currentTarget);
 $('mobileMoveUp').onclick=()=>activeMobileBlock()?.move(-1);
 $('mobileMoveDown').onclick=()=>activeMobileBlock()?.move(1);
 $('mobileDeleteBlock').onclick=()=>activeMobileBlock()?.remove();
 function closeBlockMenu(){
   if(!openBlockMenu)return;
-  const {menu,origin,trigger}=openBlockMenu;
+  const {menu,origin,trigger,drawer}=openBlockMenu;
+  openBlockMenu=null;
+  if(drawer)blockDrawer.close();
   menu.classList.add('hidden');
   if(menu.parentElement!==origin)origin.append(menu);
   trigger.setAttribute('aria-expanded','false');
-  openBlockMenu=null;
 }
-function showBlockMenu(menu,origin,trigger,fill){
+function dismissBlockDrawer(){
+  const field=openBlockMenu?.field;
+  closeBlockMenu();
+  if(field?.isConnected)field.focus({preventScroll:true});
+}
+blockDrawer.addEventListener('cancel',e=>{e.preventDefault();dismissBlockDrawer()});
+blockDrawer.addEventListener('click',e=>{
+  if(e.target===blockDrawer&&e.clientY<blockDrawer.getBoundingClientRect().top)dismissBlockDrawer();
+});
+const drawerHandle=blockDrawer.querySelector('.drawer-handle');
+let drawerDragStart=null;
+drawerHandle.addEventListener('pointerdown',e=>{
+  drawerDragStart=e.clientY;
+  drawerHandle.setPointerCapture(e.pointerId);
+});
+drawerHandle.addEventListener('pointermove',e=>{
+  if(drawerHandle.hasPointerCapture(e.pointerId)&&drawerDragStart!==null)
+    blockDrawer.style.setProperty('--drawer-drag',Math.max(0,e.clientY-drawerDragStart)+'px');
+});
+drawerHandle.addEventListener('lostpointercapture',()=>{
+  drawerDragStart=null;
+  blockDrawer.style.removeProperty('--drawer-drag');
+});
+drawerHandle.addEventListener('pointerup',e=>{
+  if(drawerDragStart!==null&&e.clientY-drawerDragStart>56)dismissBlockDrawer();
+});
+function showBlockMenu(menu,origin,trigger,fill,drawerTitle){
   const wasOpen=openBlockMenu?.trigger===trigger;
   closeBlockMenu();
   if(wasOpen)return;
   menu.replaceChildren();fill();
   const mobile=mobileEditBar.contains(trigger);
-  if(mobile)mobileEditBar.append(menu);
+  const drawer=mobile&&!!drawerTitle;
+  if(drawer){
+    $('blockDrawerTitle').textContent=drawerTitle;
+    $('blockDrawerOptions').append(menu);
+    for(const option of menu.querySelectorAll('button')){
+      if(option.hasAttribute('aria-checked')){
+        option.setAttribute('aria-pressed',option.getAttribute('aria-checked'));
+        option.removeAttribute('aria-checked');
+        option.removeAttribute('role');
+      }
+      const select=option.onclick;
+      option.onclick=e=>{dismissBlockDrawer();select(e)};
+    }
+  }else if(mobile)mobileEditBar.append(menu);
   menu.classList.remove('hidden');
   trigger.setAttribute('aria-expanded','true');
-  openBlockMenu={menu,origin,trigger,mobile};
+  openBlockMenu={menu,origin,trigger,mobile,drawer,field:drawer?mobileEditorField:null};
+  if(drawer)blockDrawer.showModal();
 }
 function tabbableElements(){
   return [...document.querySelectorAll('button, input, textarea, select, a[href], [tabindex]')].filter(el=>
@@ -1709,16 +1770,15 @@ function render(){
     const menuItem=(name,fn,variant,iconName)=>{const b=dropdownItem(name,fn,variant,iconName);menu.append(b);return b};
     const insert=(who)=>{if(who==='line'){addDialogueLine(i+1);return}if(who==='heading'||who==='action'){addTextBlock(i+1,who);return}rememberScriptEdit();script.turns.splice(i+1,0,{who:'beat',text:'',duration:2});render();queueSave(true)};
     const openInsert=trigger=>showBlockMenu(menu,div,trigger,()=>{
-      if(trigger===$('mobileInsert'))menu.append(menuLabel('Insert'));
       menuItem('Line',()=>insert('line'),undefined,'text-align-start');
       menuItem('Beat',()=>insert('beat'),undefined,'gap-vertical');
       menuItem('Scene heading',()=>insert('heading'),undefined,'clapperboard');
       menuItem('Action',()=>insert('action'),undefined,'pilcrow');
-    });
+    },'Insert');
     const onTypeChange=becameLine=>{render();queueSave(true);if(becameLine)focusCharacter(i)};
     const openTurnInto=trigger=>showBlockMenu(menu,div,trigger,()=>{
-      menu.append(menuLabel('Turn into'),...turnIntoOptions(t,onTypeChange).map(dropdownRadioItem));
-    });
+      menu.append(...turnIntoOptions(t,onTypeChange).map(dropdownRadioItem));
+    },'Turn into');
     const durationOptions=()=>beatDurationOptions(t,n=>{
       if(n===beatSeconds(t))return;
       rememberScriptEdit();t.duration=n;render();queueSave(true);
@@ -1903,7 +1963,7 @@ function render(){
   syncMobileEditBar();
   if(Math.abs(scroller.scrollTop-savedScroll)>2)scroller.scrollTo({top:savedScroll,behavior:'instant'});
 }
-document.addEventListener('click',e=>{if(!e.target.closest('.margin-tools, .block-menu, .mobile-edit-bar'))closeBlockMenu()});
+document.addEventListener('click',e=>{if(!e.target.closest('.margin-tools, .block-menu, .mobile-edit-bar, .block-drawer'))closeBlockMenu()});
 async function recordLine(i,button){
   if(recorder){if(recorder.state!=='inactive')recorder.stop();return}
   try{
