@@ -1012,7 +1012,7 @@ for(const frame of $('testsView').querySelectorAll('iframe[data-test-template]')
     if(!main)return;
     const fit=()=>{
       const height=Math.ceil(main.getBoundingClientRect().bottom+frame.contentWindow.scrollY);
-      if(height>0)frame.style.setProperty('--test-frame-height',height+'px');
+      if(height>0)frame.style.height=height+'px';
       if(frame===$('testsFrame'))positionAudioTestDialog();
     };
     observer=new ResizeObserver(fit);
@@ -1021,7 +1021,6 @@ for(const frame of $('testsView').querySelectorAll('iframe[data-test-template]')
   });
 }
 window.addEventListener('scroll',positionAudioTestDialog,{passive:true});
-$('testsView').addEventListener('scroll',positionAudioTestDialog,{passive:true});
 window.addEventListener('resize',positionAudioTestDialog);
 window.visualViewport?.addEventListener('resize',positionAudioTestDialog);
 window.visualViewport?.addEventListener('scroll',positionAudioTestDialog);
@@ -1048,10 +1047,7 @@ function selectTestTab(selected){
     // Keep the frame mounted after its first use so switching tabs preserves test state.
     mountTestFrame(frame);
   }
-  if(changed){
-    const scroller=mobileQuery.matches?$('testsView'):window;
-    scroller.scrollTo({top:0,behavior:'instant'});
-  }
+  if(changed)window.scrollTo({top:0,behavior:'instant'});
   if(frame===$('testsFrame'))positionAudioTestDialog();
 }
 for(const tab of testTabs)tab.onclick=()=>selectTestTab(tab);
@@ -1445,14 +1441,12 @@ window.addEventListener('storage',e=>{if(e.key===PINNED_ORDER_KEY&&db)library()}
 function scriptScroller(){
   return mobileQuery.matches?$('editor'):document.scrollingElement;
 }
-function updateAppViewport(){
-  if(!mobileQuery.matches)return;
+function updateScriptViewport(){
+  if(!mobileQuery.matches||$('editor').classList.contains('hidden'))return;
   const viewport=window.visualViewport;
   const styles=document.documentElement.style;
   const pageTop=viewport?.pageTop??(window.scrollY+(viewport?.offsetTop??0));
-  styles.setProperty('--app-viewport-top',pageTop+'px');
-  styles.setProperty('--app-viewport-height',(viewport?.height??innerHeight)+'px');
-  positionAudioTestDialog();
+  styles.setProperty('--script-viewport-bottom',(pageTop+(viewport?.height??innerHeight))+'px');
 }
 // Safari can deliver keyboard viewport events before its geometry has settled.
 let viewportFrame=0,settleTimer=0;
@@ -1468,20 +1462,19 @@ function keepMobileFieldInView(field,openingKeyboard=false){
   if(bounds.top<top)editor.scrollTop+=bounds.top-top;
   else if(bounds.bottom>bottom)editor.scrollTop+=Math.min(bounds.bottom-bottom,bounds.top-top);
 }
-function scheduleAppViewportUpdate(){
-  if(!mobileQuery.matches)return;
-  updateAppViewport();
+function scheduleScriptViewportUpdate(){
+  updateScriptViewport();
   if(!viewportFrame)viewportFrame=requestAnimationFrame(()=>{
     viewportFrame=0;
-    updateAppViewport();
+    updateScriptViewport();
   });
   clearTimeout(settleTimer);
-  settleTimer=setTimeout(updateAppViewport,400);
+  settleTimer=setTimeout(updateScriptViewport,400);
 }
 // With the keyboard open, iOS pans the whole page when a drag can't scroll anything: one that
 // starts on the header or editing bar, or one that runs past the top or bottom of the script.
 // That moves the header and bar off screen, so cancel those drags.
-const scriptMain=$('editor').closest('.app-main');
+const scriptMain=$('editor').parentElement;
 let scriptTouch=null;
 scriptMain.addEventListener('touchstart',e=>{
   scriptTouch=e.touches.length===1?e.touches[0]:null;
@@ -1501,6 +1494,7 @@ scriptMain.addEventListener('touchmove',e=>{
   e.preventDefault();
 },{passive:false});
 function syncMobileEditBar(){
+  updateScriptViewport();
   const active=document.activeElement;
   const field=active?.matches('#turns :is('+MOBILE_BLOCK_FIELDS+')')?active:
     mobileEditBar.contains(active)&&mobileEditorField?.isConnected?mobileEditorField:null;
@@ -1529,16 +1523,15 @@ document.addEventListener('focusin',e=>{
     const openingKeyboard=!viewport||window.innerHeight-viewport.height<100;
     keepMobileFieldInView(e.target,openingKeyboard);
   }
-  scheduleAppViewportUpdate();
+  scheduleScriptViewportUpdate();
 });
 document.addEventListener('focusout',()=>requestAnimationFrame(syncMobileEditBar));
 mobileQuery.addEventListener('change',syncMobileEditBar);
-mobileQuery.addEventListener('change',scheduleAppViewportUpdate);
-window.visualViewport?.addEventListener('resize',scheduleAppViewportUpdate);
-window.visualViewport?.addEventListener('scroll',scheduleAppViewportUpdate);
-window.addEventListener('resize',scheduleAppViewportUpdate);
-window.addEventListener('scroll',scheduleAppViewportUpdate,{passive:true});
-window.addEventListener('pageshow',scheduleAppViewportUpdate);
+window.visualViewport?.addEventListener('resize',scheduleScriptViewportUpdate);
+window.visualViewport?.addEventListener('scroll',scheduleScriptViewportUpdate);
+window.addEventListener('resize',scheduleScriptViewportUpdate);
+window.addEventListener('scroll',scheduleScriptViewportUpdate,{passive:true});
+window.addEventListener('pageshow',scheduleScriptViewportUpdate);
 mobileEditBar.addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault()});
 $('turns').addEventListener('mousedown',e=>{
   if(mobileEditorField&&e.target.closest('.record-controls button'))e.preventDefault();

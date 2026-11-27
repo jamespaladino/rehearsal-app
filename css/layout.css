@@ -166,7 +166,6 @@
 .tests-view iframe {
   display: block;
   width: 100%;
-  height: var(--test-frame-height, auto);
   min-height: calc(100vh - var(--header-height) - var(--tests-tab-height));
   min-height: calc(100dvh - var(--header-height) - var(--tests-tab-height));
   border: 0;
@@ -402,73 +401,50 @@
 }
 
 @media (max-width: 767px) {
-  html,
-  body {
+  /* Keep the editor's chrome outside its scroll area when the keyboard changes the viewport. */
+  html:has(#editor:not(.hidden)),
+  body:has(#editor:not(.hidden)) {
     height: 100%;
     overflow: hidden;
     overflow: clip;
     overscroll-behavior: none;
   }
 
-  .app-shell {
+  .app-shell:has(#editor:not(.hidden)) {
     height: 100%;
     min-height: 0;
   }
 
   .app-main {
-    position: absolute;
-    inset: 0;
-    min-height: 0;
+    padding-top: var(--header-height);
   }
 
   .app-header {
-    position: absolute;
+    position: fixed;
     inset: 0 0 auto;
     margin: 0;
-    transform: translate3d(0, var(--app-viewport-top, 0px), 0);
   }
 
-  .app-content {
+  .app-main:has(> #editor:not(.hidden)) {
+    /* Only the bottom edge follows the keyboard. The top stays with the header. */
     position: absolute;
-    inset: var(--header-height) var(--main-gutter) auto;
-    transform: translate3d(0, var(--app-viewport-top, 0px), 0);
+    top: 0;
+    right: 0;
+    left: 0;
     display: flex;
     flex-direction: column;
-    height: max(0px, calc(var(--app-viewport-height, 100dvh) - var(--header-height)));
-  }
-
-  .app-content > :is(.settings-view, .tests-view, #editor) {
-    flex: 1;
+    height: var(--script-viewport-bottom, 100dvh);
     min-height: 0;
-    overflow-y: auto;
-    overscroll-behavior: contain;
-  }
-
-  .app-content > .tests-view {
-    margin-bottom: 0;
-  }
-
-  .app-content > .settings-view {
-    width: 100%;
-  }
-
-  .tests-tabs {
-    top: 0;
-  }
-
-  #audioTestPanel,
-  #importTestPanel {
-    height: calc(100% - var(--tests-tab-height));
-  }
-
-  .tests-view iframe {
-    height: 100%;
-    min-height: 0;
+    padding-bottom: 0;
   }
 
   #editor {
     position: relative;
+    flex: 1;
     width: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     /* Clip the focused text and native caret layer to the scrolling pane. */
     clip-path: inset(0);
   }
