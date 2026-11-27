@@ -1443,20 +1443,12 @@ function scriptScroller(){
   return mobileQuery.matches?$('editor'):document.scrollingElement;
 }
 // ---- Phones: the main area and the on-screen keyboard ---------------------------------------
-// iOS never shrinks the page for the keyboard. It shrinks the *visible* area (window.visualViewport),
-// and when a focused field sits below the middle of what's left above the keyboard, it pans the whole
-// page to centre that field (measured in the iOS Simulator: the pan equals the field's distance below
-// the middle). The pan runs while the keyboard animates, before the page can react, so the header
-// slides off and only snaps back afterwards. So on phones:
-//  1. The page itself never scrolls. .app-main (header + content) is pinned to the visible area:
-//     its top and height follow visualViewport (css/layout.css). The content scrolls inside it.
-//  2. iOS is never given a reason to pan. When a field gains focus, its own scroll area (the script,
-//     or the main area) is scrolled at once so the field sits at or above that middle line. iOS then
-//     has nothing to centre, so the editing bar stays above the keyboard.
-//  3. Drags that can't scroll anything are cancelled while the keyboard is open, because iOS turns
-//     them into a pan of the whole page.
-// If iOS pans anyway, (1) still lines the main area up with what's visible.
+// iOS pans the visual viewport to reveal a focused script field and returns it when
+// the keyboard closes. Anchor the script header to the layout viewport so it moves
+// with that native pan. Only the bottom edge follows the keyboard to fit the editing bar.
+// Other views keep both edges of the main area inside the visual viewport.
 const appMain=$('editor').parentElement;
+const scriptEditor=$('editor');
 const keyboardFieldSelector='input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=file]), textarea, select, [contenteditable], .beat-text';
 // Full screen height. Unlike innerHeight (which shrinks with the keyboard in Safari), this doesn't
 // change when the keyboard opens.
@@ -1471,20 +1463,19 @@ function updateAppViewport(){
   const viewport=window.visualViewport;
   if(!viewport||viewport.scale>1.01)return; // pinch-zoomed: leave the layout alone
   const open=keyboardOpen();
-  const active=document.activeElement;
-  appMain.classList.toggle('script-field-keyboard-open',
-    open&&$('editor').contains(active)&&active.matches(keyboardFieldSelector));
   if(open)keyboardHeight=screenHeight()-viewport.height;
   // With the keyboard closed there's nothing to pan, but iOS reports the old offset for a moment
   // while the keyboard closes; trust only the closed state then.
   const top=(open?viewport.offsetTop:0)+'px',height=viewport.height+'px';
+  // Safari can report the native pan in scrollY before visualViewport.offsetTop
+  // catches up. Use the reported pan from either source to keep the editing bar in view.
+  const pan=Math.max(0,viewport.offsetTop,window.scrollY);
+  const bottom=Math.min(screenHeight(),pan+viewport.height)+'px';
   // Only write when the numbers change: each write lays out the whole main area again.
   const styles=document.documentElement.style;
   if(styles.getPropertyValue('--app-viewport-top')!==top)styles.setProperty('--app-viewport-top',top);
   if(styles.getPropertyValue('--app-viewport-height')!==height)styles.setProperty('--app-viewport-height',height);
-  // Once the keyboard is up, keep only the room the script is scrolled into, so there's no empty
-  // space to scroll past (see placeFocusedField).
-  if(open)trimScriptRoom();
+  if(styles.getPropertyValue('--app-viewport-bottom')!==bottom)styles.setProperty('--app-viewport-bottom',bottom);
 }
 window.visualViewport?.addEventListener('resize',updateAppViewport);
 window.visualViewport?.addEventListener('scroll',updateAppViewport);
@@ -1494,24 +1485,11 @@ window.addEventListener('pageshow',updateAppViewport);
 mobileQuery.addEventListener('change',updateAppViewport);
 updateAppViewport();
 
-// Room added below the script, only as much as a focused block needs to reach the middle line.
-// It's kept while you move between blocks (removing it would drop the script) and cleared once
-// no block has focus.
-function setScriptRoom(px){$('editor').style.setProperty('--focus-room',Math.max(0,Math.ceil(px))+'px')}
-function scriptRoom(){return parseFloat($('editor').style.getPropertyValue('--focus-room'))||0}
-function trimScriptRoom(){
-  const editor=$('editor'),room=scriptRoom();
-  if(!room)return;
-  const unused=editor.scrollHeight-editor.clientHeight-editor.scrollTop;
-  if(unused>1)setScriptRoom(room-Math.min(unused,room));
-}
 function placeFocusedField(field){
-  if(!mobileQuery.matches||!appMain.contains(field))return;
-  // The field's own scroll area: the script on the script page, otherwise the main area.
-  const editor=$('editor'),scroller=field.closest('#editor')||appMain;
-  const pane=scroller.getBoundingClientRect(),bounds=field.getBoundingClientRect();
+  if(!mobileQuery.matches||!appMain.contains(field)||scriptEditor.contains(field))return;
+  const pane=appMain.getBoundingClientRect(),bounds=field.getBoundingClientRect();
   if(!pane.height||!bounds.height)return;
-  const header=scroller===appMain?appMain.querySelector('.app-header').offsetHeight:0;
+  const header=appMain.querySelector('.app-header').offsetHeight;
   const top=pane.top+header+8;
   // The middle of the area that will be visible above the keyboard, a little higher for margin.
   const visible=keyboardOpen()?window.visualViewport.height:screenHeight()-expectedKeyboardHeight();
@@ -1521,22 +1499,14 @@ function placeFocusedField(field){
   if(bounds.top<top)delta=bounds.top-top;
   else if(centre>middle)delta=Math.min(centre-middle,bounds.top-top); // a tall field keeps its top in view
   if(delta<=0&&bounds.top>=top)return;
-  if(scroller===editor){
-    const spare=editor.scrollHeight-editor.clientHeight-editor.scrollTop;
-    if(delta>spare)setScriptRoom(scriptRoom()+delta-spare);
-  }
-  scroller.scrollTop+=delta;
+  appMain.scrollTop+=delta;
 }
 document.addEventListener('focusin',e=>{
   syncMobileEditBar();
   if(e.target.matches?.(keyboardFieldSelector))
     placeFocusedField(e.target);
 });
-document.addEventListener('focusout',()=>requestAnimationFrame(()=>{
-  if(!$('editor').contains(document.activeElement)&&!mobileEditBar.contains(document.activeElement))setScriptRoom(0);
-}));
-
-// Cancel drags that would pan the page (see 3 above). Cheap when the keyboard is closed.
+// Cancel drags that would overscroll the page while the keyboard is open.
 let appTouch=null;
 appMain.addEventListener('touchstart',e=>{
   appTouch=e.touches.length===1?e.touches[0]:null;

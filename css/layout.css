@@ -401,12 +401,8 @@
 }
 
 @media (max-width: 767px) {
-  /* iOS doesn't shrink the page for the keyboard. It pans the page to reveal a focused field,
-     which slides anything pinned to the page (the header) off screen. So on phones the page
-     itself never scrolls: the main area is pinned to the visible area above the keyboard and
-     scrolls inside, under its sticky header. js/app.js keeps --app-viewport-top/height in sync
-     and places a focused field where the keyboard won't cover it, so iOS has no reason to pan
-     (see "Phones: the main area and the on-screen keyboard" there). */
+  /* The main area scrolls inside the viewport. iOS can still pan the visual viewport
+     to reveal a focused field when the keyboard opens. */
   html,
   body {
     height: 100%;
@@ -425,10 +421,12 @@
     overscroll-behavior: contain;
   }
 
-  /* Script page: the script scrolls inside the space between the header and editing bar. */
+  /* Let the native keyboard pan carry the header. Keep the editing bar above the keyboard. */
   .app-main:has(> #editor:not(.hidden)) {
     display: flex;
     flex-direction: column;
+    top: 0;
+    height: var(--app-viewport-bottom, 100dvh);
     overflow: hidden;
     padding-bottom: 0;
   }
@@ -436,16 +434,6 @@
   .app-main:has(> #editor:not(.hidden)) > .app-header {
     position: relative;
     flex-shrink: 0;
-  }
-
-  @media (prefers-reduced-motion: no-preference) {
-    .app-main:has(> #editor:not(.hidden)) > .app-header {
-      transition: margin-top 180ms ease;
-    }
-  }
-
-  .app-main.script-field-keyboard-open:has(> #editor:not(.hidden)) > .app-header {
-    margin-top: calc(-1 * var(--header-height));
   }
 
   /* Tests: the embedded Audio and Import pages fill the visible area under the tabs. */
@@ -468,14 +456,6 @@
     overscroll-behavior: contain;
     /* Clip the focused text and native caret layer to the scrolling pane. */
     clip-path: inset(0);
-  }
-
-  /* Room below the last block, only while one needs lifting above the keyboard (js/app.js sets
-     --focus-room to exactly what's needed). */
-  #editor::after {
-    content: "";
-    display: block;
-    height: var(--focus-room, 0px);
   }
 
   .sidebar {
