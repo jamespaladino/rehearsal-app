@@ -1047,7 +1047,8 @@ function selectTestTab(selected){
     // Keep the frame mounted after its first use so switching tabs preserves test state.
     mountTestFrame(frame);
   }
-  if(changed)window.scrollTo({top:0,behavior:'instant'});
+  // Phones scroll the main area, not the page (see updateAppViewport).
+  if(changed)(mobileQuery.matches?$('editor').parentElement:window).scrollTo({top:0,behavior:'instant'});
   if(frame===$('testsFrame'))positionAudioTestDialog();
 }
 for(const tab of testTabs)tab.onclick=()=>selectTestTab(tab);
@@ -1441,12 +1442,27 @@ window.addEventListener('storage',e=>{if(e.key===PINNED_ORDER_KEY&&db)library()}
 function scriptScroller(){
   return mobileQuery.matches?$('editor'):document.scrollingElement;
 }
-function updateScriptViewport(){
-  if(!mobileQuery.matches||$('editor').classList.contains('hidden'))return;
+// Phones: pin the main area (header included) to the visible area above the keyboard, on every
+// page. iOS pans the page to reveal a focused field; scroll it straight back so the header stays
+// on screen, and follow any pan that remains so the main area still lines up with what's visible.
+function updateAppViewport(){
+  if(!mobileQuery.matches)return;
   const viewport=window.visualViewport;
+  if(viewport&&viewport.scale>1.01)return; // pinch-zoomed: leave the layout alone
+  if(window.scrollY||document.scrollingElement.scrollTop)window.scrollTo(0,0);
   const styles=document.documentElement.style;
-  const pageTop=viewport?.pageTop??(window.scrollY+(viewport?.offsetTop??0));
-  styles.setProperty('--script-viewport-bottom',(pageTop+(viewport?.height??innerHeight))+'px');
+  styles.setProperty('--app-viewport-top',(viewport?.offsetTop??0)+'px');
+  styles.setProperty('--app-viewport-height',(viewport?.height??innerHeight)+'px');
+}
+// Once the keyboard has settled, make sure the focused field (also inside a Tests iframe) is
+// visible in the area that's left.
+function revealFocusedField(){
+  if(!mobileQuery.matches)return;
+  let active=document.activeElement;
+  try{while(active?.tagName==='IFRAME')active=active.contentDocument?.activeElement}catch(e){return}
+  if(!active?.matches?.('input, textarea, select, [contenteditable]'))return;
+  if(active===mobileEditorField)keepMobileFieldInView(active);
+  else active.scrollIntoView({block:'nearest'});
 }
 // Safari can deliver keyboard viewport events before its geometry has settled.
 let viewportFrame=0,settleTimer=0;
@@ -1462,19 +1478,19 @@ function keepMobileFieldInView(field,openingKeyboard=false){
   if(bounds.top<top)editor.scrollTop+=bounds.top-top;
   else if(bounds.bottom>bottom)editor.scrollTop+=Math.min(bounds.bottom-bottom,bounds.top-top);
 }
-function scheduleScriptViewportUpdate(){
-  updateScriptViewport();
+function scheduleAppViewportUpdate(){
+  updateAppViewport();
   if(!viewportFrame)viewportFrame=requestAnimationFrame(()=>{
     viewportFrame=0;
-    updateScriptViewport();
+    updateAppViewport();
   });
   clearTimeout(settleTimer);
-  settleTimer=setTimeout(updateScriptViewport,400);
+  settleTimer=setTimeout(()=>{updateAppViewport();revealFocusedField()},400);
 }
 // With the keyboard open, iOS pans the whole page when a drag can't scroll anything: one that
-// starts on the header or editing bar, or one that runs past the top or bottom of the script.
+// starts on the header or editing bar, or one that runs past the top or bottom of the content.
 // That moves the header and bar off screen, so cancel those drags.
-const scriptMain=$('editor').parentElement;
+const scriptMain=$('editor').parentElement; // .app-main
 let scriptTouch=null;
 scriptMain.addEventListener('touchstart',e=>{
   scriptTouch=e.touches.length===1?e.touches[0]:null;
@@ -1482,11 +1498,11 @@ scriptMain.addEventListener('touchstart',e=>{
 scriptMain.addEventListener('touchmove',e=>{
   const previousTouch=scriptTouch;
   scriptTouch=e.touches.length===1?e.touches[0]:null;
-  if(!mobileQuery.matches||$('editor').classList.contains('hidden')||reorderDrag?.active)return;
+  if(!mobileQuery.matches||reorderDrag?.active)return;
   if(!scriptTouch||previousTouch?.identifier!==scriptTouch.identifier||!e.cancelable)return;
   const dx=scriptTouch.clientX-previousTouch.clientX,dy=scriptTouch.clientY-previousTouch.clientY;
   if(!dy||Math.abs(dx)>Math.abs(dy))return;
-  for(let node=e.target;node&&node!==scriptMain;node=node.parentElement){
+  for(let node=e.target;node&&node!==scriptMain.parentElement;node=node.parentElement){
     if(!/(auto|scroll)/.test(getComputedStyle(node).overflowY)||node.scrollHeight<=node.clientHeight)continue;
     const atTop=node.scrollTop<=0,atBottom=node.scrollTop+node.clientHeight>=node.scrollHeight-1;
     if((dy>0&&!atTop)||(dy<0&&!atBottom))return;
@@ -1494,7 +1510,7 @@ scriptMain.addEventListener('touchmove',e=>{
   e.preventDefault();
 },{passive:false});
 function syncMobileEditBar(){
-  updateScriptViewport();
+  updateAppViewport();
   const active=document.activeElement;
   const field=active?.matches('#turns :is('+MOBILE_BLOCK_FIELDS+')')?active:
     mobileEditBar.contains(active)&&mobileEditorField?.isConnected?mobileEditorField:null;
@@ -1523,15 +1539,15 @@ document.addEventListener('focusin',e=>{
     const openingKeyboard=!viewport||window.innerHeight-viewport.height<100;
     keepMobileFieldInView(e.target,openingKeyboard);
   }
-  scheduleScriptViewportUpdate();
+  scheduleAppViewportUpdate();
 });
 document.addEventListener('focusout',()=>requestAnimationFrame(syncMobileEditBar));
 mobileQuery.addEventListener('change',syncMobileEditBar);
-window.visualViewport?.addEventListener('resize',scheduleScriptViewportUpdate);
-window.visualViewport?.addEventListener('scroll',scheduleScriptViewportUpdate);
-window.addEventListener('resize',scheduleScriptViewportUpdate);
-window.addEventListener('scroll',scheduleScriptViewportUpdate,{passive:true});
-window.addEventListener('pageshow',scheduleScriptViewportUpdate);
+window.visualViewport?.addEventListener('resize',scheduleAppViewportUpdate);
+window.visualViewport?.addEventListener('scroll',scheduleAppViewportUpdate);
+window.addEventListener('resize',scheduleAppViewportUpdate);
+window.addEventListener('scroll',scheduleAppViewportUpdate,{passive:true});
+window.addEventListener('pageshow',scheduleAppViewportUpdate);
 mobileEditBar.addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault()});
 $('turns').addEventListener('mousedown',e=>{
   if(mobileEditorField&&e.target.closest('.record-controls button'))e.preventDefault();
