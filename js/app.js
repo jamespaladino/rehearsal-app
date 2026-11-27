@@ -1452,11 +1452,12 @@ function scriptScroller(){
 //     its top and height follow visualViewport (css/layout.css). The content scrolls inside it.
 //  2. iOS is never given a reason to pan. When a field gains focus, its own scroll area (the script,
 //     or the main area) is scrolled at once so the field sits at or above that middle line. iOS then
-//     has nothing to centre, so the header and editing bar stay put.
+//     has nothing to centre, so the editing bar stays above the keyboard.
 //  3. Drags that can't scroll anything are cancelled while the keyboard is open, because iOS turns
 //     them into a pan of the whole page.
 // If iOS pans anyway, (1) still lines the main area up with what's visible.
 const appMain=$('editor').parentElement;
+const keyboardFieldSelector='input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=file]), textarea, select, [contenteditable], .beat-text';
 // Full screen height. Unlike innerHeight (which shrinks with the keyboard in Safari), this doesn't
 // change when the keyboard opens.
 const screenHeight=()=>document.documentElement.clientHeight;
@@ -1470,6 +1471,9 @@ function updateAppViewport(){
   const viewport=window.visualViewport;
   if(!viewport||viewport.scale>1.01)return; // pinch-zoomed: leave the layout alone
   const open=keyboardOpen();
+  const active=document.activeElement;
+  appMain.classList.toggle('script-field-keyboard-open',
+    open&&$('editor').contains(active)&&active.matches(keyboardFieldSelector));
   if(open)keyboardHeight=screenHeight()-viewport.height;
   // With the keyboard closed there's nothing to pan, but iOS reports the old offset for a moment
   // while the keyboard closes; trust only the closed state then.
@@ -1525,7 +1529,7 @@ function placeFocusedField(field){
 }
 document.addEventListener('focusin',e=>{
   syncMobileEditBar();
-  if(e.target.matches?.('input:not([type=checkbox], [type=radio], [type=range], [type=button], [type=file]), textarea, select, [contenteditable], .beat-text'))
+  if(e.target.matches?.(keyboardFieldSelector))
     placeFocusedField(e.target);
 });
 document.addEventListener('focusout',()=>requestAnimationFrame(()=>{

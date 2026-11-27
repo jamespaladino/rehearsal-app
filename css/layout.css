@@ -425,7 +425,7 @@
     overscroll-behavior: contain;
   }
 
-  /* Script page: the header and editing bar stay put and only the script scrolls. */
+  /* Script page: the script scrolls inside the space between the header and editing bar. */
   .app-main:has(> #editor:not(.hidden)) {
     display: flex;
     flex-direction: column;
@@ -434,7 +434,18 @@
   }
 
   .app-main:has(> #editor:not(.hidden)) > .app-header {
+    position: relative;
     flex-shrink: 0;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .app-main:has(> #editor:not(.hidden)) > .app-header {
+      transition: margin-top 180ms ease;
+    }
+  }
+
+  .app-main.script-field-keyboard-open:has(> #editor:not(.hidden)) > .app-header {
+    margin-top: calc(-1 * var(--header-height));
   }
 
   /* Tests: the embedded Audio and Import pages fill the visible area under the tabs. */
