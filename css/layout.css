@@ -401,6 +401,36 @@
 }
 
 @media (max-width: 767px) {
+  /* Keep the editor's chrome outside its scroll area when the keyboard changes the viewport. */
+  html:has(#editor:not(.hidden)) {
+    overflow: hidden;
+  }
+
+  .app-main:has(> #editor:not(.hidden)) {
+    position: fixed;
+    top: var(--script-viewport-top, 0px);
+    right: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    height: var(--script-viewport-height, 100dvh);
+    min-height: 0;
+    padding-bottom: 0;
+  }
+
+  .app-main:has(> #editor:not(.hidden)) > .app-header {
+    position: relative;
+    flex-shrink: 0;
+  }
+
+  #editor {
+    flex: 1;
+    width: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;

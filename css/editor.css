@@ -299,14 +299,13 @@
 
 .mobile-edit-bar {
   --edit-button-count: 7;
-  position: fixed;
-  right: 0;
-  bottom: var(--keyboard-inset, 0px);
-  left: 0;
+  position: relative;
   z-index: 45;
   display: flex;
+  flex: none;
   align-items: center;
   gap: 2px;
+  margin-inline: calc(-1 * var(--main-gutter));
   padding: 4px max(8px, env(safe-area-inset-right))
     4px max(8px, env(safe-area-inset-left));
   border-top: 1px solid var(--border);
@@ -338,9 +337,5 @@
   .screenplay .margin-tools,
   .header-right > .script-history {
     display: none;
-  }
-
-  body:has(.mobile-edit-bar:not(.hidden)) .app-main {
-    padding-bottom: 60px;
   }
 }

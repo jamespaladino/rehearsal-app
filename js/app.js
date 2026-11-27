@@ -762,7 +762,7 @@ async function openSearchMatch(s,blockIndex,query){
   if(bounds){
     const viewport=window.visualViewport;
     const center=(viewport?.offsetTop??0)+(viewport?.height??innerHeight)/2;
-    window.scrollBy({top:bounds.top+bounds.height/2-center,behavior:'instant'});
+    scriptScroller().scrollBy({top:bounds.top+bounds.height/2-center,behavior:'instant'});
   }else block.scrollIntoView({block:'center',behavior:'instant'});
 }
 function renderSearchResults(message){
@@ -1326,7 +1326,7 @@ function drawDropLine(){
   const speed=drag.y<top+48?-Math.min(20,(top+48-drag.y)/3):
     drag.y>bottom-48?Math.min(20,(drag.y-bottom+48)/3):0;
   if(speed){
-    const scroller=drag.sidebar?libraryPanel:document.scrollingElement;
+    const scroller=drag.sidebar?libraryPanel:scriptScroller();
     const previous=scroller.scrollTop;
     scroller.scrollBy({top:speed,behavior:'instant'});
     if(previous!==scroller.scrollTop)scheduleDropLine();
@@ -1434,15 +1434,30 @@ document.addEventListener('keydown',e=>{
 },true);
 window.addEventListener('blur',()=>finishReorder());
 window.addEventListener('scroll',scheduleDropLine,{passive:true});
+$('editor').addEventListener('scroll',scheduleDropLine,{passive:true});
 libraryPanel.addEventListener('scroll',scheduleDropLine,{passive:true});
 window.addEventListener('storage',e=>{if(e.key===PINNED_ORDER_KEY&&db)library()});
 
-function positionMobileEditBar(){
+function scriptScroller(){
+  return mobileQuery.matches?$('editor'):document.scrollingElement;
+}
+function updateScriptViewport(){
+  if(!mobileQuery.matches||$('editor').classList.contains('hidden'))return;
   const viewport=window.visualViewport;
-  const inset=viewport?document.documentElement.clientHeight-viewport.height-viewport.offsetTop:0;
-  mobileEditBar.style.setProperty('--keyboard-inset',Math.max(0,inset)+'px');
+  const styles=document.documentElement.style;
+  styles.setProperty('--script-viewport-top',(viewport?.offsetTop??0)+'px');
+  styles.setProperty('--script-viewport-height',(viewport?.height??innerHeight)+'px');
+}
+let scriptViewportFrame=0;
+function scheduleScriptViewportUpdate(){
+  if(scriptViewportFrame)return;
+  scriptViewportFrame=requestAnimationFrame(()=>{
+    scriptViewportFrame=0;
+    updateScriptViewport();
+  });
 }
 function syncMobileEditBar(){
+  updateScriptViewport();
   const active=document.activeElement;
   const field=active?.matches('#turns :is('+MOBILE_BLOCK_FIELDS+')')?active:
     mobileEditBar.contains(active)&&mobileEditorField?.isConnected?mobileEditorField:null;
@@ -1461,14 +1476,16 @@ function syncMobileEditBar(){
     $('mobileMoveUp').disabled=!block?.previousElementSibling;
     $('mobileMoveDown').disabled=!block?.nextElementSibling;
     $('mobileBeatDuration').classList.toggle('hidden',block?.dataset.who!=='beat');
-    positionMobileEditBar();
   }else if(history.parentElement===mobileEditBar)$('playButton').before(history);
 }
 document.addEventListener('focusin',syncMobileEditBar);
 document.addEventListener('focusout',()=>queueMicrotask(syncMobileEditBar));
 mobileQuery.addEventListener('change',syncMobileEditBar);
-window.visualViewport?.addEventListener('resize',positionMobileEditBar);
-window.visualViewport?.addEventListener('scroll',positionMobileEditBar);
+window.visualViewport?.addEventListener('resize',scheduleScriptViewportUpdate);
+window.visualViewport?.addEventListener('scroll',scheduleScriptViewportUpdate);
+window.addEventListener('resize',scheduleScriptViewportUpdate);
+window.addEventListener('scroll',scheduleScriptViewportUpdate,{passive:true});
+window.addEventListener('pageshow',scheduleScriptViewportUpdate);
 mobileEditBar.addEventListener('mousedown',e=>{if(e.target.closest('button'))e.preventDefault()});
 $('turns').addEventListener('mousedown',e=>{
   if(mobileEditorField&&e.target.closest('.record-controls button'))e.preventDefault();
@@ -1618,7 +1635,7 @@ function render(){
   const focusedIndex=focusedBlock?[...root.children].indexOf(focusedBlock):-1;
   const focusedTurn=renderedBlocks.get(focusedBlock)?.turn;
   const focusedKind=focused&&['.character','.dialogue','.block-text','.beat-text'].find(selector=>focused.matches(selector));
-  const savedScroll=window.scrollY;
+  const scroller=scriptScroller(),savedScroll=scroller.scrollTop;
   hideTip();closeBlockMenu();root.replaceChildren();
   script.turns.forEach((t,i)=>{
     const div=el('div');div.className='turn'+(t.who==='beat'?' beat':'');div.dataset.who=t.who;
@@ -1821,7 +1838,7 @@ function render(){
     }
   }
   syncMobileEditBar();
-  if(Math.abs(window.scrollY-savedScroll)>2)window.scrollTo({top:savedScroll,behavior:'instant'});
+  if(Math.abs(scroller.scrollTop-savedScroll)>2)scroller.scrollTo({top:savedScroll,behavior:'instant'});
 }
 document.addEventListener('click',e=>{if(!e.target.closest('.margin-tools, .block-menu, .mobile-edit-bar'))closeBlockMenu()});
 async function recordLine(i,button){
