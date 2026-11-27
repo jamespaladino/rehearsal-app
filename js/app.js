@@ -1451,6 +1451,18 @@ function updateScriptViewport(){
 }
 // Safari can deliver keyboard viewport events before its geometry has settled.
 let viewportFrame=0,settleTimer=0;
+function keepMobileFieldInView(field,openingKeyboard=false){
+  const editor=$('editor');
+  if(!mobileQuery.matches||!editor.contains(field)||!field.matches(MOBILE_BLOCK_FIELDS))return;
+  const pane=editor.getBoundingClientRect();
+  const bounds=field.getBoundingClientRect();
+  if(!pane.height||!bounds.height)return;
+  const top=pane.top+8;
+  const bottom=openingKeyboard?pane.top+pane.height/2:pane.bottom-8;
+  if(bounds.top<top&&bounds.bottom>bottom)return;
+  if(bounds.top<top)editor.scrollTop+=bounds.top-top;
+  else if(bounds.bottom>bottom)editor.scrollTop+=Math.min(bounds.bottom-bottom,bounds.top-top);
+}
 function scheduleScriptViewportUpdate(){
   updateScriptViewport();
   if(!viewportFrame)viewportFrame=requestAnimationFrame(()=>{
@@ -1504,7 +1516,16 @@ function syncMobileEditBar(){
     $('mobileBeatDuration').classList.toggle('hidden',block?.dataset.who!=='beat');
   }else if(history.parentElement===mobileEditBar)$('playButton').before(history);
 }
-document.addEventListener('focusin',()=>{syncMobileEditBar();scheduleScriptViewportUpdate()});
+document.addEventListener('focusin',e=>{
+  syncMobileEditBar();
+  // Put a low field in the upper half before Safari tries to pan the page to reveal it.
+  if(e.target===mobileEditorField){
+    const viewport=window.visualViewport;
+    const openingKeyboard=!viewport||window.innerHeight-viewport.height<100;
+    keepMobileFieldInView(e.target,openingKeyboard);
+  }
+  scheduleScriptViewportUpdate();
+});
 document.addEventListener('focusout',()=>requestAnimationFrame(syncMobileEditBar));
 mobileQuery.addEventListener('change',syncMobileEditBar);
 window.visualViewport?.addEventListener('resize',scheduleScriptViewportUpdate);

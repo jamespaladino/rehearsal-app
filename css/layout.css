@@ -445,6 +445,12 @@
     clip-path: inset(0);
   }
 
+  #editor:has(#turns :is(.character, .dialogue, .block-text, .beat-text):focus)::after {
+    content: "";
+    display: block;
+    height: 50%;
+  }
+
   .sidebar {
     position: fixed;
     top: 0;
