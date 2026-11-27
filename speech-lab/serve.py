@@ -30,6 +30,13 @@ class NoCacheHandler(http.server.SimpleHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         super().end_headers()
 
+    def list_directory(self, path):
+        folder = os.path.normpath(path)
+        if folder in {os.path.join(ROOT, "speech-lab"), os.path.join(ROOT, "script-import")}:
+            self.send_error(404)
+            return None
+        return super().list_directory(path)
+
 
 def main():
     port = int(sys.argv[1]) if len(sys.argv) > 1 else 8000

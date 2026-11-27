@@ -4,23 +4,6 @@ body {
   background: var(--page-bg);
 }
 
-.import-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  height: var(--header-height);
-  padding: 0 var(--main-gutter);
-}
-
-:root[data-embed] .import-header {
-  display: none;
-}
-
-.import-header strong {
-  margin-right: 8px;
-}
-
 .import-main {
   display: grid;
   gap: 16px;

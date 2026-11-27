@@ -82,7 +82,8 @@
 
 /* Match the spacing of the action and script rows. */
 .sidebar-library .sidebar-menu,
-.sidebar-menu.sidebar-pages {
+.sidebar-menu.sidebar-pages,
+.play-scene-list .sidebar-menu {
   gap: 2px;
 }
 
@@ -281,7 +282,6 @@
   top: calc(100% + 4px);
   right: 0;
   z-index: 5;
-  min-width: 140px;
 }
 
 .settings-section-header .muted,

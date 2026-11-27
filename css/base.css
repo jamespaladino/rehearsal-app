@@ -42,7 +42,7 @@ textarea {
   font: inherit;
 }
 
-/* ---- Form fields (shadcn Input: h-8, px-2.5, text-sm, ring-3 on focus) -- */
+/* ---- Form fields ------------------------------------------------------- */
 
 input,
 textarea {
@@ -55,6 +55,14 @@ textarea {
   color: var(--foreground);
   font-size: var(--mobile-input-font-size, 14px);
   line-height: 22px;
+}
+
+input:where(:not([type="checkbox"], [type="radio"], [type="range"], [type="file"], [type="hidden"])) {
+  height: var(--control-height-lg);
+}
+
+select {
+  min-width: min(var(--dropdown-min-width), 100%);
 }
 
 @media (max-width: 767px), (hover: none) and (pointer: coarse) {

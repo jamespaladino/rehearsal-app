@@ -78,21 +78,16 @@ function restoreSettings() {
 
 // The saved choice is 'light', 'dark' or 'system' (follows the device), as set in the app's Settings.
 const systemDark = matchMedia('(prefers-color-scheme: dark)');
-let themeChoice = 'light';
-try { themeChoice = localStorage.getItem('rehearsal-theme') || 'light'; } catch (e) {}
+let themeChoice = 'system';
+try { themeChoice = localStorage.getItem('rehearsal-theme') || 'system'; } catch (e) {}
 function applyTheme() {
   const dark = themeChoice === 'dark' || (themeChoice === 'system' && systemDark.matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
-  $('themeLight').setAttribute('aria-pressed', String(!dark));
-  $('themeDark').setAttribute('aria-pressed', String(dark));
 }
-function setTheme(choice) { themeChoice = choice; applyTheme(); try { localStorage.setItem('rehearsal-theme', choice); } catch (e) {} }
-$('themeLight').onclick = () => setTheme('light');
-$('themeDark').onclick = () => setTheme('dark');
 applyTheme();
 systemDark.addEventListener('change', () => { if (themeChoice === 'system') applyTheme(); });
 // Follow theme changes made in the main app (e.g. when embedded in its Tests view).
-window.addEventListener('storage', (e) => { if (e.key === 'rehearsal-theme') { themeChoice = e.newValue || 'light'; applyTheme(); } });
+window.addEventListener('storage', (e) => { if (e.key === 'rehearsal-theme') { themeChoice = e.newValue || 'system'; applyTheme(); } });
 
 // ---- Engine cards --------------------------------------------------------------
 
@@ -105,7 +100,7 @@ function renderEngineCards() {
     const status = el('div', { class: 'muted' }, 'Not loaded');
     const bar = el('div', { class: 'progress hidden' }, el('div'));
     const stats = el('dl');
-    const btn = el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: () => loadEngine(a.id).catch(() => {}) }, 'Load model');
+    const btn = el('button', { class: 'btn btn-outline btn-lg', type: 'button', onclick: () => loadEngine(a.id).catch(() => {}) }, 'Load model');
     const card = el('div', { class: 'engine-card' },
       el('div', { class: 'take-head' }, el('h3', {}, a.label), el('span', { class: 'spacer' }), btn),
       el('dl', {},
@@ -563,11 +558,11 @@ function renderTakes() {
         el('span', { class: 'name' }, take.name),
         el('span', { class: 'muted' }, `${dur.toFixed(2)} s · ${take.source}`),
         el('span', { class: 'spacer' }),
-        el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => play(take, canvas, 0) }, ic('play'), 'Play'),
-        el('button', { class: 'btn btn-ghost btn-sm', type: 'button', title: 'Play the 2 s before the cue end, then 0.5 s after', onclick: () => take.cueEnd != null && play(take, canvas, Math.max(0, take.cueEnd - 2), Math.min(dur, take.cueEnd + 0.5)) }, ic('scan-search'), 'Audition cue end'),
-        el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => state.playing && state.playing.stop() }, ic('square'), 'Stop'),
-        el('button', { class: 'btn btn-ghost btn-sm', type: 'button', onclick: () => download(`${take.name}.wav`, encodeWav(take.samples)) }, ic('download'), 'WAV'),
-        el('button', { class: 'btn btn-destructive btn-sm', type: 'button', onclick: () => {
+        el('button', { class: 'btn btn-ghost btn-lg', type: 'button', onclick: () => play(take, canvas, 0) }, ic('play'), 'Play'),
+        el('button', { class: 'btn btn-ghost btn-lg', type: 'button', title: 'Play the 2 s before the cue end, then 0.5 s after', onclick: () => take.cueEnd != null && play(take, canvas, Math.max(0, take.cueEnd - 2), Math.min(dur, take.cueEnd + 0.5)) }, ic('scan-search'), 'Audition cue end'),
+        el('button', { class: 'btn btn-ghost btn-lg', type: 'button', onclick: () => state.playing && state.playing.stop() }, ic('square'), 'Stop'),
+        el('button', { class: 'btn btn-ghost btn-lg', type: 'button', onclick: () => download(`${take.name}.wav`, encodeWav(take.samples)) }, ic('download'), 'WAV'),
+        el('button', { class: 'btn btn-destructive btn-lg', type: 'button', onclick: () => {
           state.takes = state.takes.filter((t) => t !== take);
           state.runs = state.runs.filter((r) => r.takeId !== take.id);
           renderTakes();
@@ -576,13 +571,13 @@ function renderTakes() {
       canvas,
       el('div', { class: 'row' },
         el('span', { class: 'small' }, 'Cue end (s)'), cueInput,
-        el('button', { class: 'btn btn-outline btn-sm', type: 'button', onclick: () => setCueEnd(suggestSpeechEnd(take.samples), 'suggested: end of speech') }, 'Suggest end of speech'),
+        el('button', { class: 'btn btn-outline btn-lg', type: 'button', onclick: () => setCueEnd(suggestSpeechEnd(take.samples), 'suggested: end of speech') }, 'Suggest end of speech'),
         sourceNote),
       el('div', { class: 'take-meta' },
         take.line ? el('div', {}, el('span', { class: 'muted' }, 'Line: '), lineText(take.line)) : null,
         el('div', {}, el('span', { class: 'muted' }, 'Cue: '), `“${take.cue}”`),
         el('div', {}, el('span', { class: 'muted' }, 'Expected: '), take.expected),
-        stale ? el('button', { class: 'btn btn-link btn-xs', type: 'button', onclick: () => {
+        stale ? el('button', { class: 'btn btn-link btn-lg', type: 'button', onclick: () => {
           const cur = settings();
           take.cue = cur.cue;
           take.expected = cur.expected;

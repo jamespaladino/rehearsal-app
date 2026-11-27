@@ -75,7 +75,7 @@
   font-variant-numeric: tabular-nums;
 }
 
-/* Type picker and delete button: 4px apart, both 28px (NativeSelect sm, Button icon-sm).
+/* Type picker and delete button: 4px apart, with matching heights.
    Both columns shrink to their contents so the gap stays 4px. */
 .import-blocks .type {
   width: 1%;
@@ -83,15 +83,12 @@
   white-space: nowrap;
 }
 
-/* Type picker: a small shadcn NativeSelect on every row. Fix buttons: always on rows that need
+/* Type picker: a shadcn NativeSelect on every row. Fix buttons: always on rows that need
    review, on hover or keyboard focus elsewhere. */
 .import-blocks .type .native-select {
   width: max-content; /* as wide as its longest type, in a column sized to fit */
+  min-width: var(--dropdown-min-width);
   margin: -4px 0; /* text lines up with the other cells */
-}
-
-.import-blocks .type select {
-  font-size: var(--mobile-input-font-size, 13px);
 }
 
 .import-blocks .actions {
@@ -230,6 +227,7 @@ tr:not(.needs-review):focus-within .actions .btn,
   .import-blocks td.type {
     grid-row: 1;
     grid-column: 2;
+    width: auto;
   }
 
   .import-blocks td.conf {
@@ -247,6 +245,7 @@ tr:not(.needs-review):focus-within .actions .btn,
   }
 
   .import-blocks .type .native-select {
+    min-width: min(var(--dropdown-min-width), 100%);
     margin: 0;
   }
 

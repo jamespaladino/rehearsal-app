@@ -1,4 +1,4 @@
-// Standalone debug view for the script importer (the app has its own import flow; both use
+// Tests tab for the script importer (the app has its own import flow; both use
 // review-ui.js). UI only: parsing lives in src/.
 import { readScriptFile, createImportReview, describe } from './review-ui.js';
 
@@ -69,10 +69,8 @@ async function save() {
     try { localStorage.setItem('rehearsal-last-opened', script.id); } catch (e) { /* private mode */ }
     const link = el('a', 'Open it in Rehearsal');
     link.href = '../';
-    if (document.documentElement.hasAttribute('data-embed') && window.parent !== window) {
-      link.target = '_parent';
-      window.parent.postMessage('test-script-saved', location.origin);
-    }
+    link.target = '_parent';
+    window.parent.postMessage('test-script-saved', new URL(document.baseURI).origin);
     $('saved').replaceChildren(`Saved "${script.title}" (${script.turns.length} blocks, you are ${script.meCharacter}). `, link);
   } catch (e) {
     $('saved').textContent = `Couldn't save: ${e.message}`;
@@ -90,8 +88,8 @@ window.renderIcons?.(); // swap the <i data-lucide> placeholders for icons (js/i
 
 // Follow theme changes made in the app (light, dark or system).
 function applyTheme() {
-  let t = 'light';
-  try { t = localStorage.getItem('rehearsal-theme') || 'light'; } catch (e) { /* private mode */ }
+  let t = 'system';
+  try { t = localStorage.getItem('rehearsal-theme') || 'system'; } catch (e) { /* private mode */ }
   const dark = t === 'dark' || (t === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
 }
